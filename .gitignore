@@ -1,0 +1,125 @@
+# ---------------------------------------------------------------------------
+# Vault — Security & Privacy Ignored Files
+# ---------------------------------------------------------------------------
+# Do not track any local databases, test artifacts, or decrypted/encrypted data
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+*.vault
+*.enc
+*.dec
+*.aes
+
+# Local environment & secret files
+.env
+.env.*
+*.secret
+*.key
+*.pem
+*.pfx
+*.p12
+
+# Android Signing Keys & Credentials
+*.keystore
+*.jks
+android/key.properties
+android/local.properties
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# ---------------------------------------------------------------------------
+# Flutter / Dart / Pub
+# ---------------------------------------------------------------------------
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+doc/api/
+app.*.symbols
+app.*.map.json
+.widget_preview/
+
+# ---------------------------------------------------------------------------
+# Android Specific
+# ---------------------------------------------------------------------------
+.gradle/
+android/.gradle/
+android/app/debug/
+android/app/profile/
+android/app/release/
+android/captures/
+android/gradleBuild/
+android/app/build/
+**/generated/
+
+# ---------------------------------------------------------------------------
+# iOS / macOS Specific
+# ---------------------------------------------------------------------------
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/app.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Podfile.lock
+**/macos/Flutter/ephemeral/
+**/macos/Pods/
+
+# ---------------------------------------------------------------------------
+# Linux / Windows Ephemeral
+# ---------------------------------------------------------------------------
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+
+# ---------------------------------------------------------------------------
+# IDEs & Code Editors
+# ---------------------------------------------------------------------------
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# IntelliJ IDEA / Android Studio
+*.iml
+*.ipr
+*.iws
+.idea/
+android/*.iml
+android/app/*.iml
+
+# ---------------------------------------------------------------------------
+# Operating System Files
+# ---------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+*.swp
+*.swo
+*.bak
+*.tmp
+*.log
+
+# ---------------------------------------------------------------------------
+# Assets Exception Rule
+# ---------------------------------------------------------------------------
+# Keep bundled offline OCR assets and tessdata tracked
+!assets/
+!assets/**

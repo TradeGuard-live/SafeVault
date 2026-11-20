@@ -1,0 +1,286 @@
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart';
+import '../constants/app_constants.dart';
+import '../constants/category_constants.dart';
+import '../errors/exceptions.dart';
+
+class VaultDatabase {
+  static VaultDatabase? _instance;
+  static Database? _db;
+
+  VaultDatabase._();
+
+  static VaultDatabase get instance => _instance ??= VaultDatabase._();
+
+  Future<Database> get database async {
+    if (_db != null && _db!.isOpen) return _db!;
+    _db = await _initDatabase();
+    return _db!;
+  }
+
+  Future<Database> _initDatabase() async {
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final dbPath = join(appDir.path, AppConstants.dbName);
+
+      return await openDatabase(
+        dbPath,
+        version: 2, // Upgraded to v2 for Passwords and Bank Vault
+        onConfigure: (db) async {
+          await db.execute('PRAGMA foreign_keys = ON;');
+        },
+        onCreate: (db, version) async {
+          await _createTables(db);
+          await _seedDefaultCategories(db);
+          await _seedDefaultSettings(db);
+          await _createPasswordAndBankTables(db);
+          await _seedDefaultPasswordCategories(db);
+        },
+        onUpgrade: (db, oldVersion, newVersion) async {
+          if (oldVersion < 2) {
+            await _createPasswordAndBankTables(db);
+            await _seedDefaultPasswordCategories(db);
+          }
+        },
+      );
+    } catch (e) {
+      throw DatabaseOperationException('Failed to initialize database: ${e.toString()}', e);
+    }
+  }
+
+  Future<void> _createTables(Database db) async {
+    // 1. Categories Table (Documents)
+    await db.execute('''
+      CREATE TABLE categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        icon TEXT NOT NULL,
+        color_value INTEGER NOT NULL,
+        is_default INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      );
+    ''');
+
+    // 2. Documents Table
+    await db.execute('''
+      CREATE TABLE documents (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        category_id TEXT NOT NULL,
+        document_number_enc TEXT,
+        owner_name_enc TEXT,
+        issuing_authority_enc TEXT,
+        issue_date TEXT,
+        expiry_date TEXT,
+        notes_enc TEXT,
+        tags_json TEXT,
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT,
+        thumbnail_enc_path TEXT,
+        document_type TEXT,
+        FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE RESTRICT
+      );
+    ''');
+
+    await db.execute('CREATE INDEX idx_docs_category ON documents(category_id);');
+    await db.execute('CREATE INDEX idx_docs_deleted ON documents(deleted_at);');
+    await db.execute('CREATE INDEX idx_docs_favorite ON documents(is_favorite);');
+    await db.execute('CREATE INDEX idx_docs_expiry ON documents(expiry_date);');
+
+    // 3. Document Files Table
+    await db.execute('''
+      CREATE TABLE document_files (
+        id TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL,
+        encrypted_file_path TEXT NOT NULL,
+        original_file_name TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        file_size INTEGER NOT NULL,
+        page_number INTEGER NOT NULL DEFAULT 1,
+        encryption_version INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (document_id) REFERENCES documents (id) ON DELETE CASCADE
+      );
+    ''');
+
+    await db.execute('CREATE INDEX idx_files_doc ON document_files(document_id);');
+
+    // 4. Activities / Timeline Table
+    await db.execute('''
+      CREATE TABLE activities (
+        id TEXT PRIMARY KEY,
+        document_id TEXT,
+        document_name TEXT NOT NULL,
+        activity_type TEXT NOT NULL,
+        details TEXT,
+        timestamp TEXT NOT NULL
+      );
+    ''');
+
+    await db.execute('CREATE INDEX idx_activities_time ON activities(timestamp DESC);');
+
+    // 5. Expiry Reminders Table
+    await db.execute('''
+      CREATE TABLE reminders (
+        id TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL,
+        reminder_type TEXT NOT NULL,
+        days_before INTEGER NOT NULL,
+        scheduled_date TEXT NOT NULL,
+        is_enabled INTEGER NOT NULL DEFAULT 1,
+        notification_id INTEGER NOT NULL,
+        FOREIGN KEY (document_id) REFERENCES documents (id) ON DELETE CASCADE
+      );
+    ''');
+
+    // 6. Settings Table
+    await db.execute('''
+      CREATE TABLE settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        theme_mode TEXT NOT NULL DEFAULT 'system',
+        biometric_enabled INTEGER NOT NULL DEFAULT 1,
+        auto_lock_duration INTEGER NOT NULL DEFAULT 0,
+        screenshot_protection INTEGER NOT NULL DEFAULT 1,
+        notifications_enabled INTEGER NOT NULL DEFAULT 1,
+        trash_retention_days INTEGER NOT NULL DEFAULT 30
+      );
+    ''');
+  }
+
+  Future<void> _createPasswordAndBankTables(Database db) async {
+    // 7. Password Categories Table
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS password_categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        icon TEXT NOT NULL,
+        color_value INTEGER NOT NULL,
+        is_default INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      );
+    ''');
+
+    // 8. Password Entries Table
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS password_entries (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        website_url TEXT,
+        username_enc TEXT,
+        email_enc TEXT,
+        password_enc TEXT NOT NULL,
+        notes_enc TEXT,
+        category_id TEXT NOT NULL,
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        last_accessed_at TEXT,
+        FOREIGN KEY (category_id) REFERENCES password_categories (id) ON DELETE RESTRICT
+      );
+    ''');
+
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_passwords_cat ON password_entries(category_id);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_passwords_fav ON password_entries(is_favorite);');
+
+    // 9. Bank Accounts Table
+    // Strictly NO ATM PINs, CVVs, UPI PINs, OTPs, or Netbanking passwords.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS bank_accounts (
+        id TEXT PRIMARY KEY,
+        bank_name TEXT NOT NULL,
+        account_holder_enc TEXT,
+        account_number_enc TEXT NOT NULL,
+        ifsc_enc TEXT,
+        branch_enc TEXT,
+        account_type TEXT NOT NULL DEFAULT 'savings',
+        nickname TEXT,
+        notes_enc TEXT,
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    ''');
+
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_bank_fav ON bank_accounts(is_favorite);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_bank_type ON bank_accounts(account_type);');
+  }
+
+  Future<void> _seedDefaultCategories(Database db) async {
+    final now = DateTime.now().toIso8601String();
+    final batch = db.batch();
+
+    for (final cat in CategoryConstants.defaultCategories) {
+      batch.insert('categories', {
+        'id': cat.id,
+        'name': cat.name,
+        'icon': cat.icon,
+        'color_value': cat.colorValue,
+        'is_default': 1,
+        'created_at': now,
+      });
+    }
+
+    await batch.commit(noResult: true);
+  }
+
+  Future<void> _seedDefaultPasswordCategories(Database db) async {
+    final now = DateTime.now().toIso8601String();
+    final batch = db.batch();
+
+    final defaultPasswordCategories = [
+      {'id': 'social', 'name': 'Social Media', 'icon': 'people_rounded', 'color_value': 0xFF3B82F6},
+      {'id': 'email', 'name': 'Email', 'icon': 'email_rounded', 'color_value': 0xFFEF4444},
+      {'id': 'banking', 'name': 'Banking Services', 'icon': 'account_balance_rounded', 'color_value': 0xFF10B981},
+      {'id': 'shopping', 'name': 'Shopping', 'icon': 'shopping_bag_rounded', 'color_value': 0xFFF59E0B},
+      {'id': 'developer', 'name': 'Developer Accounts', 'icon': 'code_rounded', 'color_value': 0xFF8B5CF6},
+      {'id': 'work', 'name': 'Work Accounts', 'icon': 'business_center_rounded', 'color_value': 0xFF06B6D4},
+      {'id': 'entertainment', 'name': 'Entertainment', 'icon': 'movie_rounded', 'color_value': 0xFFEC4899},
+      {'id': 'government', 'name': 'Government Services', 'icon': 'account_balance_wallet_rounded', 'color_value': 0xFF6366F1},
+      {'id': 'other', 'name': 'Other', 'icon': 'vpn_key_rounded', 'color_value': 0xFF64748B},
+    ];
+
+    for (final cat in defaultPasswordCategories) {
+      batch.insert('password_categories', {
+        'id': cat['id'],
+        'name': cat['name'],
+        'icon': cat['icon'],
+        'color_value': cat['color_value'],
+        'is_default': 1,
+        'created_at': now,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
+    }
+
+    await batch.commit(noResult: true);
+  }
+
+  Future<void> _seedDefaultSettings(Database db) async {
+    await db.insert('settings', {
+      'id': 1,
+      'theme_mode': 'system',
+      'biometric_enabled': 1,
+      'auto_lock_duration': 0, // immediate
+      'screenshot_protection': 1,
+      'notifications_enabled': 1,
+      'trash_retention_days': 30,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
+
+  /// Closes database connection.
+  Future<void> close() async {
+    if (_db != null && _db!.isOpen) {
+      await _db!.close();
+      _db = null;
+    }
+  }
+
+  /// Erases and deletes the database file (for vault reset).
+  Future<void> deleteDatabaseFile() async {
+    await close();
+    final appDir = await getApplicationDocumentsDirectory();
+    final dbPath = join(appDir.path, AppConstants.dbName);
+    await deleteDatabase(dbPath);
+  }
+}
