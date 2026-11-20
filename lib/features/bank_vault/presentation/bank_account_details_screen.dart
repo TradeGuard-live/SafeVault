@@ -73,6 +73,14 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
 
   Future<void> _copyAccountNumber() async {
     if (_account?.decryptedAccountNumber == null) return;
+    if (!_isDetailsRevealed) {
+      final verified = await TwoFactorVerificationDialog.verify(
+        context,
+        title: 'Authorize Account Copy',
+        reason: 'Factor 1: Authenticate with biometrics to copy account number to clipboard',
+      );
+      if (!mounted || !verified) return;
+    }
     await ClipboardSecurityService.instance.copySensitive(
       context,
       text: _account!.decryptedAccountNumber!,
@@ -163,8 +171,16 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Edit',
             onPressed: () async {
-              await context.push('/edit-bank-account/${account.id}');
-              _loadAccount();
+              final verified = await TwoFactorVerificationDialog.verify(
+                context,
+                title: 'Authorize Bank Account Edit',
+                reason: 'Factor 1: Authenticate with biometrics before editing bank details',
+              );
+              if (!verified) return;
+              if (context.mounted) {
+                await context.push('/edit-bank-account/${account.id}');
+                if (mounted) _loadAccount();
+              }
             },
           ),
           IconButton(

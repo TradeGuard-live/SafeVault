@@ -162,6 +162,19 @@ class EncryptedFileStorage {
           }
         }
       }
+      // Also purge any scan_*, ocr_*, or view_* temporary files in the root cache directory
+      final cacheDir = await getTemporaryDirectory();
+      if (await cacheDir.exists()) {
+        final cacheEntities = await cacheDir.list().toList();
+        for (final entity in cacheEntities) {
+          if (entity is File) {
+            final name = basename(entity.path);
+            if (name.startsWith('scan_') || name.startsWith('ocr_') || name.startsWith('view_')) {
+              await securelyDeleteFile(entity.path);
+            }
+          }
+        }
+      }
     } catch (_) {}
   }
 

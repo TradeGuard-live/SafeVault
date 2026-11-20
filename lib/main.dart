@@ -29,11 +29,34 @@ void main() async {
   );
 }
 
-class VaultApp extends ConsumerWidget {
+class VaultApp extends ConsumerStatefulWidget {
   const VaultApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VaultApp> createState() => _VaultAppState();
+}
+
+class _VaultAppState extends ConsumerState<VaultApp> {
+  late final AppLifecycleListener _lifecycleListener;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycleListener = AppLifecycleListener(
+      onStateChange: (state) {
+        ref.read(vaultSessionProvider).handleLifecycleChange(state);
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycleListener.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final router = ref.watch(appRouterProvider);
 
@@ -41,11 +64,17 @@ class VaultApp extends ConsumerWidget {
     final platformBrightness = View.of(context).platformDispatcher.platformBrightness;
     final activeTheme = AppTheme.themeFor(settings.themeMode, platformBrightness);
 
-    return MaterialApp.router(
-      title: 'Vault',
-      debugShowCheckedModeBanner: false,
-      theme: activeTheme,
-      routerConfig: router,
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) {
+        ref.read(vaultSessionProvider).recordUserActivity();
+      },
+      child: MaterialApp.router(
+        title: 'Vault',
+        debugShowCheckedModeBanner: false,
+        theme: activeTheme,
+        routerConfig: router,
+      ),
     );
   }
 }

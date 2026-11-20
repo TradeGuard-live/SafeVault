@@ -52,11 +52,11 @@ class BiometricService {
       if (e.code == 'NotAvailable') {
         throw const BiometricException('Biometric authentication is not available on this device.');
       } else if (e.code == 'NotEnrolled') {
-        throw const BiometricException('No biometrics enrolled. Use PIN unlock.');
+        throw const BiometricException('No biometrics enrolled. In mandatory 2FA mode, biometrics is required as Factor 1.');
       } else if (e.code == 'PasscodeNotSet') {
         throw const BiometricException('Device security is not set up.');
       } else if (e.code == 'LockedOut' || e.code == 'PermanentlyLockedOut') {
-        throw const BiometricException('Biometric sensor is locked due to too many attempts. Please use your PIN.');
+        throw const BiometricException('Biometric sensor is locked due to too many attempts. Please wait for sensor timeout.');
       }
       throw BiometricException(e.message ?? 'Biometric authentication failed.');
     }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/widgets.dart';
+import '../storage/encrypted_file_storage.dart';
 import 'clipboard_security_service.dart';
 
 enum VaultLockReason {
@@ -47,6 +48,9 @@ class VaultSession extends ChangeNotifier {
 
     // Securely clear clipboard
     ClipboardSecurityService.instance.clearSensitiveClipboard();
+
+    // Securely purge all ephemeral decrypted files and scanner cache
+    EncryptedFileStorage().wipeEphemeralFiles().ignore();
 
     // Securely wipe ephemeral key buffer from memory
     if (_ephemeralKeyBuffer != null) {

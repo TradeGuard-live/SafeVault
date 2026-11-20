@@ -77,6 +77,14 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
 
   Future<void> _copyPassword() async {
     if (_entry?.decryptedPassword == null) return;
+    if (!_isPasswordRevealed) {
+      final verified = await TwoFactorVerificationDialog.verify(
+        context,
+        title: 'Authorize Password Copy',
+        reason: 'Factor 1: Authenticate with biometrics to copy password to clipboard',
+      );
+      if (!mounted || !verified) return;
+    }
     await ClipboardSecurityService.instance.copySensitive(
       context,
       text: _entry!.decryptedPassword!,
@@ -169,8 +177,16 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Edit',
             onPressed: () async {
-              await context.push('/edit-password/${entry.id}');
-              _loadEntry();
+              final verified = await TwoFactorVerificationDialog.verify(
+                context,
+                title: 'Authorize Password Edit',
+                reason: 'Factor 1: Authenticate with biometrics before editing password',
+              );
+              if (!verified) return;
+              if (context.mounted) {
+                await context.push('/edit-password/${entry.id}');
+                if (mounted) _loadEntry();
+              }
             },
           ),
           IconButton(

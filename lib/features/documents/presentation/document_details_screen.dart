@@ -12,6 +12,7 @@ import '../../../core/utils/masked_text_formatter.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../authentication/presentation/auth_providers.dart';
+import '../../authentication/presentation/two_factor_verification_dialog.dart';
 import '../domain/document_file_model.dart';
 import '../domain/document_model.dart';
 
@@ -29,6 +30,21 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
   bool _isLoading = true;
   bool _revealDocumentNumber = false;
   Uint8List? _firstPagePreviewBytes;
+
+  Future<void> _toggleRevealDocumentNumber() async {
+    if (_revealDocumentNumber) {
+      setState(() => _revealDocumentNumber = false);
+      return;
+    }
+    final verified = await TwoFactorVerificationDialog.verify(
+      context,
+      title: 'Reveal Document Number',
+      reason: 'Factor 1: Authenticate with biometrics to reveal document number',
+    );
+    if (verified && mounted) {
+      setState(() => _revealDocumentNumber = true);
+    }
+  }
 
   @override
   void initState() {
@@ -357,11 +373,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
                       size: 20,
                       color: colors.primaryAccent,
                     ),
-                    onPressed: () {
-                      setState(() {
-                        _revealDocumentNumber = !_revealDocumentNumber;
-                      });
-                    },
+                    onPressed: _toggleRevealDocumentNumber,
                   )
                 : null,
           ),

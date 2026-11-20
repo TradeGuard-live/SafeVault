@@ -83,7 +83,7 @@ class KeyManagementService {
     EncryptionService? encryptionService,
   })  : _secureStorage = secureStorage ??
             const FlutterSecureStorage(
-              aOptions: AndroidOptions(),
+              aOptions: AndroidOptions(resetOnError: false),
             ),
         _encryptionService = encryptionService ?? EncryptionService();
 

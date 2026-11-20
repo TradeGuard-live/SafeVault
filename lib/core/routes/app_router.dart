@@ -57,6 +57,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/biometric-unlock';
       }
 
+      // If trying to access /pin-unlock without Factor 1 biometric verification, redirect to /biometric-unlock
+      if (loc == '/pin-unlock') {
+        final coordinator = ref.read(twoFactorCoordinatorProvider);
+        if (!coordinator.hasActiveBiometricVerification) {
+          return '/biometric-unlock';
+        }
+      }
+
       // If unlocked and still sitting on auth/welcome pages, route to dashboard
       if (session.isUnlocked && (loc == '/pin-unlock' || loc == '/biometric-unlock' || loc == '/welcome')) {
         return '/dashboard';

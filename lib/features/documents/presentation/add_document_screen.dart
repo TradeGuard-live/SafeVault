@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path/path.dart' as p;
 import '../../../core/constants/category_constants.dart';
 import '../../../core/security/file_validator.dart';
 import '../../../core/theme/app_theme.dart';
@@ -234,6 +235,13 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
             plainBytes: plainBytes,
             masterKey: session.masterKey!,
           );
+
+          // Securely wipe ephemeral scanner/OCR temp files from cache
+          final rawPath = fileInfo['path'] as String;
+          final fileName = p.basename(rawPath);
+          if (fileName.startsWith('scan_') || fileName.startsWith('ocr_')) {
+            await storage.securelyDeleteFile(rawPath);
+          }
 
           encryptedFiles.add(
             DocumentFileModel(

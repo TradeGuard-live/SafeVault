@@ -38,6 +38,13 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
+    // Wipe any un-saved captured camera photos if screen was exited
+    for (final path in _capturedPagePaths) {
+      try {
+        final f = File(path);
+        if (f.existsSync()) f.deleteSync();
+      } catch (_) {}
+    }
     super.dispose();
   }
 

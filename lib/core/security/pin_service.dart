@@ -12,7 +12,7 @@ class PinService {
   PinService({FlutterSecureStorage? storage})
       : _storage = storage ??
             const FlutterSecureStorage(
-              aOptions: AndroidOptions(),
+              aOptions: AndroidOptions(resetOnError: false),
             );
 
   /// Validates format of a user entered PIN (Mandatory 6 numeric digits).
