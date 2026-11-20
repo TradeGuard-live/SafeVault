@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Vault — Personal Document Vault & Secure Document Manager
 
 [![Platform](https://img.shields.io/badge/Platform-Android-green.svg)](https://flutter.dev)
@@ -128,3 +129,6 @@ Output path: `build/app/outputs/flutter-apk/app-release.apk`
 ## 📜 Licenses
 - **Tesseract OCR Language Models**: Licensed under the **Apache License 2.0** (Copyright Google LLC and Tesseract OCR contributors).
 - Application source code licensed under the MIT License.
+=======
+# SafeVault
+>>>>>>> ea37c0b3e5115e070bded5efbb5fb439a1d3e74f
