@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/empty_state_view.dart';
 import '../../../core/widgets/error_dialog.dart';
+import '../../../core/widgets/rupee_bunny_mascot.dart';
 import '../../authentication/presentation/auth_providers.dart';
 import '../../documents/domain/document_model.dart';
 
@@ -62,11 +64,11 @@ class TrashScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
     final trashAsync = ref.watch(trashDocumentsProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: const Text('Trash & Recovery', style: TextStyle(fontWeight: FontWeight.w700)),
         actions: [
@@ -74,7 +76,7 @@ class TrashScreen extends ConsumerWidget {
             data: (docs) => docs.isNotEmpty
                 ? TextButton(
                     onPressed: () => _emptyTrash(context, ref),
-                    child: const Text('Empty Trash', style: TextStyle(color: AppColors.statusDanger)),
+                    child: Text('Empty Trash', style: TextStyle(color: colors.error)),
                   )
                 : const SizedBox.shrink(),
             orElse: () => const SizedBox.shrink(),
@@ -88,6 +90,7 @@ class TrashScreen extends ConsumerWidget {
               icon: Icons.delete_outline_rounded,
               title: 'Trash is Empty',
               description: 'Documents moved to trash remain safely recoverable here until permanently purged.',
+              mascotPose: MascotPose.happy,
             );
           }
 
@@ -100,10 +103,10 @@ class TrashScreen extends ConsumerWidget {
 
               return Container(
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                  color: colors.cardBackground,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    color: colors.cardBorder,
                   ),
                 ),
                 child: ListTile(
@@ -112,36 +115,36 @@ class TrashScreen extends ConsumerWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: AppColors.statusDanger.withOpacity(0.1),
+                      color: colors.error.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.delete_outline_rounded, color: AppColors.statusDanger, size: 22),
+                    child: Icon(Icons.delete_outline_rounded, color: colors.error, size: 22),
                   ),
                   title: Text(
                     doc.name,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                      color: colors.textPrimary,
                     ),
                   ),
                   subtitle: Text(
                     'Deleted: ${DateFormatter.formatDisplay(doc.deletedAt)}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                      color: colors.textSecondary,
                     ),
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.restore_from_trash_rounded, color: AppColors.primaryTeal),
+                        icon: Icon(Icons.restore_from_trash_rounded, color: colors.primaryAccent),
                         tooltip: 'Restore',
                         onPressed: () => _restoreDoc(context, ref, doc),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete_forever_rounded, color: AppColors.statusDanger),
+                        icon: Icon(Icons.delete_forever_rounded, color: colors.error),
                         tooltip: 'Permanently Delete',
                         onPressed: () => _permanentlyDelete(context, ref, doc),
                       ),
@@ -152,7 +155,7 @@ class TrashScreen extends ConsumerWidget {
             },
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryTeal)),
+        loading: () => Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
         error: (e, _) => Center(child: Text('Error: $e')),
       ),
     );

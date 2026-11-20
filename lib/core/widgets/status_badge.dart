@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 
 enum ExpiryStatus {
   valid,
@@ -10,25 +10,26 @@ enum ExpiryStatus {
 
 class StatusBadge extends StatelessWidget {
   final String label;
-  final Color backgroundColor;
-  final Color textColor;
+  final Color? backgroundColor;
+  final Color? textColor;
   final IconData? icon;
+  final ExpiryStatus status;
 
   const StatusBadge({
     super.key,
     required this.label,
-    required this.backgroundColor,
-    required this.textColor,
+    this.backgroundColor,
+    this.textColor,
     this.icon,
+    this.status = ExpiryStatus.none,
   });
 
   factory StatusBadge.fromExpiry(DateTime? expiryDate) {
     if (expiryDate == null) {
       return const StatusBadge(
         label: 'No Expiry',
-        backgroundColor: Color(0x1594A3B8),
-        textColor: AppColors.darkTextSecondary,
-        icon: Icons.all_inclusive,
+        status: ExpiryStatus.none,
+        icon: Icons.all_inclusive_rounded,
       );
     }
 
@@ -40,48 +41,73 @@ class StatusBadge extends StatelessWidget {
     if (days < 0) {
       return const StatusBadge(
         label: 'Expired',
-        backgroundColor: AppColors.badgeExpiredBg,
-        textColor: AppColors.statusDanger,
-        icon: Icons.error_outline,
+        status: ExpiryStatus.expired,
+        icon: Icons.error_outline_rounded,
       );
     } else if (days <= 30) {
       return StatusBadge(
         label: days == 0 ? 'Expires Today' : '$days Days Left',
-        backgroundColor: AppColors.badgeExpiringSoonBg,
-        textColor: AppColors.statusWarning,
+        status: ExpiryStatus.expiringSoon,
         icon: Icons.warning_amber_rounded,
       );
     } else {
       return const StatusBadge(
         label: 'Valid',
-        backgroundColor: AppColors.badgeValidBg,
-        textColor: AppColors.statusSuccess,
-        icon: Icons.check_circle_outline,
+        status: ExpiryStatus.valid,
+        icon: Icons.check_circle_outline_rounded,
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.themeColors;
+
+    Color bg;
+    Color fg;
+
+    switch (status) {
+      case ExpiryStatus.valid:
+        bg = backgroundColor ?? colors.successContainer;
+        fg = textColor ?? colors.success;
+        break;
+      case ExpiryStatus.expiringSoon:
+        bg = backgroundColor ?? colors.warningContainer;
+        fg = textColor ?? (colors.isDark ? colors.warning : const Color(0xFFD97706));
+        break;
+      case ExpiryStatus.expired:
+        bg = backgroundColor ?? colors.errorContainer;
+        fg = textColor ?? colors.error;
+        break;
+      case ExpiryStatus.none:
+        bg = backgroundColor ?? (colors.isDark ? const Color(0x3394A3B8) : const Color(0x1594A3B8));
+        fg = textColor ?? colors.textSecondary;
+        break;
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: bg,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: fg.withOpacity(0.2),
+          width: 0.8,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 12, color: textColor),
+            Icon(icon, size: 12, color: fg),
             const SizedBox(width: 4),
           ],
           Text(
             label,
             style: TextStyle(
-              color: textColor,
+              color: fg,
               fontSize: 11,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -89,4 +115,3 @@ class StatusBadge extends StatelessWidget {
     );
   }
 }
-

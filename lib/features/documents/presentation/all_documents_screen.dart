@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/masked_text_formatter.dart';
 import '../../../core/widgets/empty_state_view.dart';
+import '../../../core/widgets/rupee_bunny_mascot.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../authentication/presentation/auth_providers.dart';
 import '../../documents/domain/document_model.dart';
@@ -21,12 +23,12 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
     final docsAsync = ref.watch(activeDocumentsProvider);
     final catsAsync = ref.watch(categoriesProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: const Text('All Documents', style: TextStyle(fontWeight: FontWeight.w700)),
         actions: [
@@ -74,8 +76,8 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   children: [
-                    _buildFilterChip('All', 'all'),
-                    ...categories.map((c) => _buildFilterChip(c.name, c.id)),
+                    _buildFilterChip('All', 'all', colors),
+                    ...categories.map((c) => _buildFilterChip(c.name, c.id, colors)),
                   ],
                 ),
               ),
@@ -90,11 +92,12 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
                         description: _selectedCategoryFilter == 'all'
                             ? 'Your vault is currently empty. Tap below to scan or import your first document.'
                             : 'No documents found in this category.',
+                        mascotPose: MascotPose.friendly,
                         actionLabel: 'Add Document',
                         onAction: () => context.push('/add-document'),
                       )
                     : RefreshIndicator(
-                        color: AppColors.primaryTeal,
+                        color: colors.primaryAccent,
                         onRefresh: () async {
                           ref.invalidate(activeDocumentsProvider);
                         },
@@ -103,7 +106,7 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
                           itemCount: filtered.length,
                           separatorBuilder: (_, __) => const SizedBox(height: 10),
                           itemBuilder: (ctx, i) {
-                            return _buildDocCard(filtered[i]);
+                            return _buildDocCard(filtered[i], colors);
                           },
                         ),
                       ),
@@ -111,21 +114,20 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryTeal)),
+        loading: () => Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
         error: (e, _) => Center(child: Text('Error loading documents: $e')),
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.primaryTeal,
-        foregroundColor: Colors.white,
+        backgroundColor: colors.primaryAccent,
+        foregroundColor: colors.onPrimaryAccent,
         onPressed: () => context.push('/add-document'),
         child: const Icon(Icons.add_rounded),
       ),
     );
   }
 
-  Widget _buildFilterChip(String label, String value) {
+  Widget _buildFilterChip(String label, String value, AppThemeColors colors) {
     final isSelected = _selectedCategoryFilter == value;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.only(right: 8.0),
@@ -137,35 +139,33 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
             _selectedCategoryFilter = value;
           });
         },
-        backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCardElevated,
-        selectedColor: AppColors.primaryTeal.withOpacity(0.2),
-        checkmarkColor: AppColors.primaryTeal,
+        backgroundColor: colors.cardBackground,
+        selectedColor: colors.primaryAccent.withOpacity(0.18),
+        checkmarkColor: colors.primaryAccent,
         labelStyle: TextStyle(
           color: isSelected
-              ? AppColors.primaryTeal
-              : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+              ? colors.primaryAccent
+              : colors.textSecondary,
           fontSize: 12.5,
           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(
-            color: isSelected ? AppColors.primaryTeal : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+            color: isSelected ? colors.primaryAccent : colors.cardBorder,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildDocCard(DocumentModel doc) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+  Widget _buildDocCard(DocumentModel doc, AppThemeColors colors) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          color: colors.cardBorder,
         ),
       ),
       child: ListTile(
@@ -175,10 +175,10 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: AppColors.primaryTeal.withOpacity(0.12),
+            color: colors.primaryAccent.withOpacity(0.12),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: const Icon(Icons.description_outlined, color: AppColors.primaryTeal, size: 22),
+          child: Icon(Icons.description_outlined, color: colors.primaryAccent, size: 22),
         ),
         title: Row(
           children: [
@@ -187,10 +187,9 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
                 doc.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
                 ),
               ),
             ),
@@ -208,7 +207,7 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
                   : (doc.documentType ?? 'Document'),
               style: TextStyle(
                 fontSize: 12.5,
-                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                color: colors.textSecondary,
               ),
             ),
             const SizedBox(height: 6),
@@ -220,7 +219,7 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
                   '${doc.files.length} page${doc.files.length == 1 ? '' : 's'}',
                   style: TextStyle(
                     fontSize: 11,
-                    color: isDark ? AppColors.darkTextTertiary : AppColors.lightTextTertiary,
+                    color: colors.textTertiary,
                   ),
                 ),
               ],

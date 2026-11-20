@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../../authentication/presentation/auth_providers.dart';
 import '../domain/category_model.dart';
@@ -9,11 +10,10 @@ class CategoryManagementScreen extends ConsumerWidget {
   const CategoryManagementScreen({super.key});
 
   Future<void> _showAddCategoryDialog(BuildContext context, WidgetRef ref) async {
+    final colors = context.themeColors;
     final nameController = TextEditingController();
-    int selectedColor = 0xFF0D9488;
+    int selectedColor = colors.primaryAccent.value;
     String selectedIcon = 'folder';
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final created = await showDialog<bool>(
       context: context,
@@ -21,7 +21,7 @@ class CategoryManagementScreen extends ConsumerWidget {
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
             return AlertDialog(
-              backgroundColor: isDark ? AppColors.darkCardElevated : AppColors.lightCard,
+              backgroundColor: colors.cardElevated,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: const Text('New Custom Category', style: TextStyle(fontWeight: FontWeight.w700)),
               content: Column(
@@ -38,7 +38,7 @@ class CategoryManagementScreen extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      0xFF0D9488,
+                      colors.primaryAccent.value,
                       0xFF2563EB,
                       0xFF7C3AED,
                       0xFFD97706,
@@ -93,14 +93,14 @@ class CategoryManagementScreen extends ConsumerWidget {
   }
 
   Future<void> _showRenameDialog(BuildContext context, WidgetRef ref, CategoryModel cat) async {
+    final colors = context.themeColors;
     final nameController = TextEditingController(text: cat.name);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final renamed = await showDialog<bool>(
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          backgroundColor: isDark ? AppColors.darkCardElevated : AppColors.lightCard,
+          backgroundColor: colors.cardElevated,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('Rename Category', style: TextStyle(fontWeight: FontWeight.w700)),
           content: TextField(
@@ -150,11 +150,11 @@ class CategoryManagementScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
     final catsAsync = ref.watch(categoriesProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: const Text('Manage Categories', style: TextStyle(fontWeight: FontWeight.w700)),
         actions: [
@@ -177,9 +177,9 @@ class CategoryManagementScreen extends ConsumerWidget {
 
               return Container(
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                  color: colors.cardBackground,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                  border: Border.all(color: colors.cardBorder),
                 ),
                 child: ListTile(
                   leading: Container(
@@ -197,14 +197,14 @@ class CategoryManagementScreen extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                          color: colors.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: cat.isDefault ? Colors.grey.withOpacity(0.15) : AppColors.primaryTeal.withOpacity(0.15),
+                          color: cat.isDefault ? Colors.grey.withOpacity(0.15) : colors.primaryAccent.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -212,7 +212,7 @@ class CategoryManagementScreen extends ConsumerWidget {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
-                            color: cat.isDefault ? AppColors.darkTextSecondary : AppColors.primaryTeal,
+                            color: cat.isDefault ? colors.textSecondary : colors.primaryAccent,
                           ),
                         ),
                       ),
@@ -228,7 +228,7 @@ class CategoryManagementScreen extends ConsumerWidget {
                               onPressed: () => _showRenameDialog(context, ref, cat),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.statusDanger),
+                              icon: Icon(Icons.delete_outline, size: 18, color: colors.error),
                               onPressed: () => _deleteCategory(context, ref, cat),
                             ),
                           ],
@@ -238,7 +238,7 @@ class CategoryManagementScreen extends ConsumerWidget {
             },
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryTeal)),
+        loading: () => Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
         error: (e, _) => Center(child: Text('Error: $e')),
       ),
     );

@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/security/file_validator.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/masked_text_formatter.dart';
 import '../../../core/widgets/error_dialog.dart';
@@ -168,19 +169,19 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+        backgroundColor: colors.background,
         appBar: AppBar(title: const Text('Document')),
-        body: const Center(child: CircularProgressIndicator(color: AppColors.primaryTeal)),
+        body: Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
       );
     }
 
     if (_document == null) {
       return Scaffold(
-        backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+        backgroundColor: colors.background,
         appBar: AppBar(title: const Text('Not Found')),
         body: const Center(child: Text('Document not found.')),
       );
@@ -189,7 +190,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
     final doc = _document!;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: Text(doc.name, style: const TextStyle(fontWeight: FontWeight.w700)),
         actions: [
@@ -220,25 +221,25 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         children: [
           // 1. Preview Card
-          _buildPreviewCard(doc),
+          _buildPreviewCard(doc, colors),
           const SizedBox(height: 18),
 
           // 2. Metadata Cards
-          _buildMetadataCard(doc),
+          _buildMetadataCard(doc, colors),
           const SizedBox(height: 18),
 
           // 3. Document Files / Pages Section
-          _buildFilesSection(doc),
+          _buildFilesSection(doc, colors),
           const SizedBox(height: 30),
         ],
       ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+          color: colors.surface,
           border: Border(
             top: BorderSide(
-              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              color: colors.cardBorder,
             ),
           ),
         ),
@@ -269,15 +270,13 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
     );
   }
 
-  Widget _buildPreviewCard(DocumentModel doc) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+  Widget _buildPreviewCard(DocumentModel doc, AppThemeColors colors) {
     return Container(
       height: 180,
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+        border: Border.all(color: colors.cardBorder),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
@@ -302,7 +301,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
                           ? Icons.picture_as_pdf_outlined
                           : Icons.image_outlined,
                       size: 54,
-                      color: AppColors.primaryTeal,
+                      color: colors.primaryAccent,
                     ),
                     const SizedBox(height: 10),
                     Text(
@@ -310,7 +309,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                        color: colors.textSecondary,
                       ),
                     ),
                   ],
@@ -327,15 +326,13 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
     );
   }
 
-  Widget _buildMetadataCard(DocumentModel doc) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+  Widget _buildMetadataCard(DocumentModel doc, AppThemeColors colors) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+        border: Border.all(color: colors.cardBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -352,12 +349,13 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
             value: _revealDocumentNumber
                 ? (doc.documentNumber ?? 'Not Provided')
                 : MaskedTextFormatter.maskDocumentNumber(doc.documentNumber),
+            colors: colors,
             actionWidget: doc.documentNumber != null
                 ? IconButton(
                     icon: Icon(
                       _revealDocumentNumber ? Icons.visibility_off : Icons.visibility,
                       size: 20,
-                      color: AppColors.primaryTeal,
+                      color: colors.primaryAccent,
                     ),
                     onPressed: () {
                       setState(() {
@@ -372,24 +370,28 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
           _buildDetailRow(
             label: 'Document Type',
             value: doc.documentType ?? 'General Document',
+            colors: colors,
           ),
           const Divider(height: 20),
 
           _buildDetailRow(
             label: 'Owner / Name on Doc',
             value: doc.ownerName ?? 'Not Specified',
+            colors: colors,
           ),
           const Divider(height: 20),
 
           _buildDetailRow(
             label: 'Issuing Authority',
             value: doc.issuingAuthority ?? 'Not Specified',
+            colors: colors,
           ),
           const Divider(height: 20),
 
           _buildDetailRow(
             label: 'Issue Date',
             value: DateFormatter.formatDisplay(doc.issueDate),
+            colors: colors,
           ),
           const Divider(height: 20),
 
@@ -397,14 +399,16 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
             label: 'Expiry Date',
             value: DateFormatter.formatDisplay(doc.expiryDate),
             valueColor: doc.expiryDate != null && DateFormatter.daysRemaining(doc.expiryDate!) <= 30
-                ? AppColors.statusWarning
+                ? colors.warning
                 : null,
+            colors: colors,
           ),
           if (doc.notes != null && doc.notes!.isNotEmpty) ...[
             const Divider(height: 20),
             _buildDetailRow(
               label: 'Secure Notes',
               value: doc.notes!,
+              colors: colors,
             ),
           ],
           if (doc.tags.isNotEmpty) ...[
@@ -412,11 +416,11 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(
+                SizedBox(
                   width: 120,
                   child: Text(
                     'Tags',
-                    style: TextStyle(color: AppColors.darkTextSecondary, fontSize: 13),
+                    style: TextStyle(color: colors.textSecondary, fontSize: 13),
                   ),
                 ),
                 Expanded(
@@ -427,15 +431,15 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: AppColors.primaryTeal.withOpacity(0.12),
+                          color: colors.primaryAccent.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           '#$t',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.primaryTeal,
+                            color: colors.primaryAccent,
                           ),
                         ),
                       );
@@ -449,6 +453,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
           _buildDetailRow(
             label: 'Date Added',
             value: DateFormatter.formatDateTimeDisplay(doc.createdAt),
+            colors: colors,
           ),
         ],
       ),
@@ -458,11 +463,10 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
   Widget _buildDetailRow({
     required String label,
     required String value,
+    required AppThemeColors colors,
     Color? valueColor,
     Widget? actionWidget,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -471,7 +475,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
           child: Text(
             label,
             style: TextStyle(
-              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+              color: colors.textSecondary,
               fontSize: 13,
             ),
           ),
@@ -482,7 +486,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: valueColor ?? (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
+              color: valueColor ?? colors.textPrimary,
             ),
           ),
         ),
@@ -491,9 +495,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
     );
   }
 
-  Widget _buildFilesSection(DocumentModel doc) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+  Widget _buildFilesSection(DocumentModel doc, AppThemeColors colors) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -507,15 +509,15 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
           return Container(
             margin: const EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : AppColors.lightCard,
+              color: colors.cardBackground,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              border: Border.all(color: colors.cardBorder),
             ),
             child: ListTile(
               onTap: () => _openViewer(file),
               leading: Icon(
                 isPdf ? Icons.picture_as_pdf_outlined : Icons.image_outlined,
-                color: AppColors.primaryTeal,
+                color: colors.primaryAccent,
               ),
               title: Text(
                 'Page ${file.pageNumber}: ${file.originalFileName}',
@@ -527,7 +529,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen> {
                 '${(file.fileSize / 1024).toStringAsFixed(1)} KB • AES-256-GCM',
                 style: TextStyle(
                   fontSize: 11.5,
-                  color: isDark ? AppColors.darkTextTertiary : AppColors.lightTextTertiary,
+                  color: colors.textTertiary,
                 ),
               ),
               trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),

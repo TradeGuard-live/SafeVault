@@ -37,24 +37,14 @@ class VaultApp extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
     final router = ref.watch(appRouterProvider);
 
-    ThemeMode themeMode;
-    switch (settings.themeMode) {
-      case 'dark':
-        themeMode = ThemeMode.dark;
-        break;
-      case 'light':
-        themeMode = ThemeMode.light;
-        break;
-      default:
-        themeMode = ThemeMode.system;
-    }
+    // Get platform brightness safely (fallback to light if context query not yet bound)
+    final platformBrightness = View.of(context).platformDispatcher.platformBrightness;
+    final activeTheme = AppTheme.themeFor(settings.themeMode, platformBrightness);
 
     return MaterialApp.router(
       title: 'Vault',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: themeMode,
+      theme: activeTheme,
       routerConfig: router,
     );
   }

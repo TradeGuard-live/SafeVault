@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../data/scanner_service.dart';
 
@@ -168,19 +169,19 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     if (_pages.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('Review Scans')),
-        body: const Center(child: CircularProgressIndicator(color: AppColors.primaryTeal)),
+        body: Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
       );
     }
 
     final currentPage = _pages[_currentPageIndex];
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: Text(
           'Page ${_currentPageIndex + 1} of ${_pages.length}',
@@ -219,7 +220,7 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
             Expanded(
               child: Center(
                 child: _isProcessing
-                    ? const CircularProgressIndicator(color: AppColors.primaryTeal)
+                    ? CircularProgressIndicator(color: colors.primaryAccent)
                     : Container(
                         margin: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -250,13 +251,13 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildFilterChip('Original', ImageFilterType.original, currentPage.filter),
+                    _buildFilterChip('Original', ImageFilterType.original, currentPage.filter, colors),
                     const SizedBox(width: 8),
-                    _buildFilterChip('Grayscale', ImageFilterType.grayscale, currentPage.filter),
+                    _buildFilterChip('Grayscale', ImageFilterType.grayscale, currentPage.filter, colors),
                     const SizedBox(width: 8),
-                    _buildFilterChip('High Contrast', ImageFilterType.highContrast, currentPage.filter),
+                    _buildFilterChip('High Contrast', ImageFilterType.highContrast, currentPage.filter, colors),
                     const SizedBox(width: 8),
-                    _buildFilterChip('B&W Doc', ImageFilterType.documentBw, currentPage.filter),
+                    _buildFilterChip('B&W Doc', ImageFilterType.documentBw, currentPage.filter, colors),
                   ],
                 ),
               ),
@@ -278,7 +279,7 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
                         height: 8,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(4),
-                          color: isCurrent ? AppColors.primaryTeal : AppColors.darkTextTertiary,
+                          color: isCurrent ? colors.primaryAccent : colors.textTertiary,
                         ),
                       ),
                     );
@@ -290,10 +291,10 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                color: colors.surface,
                 border: Border(
                   top: BorderSide(
-                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    color: colors.cardBorder,
                   ),
                 ),
               ),
@@ -323,27 +324,26 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label, ImageFilterType type, ImageFilterType activeType) {
+  Widget _buildFilterChip(String label, ImageFilterType type, ImageFilterType activeType, AppThemeColors colors) {
     final isSelected = type == activeType;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
       onSelected: (_) => _applyFilter(type),
-      backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCardElevated,
-      selectedColor: AppColors.primaryTeal.withOpacity(0.2),
+      backgroundColor: colors.cardBackground,
+      selectedColor: colors.primaryAccent.withOpacity(0.2),
       labelStyle: TextStyle(
         color: isSelected
-            ? AppColors.primaryTeal
-            : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+            ? colors.primaryAccent
+            : colors.textSecondary,
         fontSize: 12,
         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
       ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(
-          color: isSelected ? AppColors.primaryTeal : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+          color: isSelected ? colors.primaryAccent : colors.cardBorder,
         ),
       ),
     );

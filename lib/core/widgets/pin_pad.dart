@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 
 class PinPad extends StatefulWidget {
   final int pinLength;
@@ -98,24 +98,20 @@ class _PinPadState extends State<PinPad> {
   }
 
   void _handleBackspace() {
-    if (_countdown > 0 || _enteredPin.isEmpty) return;
+    if (_countdown > 0) return;
+    if (_enteredPin.isEmpty) return;
+
     HapticFeedback.lightImpact();
     setState(() {
       _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1);
     });
-    widget.onChanged?.call(_enteredPin);
-  }
 
-  void clear() {
-    setState(() {
-      _enteredPin = '';
-    });
-    widget.onChanged?.call('');
+    widget.onChanged?.call(_enteredPin);
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -125,19 +121,19 @@ class _PinPadState extends State<PinPad> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: AppColors.statusDanger.withOpacity(0.12),
+              color: colors.errorContainer,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.statusDanger.withOpacity(0.3)),
+              border: Border.all(color: colors.error.withOpacity(0.3)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.timer_outlined, color: AppColors.statusDanger, size: 18),
+                Icon(Icons.timer_outlined, color: colors.error, size: 18),
                 const SizedBox(width: 8),
                 Text(
                   'Locked out: try again in $_countdown seconds',
-                  style: const TextStyle(
-                    color: AppColors.statusDanger,
+                  style: TextStyle(
+                    color: colors.error,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -158,11 +154,9 @@ class _PinPadState extends State<PinPad> {
                 height: 16,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isFilled
-                      ? AppColors.primaryTeal
-                      : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                  color: isFilled ? colors.primaryAccent : colors.cardBorder,
                   border: Border.all(
-                    color: isFilled ? AppColors.primaryTeal : Colors.transparent,
+                    color: isFilled ? colors.primaryAccent : Colors.transparent,
                     width: 1.5,
                   ),
                 ),
@@ -174,14 +168,14 @@ class _PinPadState extends State<PinPad> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.statusDanger.withOpacity(0.1),
+                color: colors.errorContainer,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.statusDanger.withOpacity(0.3)),
+                border: Border.all(color: colors.error.withOpacity(0.3)),
               ),
               child: Text(
                 widget.errorMessage!,
-                style: const TextStyle(
-                  color: AppColors.statusDanger,
+                style: TextStyle(
+                  color: colors.error,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -196,11 +190,11 @@ class _PinPadState extends State<PinPad> {
           constraints: const BoxConstraints(maxWidth: 320),
           child: Column(
             children: [
-              _buildRow(['1', '2', '3']),
+              _buildRow(['1', '2', '3'], colors),
               const SizedBox(height: 16),
-              _buildRow(['4', '5', '6']),
+              _buildRow(['4', '5', '6'], colors),
               const SizedBox(height: 16),
-              _buildRow(['7', '8', '9']),
+              _buildRow(['7', '8', '9'], colors),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -210,15 +204,15 @@ class _PinPadState extends State<PinPad> {
                     _buildActionButton(
                       icon: Icons.fingerprint,
                       onTap: widget.onBiometricPressed!,
-                      color: AppColors.primaryTeal,
+                      color: colors.primaryAccent,
                     )
                   else
                     const SizedBox(width: 72, height: 72),
-                  _buildDigitButton('0'),
+                  _buildDigitButton('0', colors),
                   _buildActionButton(
                     icon: Icons.backspace_outlined,
                     onTap: _handleBackspace,
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    color: colors.textSecondary,
                   ),
                 ],
               ),
@@ -229,15 +223,14 @@ class _PinPadState extends State<PinPad> {
     );
   }
 
-  Widget _buildRow(List<String> digits) {
+  Widget _buildRow(List<String> digits, dynamic colors) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: digits.map((d) => _buildDigitButton(d)).toList(),
+      children: digits.map((d) => _buildDigitButton(d, colors)).toList(),
     );
   }
 
-  Widget _buildDigitButton(String digit) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildDigitButton(String digit, dynamic colors) {
     final isEnabled = _countdown == 0;
 
     return InkWell(
@@ -249,9 +242,9 @@ class _PinPadState extends State<PinPad> {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: isDark ? AppColors.darkCard : AppColors.lightCard,
+          color: colors.surfaceSecondary,
           border: Border.all(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+            color: colors.cardBorder,
           ),
         ),
         child: Text(
@@ -259,7 +252,7 @@ class _PinPadState extends State<PinPad> {
           style: TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.w700,
-            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+            color: colors.textPrimary,
           ),
         ),
       ),

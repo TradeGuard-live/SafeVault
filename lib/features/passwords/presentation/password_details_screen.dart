@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/security/clipboard_security_service.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../../authentication/presentation/auth_providers.dart';
@@ -106,6 +107,7 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
   }
 
   Future<void> _deleteEntry() async {
+    final colors = context.themeColors;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -115,7 +117,7 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.errorRed),
+            style: TextButton.styleFrom(foregroundColor: colors.error),
             child: const Text('Delete'),
           ),
         ],
@@ -134,12 +136,12 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(),
-        body: const Center(child: CircularProgressIndicator(color: AppColors.primaryTeal)),
+        body: Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
       );
     }
 
@@ -153,7 +155,7 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
     final entry = _entry!;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: Text(entry.title),
         actions: [
@@ -172,7 +174,7 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.delete_outline_rounded, color: AppColors.errorRed),
+            icon: Icon(Icons.delete_outline_rounded, color: colors.error),
             tooltip: 'Delete',
             onPressed: _deleteEntry,
           ),
@@ -185,10 +187,10 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : AppColors.lightCard,
+              color: colors.cardBackground,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                color: colors.cardBorder,
               ),
             ),
             child: Row(
@@ -197,11 +199,11 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
                   width: 56,
                   height: 56,
                   decoration: BoxDecoration(
-                    color: AppColors.primaryTeal.withOpacity(0.12),
+                    color: colors.primaryAccent.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Center(
-                    child: Icon(Icons.key_rounded, color: AppColors.primaryTeal, size: 28),
+                  child: Center(
+                    child: Icon(Icons.key_rounded, color: colors.primaryAccent, size: 28),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -217,9 +219,9 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
                       if (entry.websiteUrl != null && entry.websiteUrl!.isNotEmpty)
                         Text(
                           entry.websiteUrl!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
-                            color: AppColors.primaryTeal,
+                            color: colors.primaryAccent,
                             decoration: TextDecoration.underline,
                           ),
                         ),
@@ -239,7 +241,7 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
               value: entry.decryptedUsername!,
               icon: Icons.person_outline_rounded,
               onCopy: _copyUsername,
-              isDark: isDark,
+              colors: colors,
             ),
           if (entry.decryptedEmail != null && entry.decryptedEmail!.isNotEmpty)
             _buildDetailTile(
@@ -252,7 +254,7 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
                 text: entry.decryptedEmail!,
                 label: 'Email',
               ),
-              isDark: isDark,
+              colors: colors,
             ),
 
           // Sensitive Password Tile
@@ -260,14 +262,12 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : AppColors.lightCard,
+              color: colors.cardBackground,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: _isPasswordRevealed
-                    ? AppColors.primaryTeal.withOpacity(0.5)
-                    : isDark
-                        ? AppColors.darkBorder
-                        : AppColors.lightBorder,
+                    ? colors.primaryAccent.withOpacity(0.5)
+                    : colors.cardBorder,
               ),
             ),
             child: Column(
@@ -276,11 +276,11 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Row(
+                    Row(
                       children: [
-                        Icon(Icons.lock_outline_rounded, size: 18, color: AppColors.primaryTeal),
-                        SizedBox(width: 8),
-                        Text(
+                        Icon(Icons.lock_outline_rounded, size: 18, color: colors.primaryAccent),
+                        const SizedBox(width: 8),
+                        const Text(
                           'Password',
                           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                         ),
@@ -296,7 +296,7 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
                           ),
                           label: Text(_isPasswordRevealed ? 'Hide' : 'Reveal (2FA)'),
                           style: TextButton.styleFrom(
-                            foregroundColor: AppColors.primaryTeal,
+                            foregroundColor: colors.primaryAccent,
                             visualDensity: VisualDensity.compact,
                           ),
                         ),
@@ -323,13 +323,13 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
                 ),
                 if (_isPasswordRevealed) ...[
                   const SizedBox(height: 8),
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.timer_outlined, size: 13, color: AppColors.statusWarning),
-                      SizedBox(width: 4),
+                      Icon(Icons.timer_outlined, size: 13, color: colors.warning),
+                      const SizedBox(width: 4),
                       Text(
                         'Visible for this screen session. Re-hides automatically.',
-                        style: TextStyle(fontSize: 11, color: AppColors.statusWarning),
+                        style: TextStyle(fontSize: 11, color: colors.warning),
                       ),
                     ],
                   ),
@@ -344,20 +344,20 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                color: colors.cardBackground,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                  color: colors.cardBorder,
                 ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.notes_rounded, size: 18, color: AppColors.primaryTeal),
-                      SizedBox(width: 8),
-                      Text('Notes (AES-256-GCM Encrypted)',
+                      Icon(Icons.notes_rounded, size: 18, color: colors.primaryAccent),
+                      const SizedBox(width: 8),
+                      const Text('Notes (AES-256-GCM Encrypted)',
                           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                     ],
                   ),
@@ -375,7 +375,7 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: (isDark ? AppColors.darkCard : AppColors.lightCard).withOpacity(0.5),
+              color: colors.cardBackground.withOpacity(0.5),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -386,7 +386,7 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
                     Text('Added',
                         style: TextStyle(
                             fontSize: 12,
-                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)),
+                            color: colors.textSecondary)),
                     Text(DateFormatter.formatDate(entry.createdAt),
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                   ],
@@ -398,7 +398,7 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
                     Text('Last Modified',
                         style: TextStyle(
                             fontSize: 12,
-                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary)),
+                            color: colors.textSecondary)),
                     Text(DateFormatter.formatDate(entry.updatedAt),
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                   ],
@@ -418,21 +418,21 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
     required String value,
     required IconData icon,
     required VoidCallback onCopy,
-    required bool isDark,
+    required AppThemeColors colors,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          color: colors.cardBorder,
         ),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: AppColors.primaryTeal),
+          Icon(icon, size: 20, color: colors.primaryAccent),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -442,7 +442,7 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
                   title,
                   style: TextStyle(
                     fontSize: 11,
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    color: colors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 2),

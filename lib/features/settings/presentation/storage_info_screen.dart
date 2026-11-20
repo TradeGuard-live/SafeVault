@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/storage/encrypted_file_storage.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../authentication/presentation/auth_providers.dart';
 
 class StorageInfoScreen extends ConsumerStatefulWidget {
@@ -46,15 +47,15 @@ class _StorageInfoScreenState extends ConsumerState<StorageInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: const Text('Storage Information', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primaryTeal))
+          ? Center(child: CircularProgressIndicator(color: colors.primaryAccent))
           : ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               children: [
@@ -62,15 +63,11 @@ class _StorageInfoScreenState extends ConsumerState<StorageInfoScreen> {
                 Container(
                   padding: const EdgeInsets.all(22),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF0F766E), Color(0xFF064E3B)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    gradient: colors.heroGradient,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primaryTeal.withOpacity(0.2),
+                        color: colors.primaryAccent.withOpacity(0.2),
                         blurRadius: 16,
                         offset: const Offset(0, 6),
                       ),
@@ -102,12 +99,12 @@ class _StorageInfoScreenState extends ConsumerState<StorageInfoScreen> {
                 _buildCard([
                   _buildRowItem(
                     icon: Icons.description_outlined,
-                    color: AppColors.primaryTeal,
+                    color: colors.primaryAccent,
                     title: 'Encrypted Documents',
                     subtitle: '${_breakdown?.encryptedFilesCount ?? 0} files in private storage',
                     value: _breakdown?.formattedDocuments ?? '0 B',
                   ),
-                  const Divider(height: 1),
+                  Divider(height: 1, color: colors.cardBorder),
                   _buildRowItem(
                     icon: Icons.photo_size_select_actual_outlined,
                     color: const Color(0xFF2563EB),
@@ -115,7 +112,7 @@ class _StorageInfoScreenState extends ConsumerState<StorageInfoScreen> {
                     subtitle: 'Secure cached page previews',
                     value: _breakdown?.formattedThumbnails ?? '0 B',
                   ),
-                  const Divider(height: 1),
+                  Divider(height: 1, color: colors.cardBorder),
                   _buildRowItem(
                     icon: Icons.storage_rounded,
                     color: const Color(0xFF7C3AED),
@@ -130,20 +127,20 @@ class _StorageInfoScreenState extends ConsumerState<StorageInfoScreen> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                    color: colors.cardBackground,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                    border: Border.all(color: colors.cardBorder),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.security_rounded, color: AppColors.primaryTeal, size: 24),
+                      Icon(Icons.security_rounded, color: colors.primaryAccent, size: 24),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'All vault data is stored exclusively in Android app-private storage (/data/data/com.vault.vault/). Android automatic cloud backups are strictly disabled.',
                           style: TextStyle(
                             fontSize: 12,
-                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                            color: colors.textSecondary,
                             height: 1.35,
                           ),
                         ),
@@ -159,6 +156,8 @@ class _StorageInfoScreenState extends ConsumerState<StorageInfoScreen> {
                   icon: const Icon(Icons.cleaning_services_outlined, size: 18),
                   label: const Text('Purge Ephemeral Decryption Cache'),
                   style: OutlinedButton.styleFrom(
+                    foregroundColor: colors.primaryAccent,
+                    side: BorderSide(color: colors.primaryAccent.withOpacity(0.5)),
                     minimumSize: const Size.fromHeight(50),
                   ),
                 ),
@@ -168,13 +167,13 @@ class _StorageInfoScreenState extends ConsumerState<StorageInfoScreen> {
   }
 
   Widget _buildCard(List<Widget> children) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+        border: Border.all(color: colors.cardBorder),
       ),
       child: Column(children: children),
     );
@@ -187,7 +186,7 @@ class _StorageInfoScreenState extends ConsumerState<StorageInfoScreen> {
     required String subtitle,
     required String value,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     return ListTile(
       leading: Container(
@@ -198,14 +197,14 @@ class _StorageInfoScreenState extends ConsumerState<StorageInfoScreen> {
         ),
         child: Icon(icon, color: color, size: 22),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
+      title: Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: colors.textPrimary)),
+      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
       trailing: Text(
         value,
         style: TextStyle(
           fontWeight: FontWeight.w700,
           fontSize: 14,
-          color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+          color: colors.textPrimary,
         ),
       ),
     );

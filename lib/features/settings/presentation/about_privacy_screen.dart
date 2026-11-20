@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 
 class AboutPrivacyScreen extends StatelessWidget {
   const AboutPrivacyScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: const Text('About & Privacy Architecture', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
@@ -25,10 +26,15 @@ class AboutPrivacyScreen extends StatelessWidget {
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.primaryTeal, AppColors.accentEmerald],
-                    ),
+                    gradient: colors.heroGradient,
                     borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colors.primaryAccent.withOpacity(0.25),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
                   child: const Icon(Icons.shield_outlined, color: Colors.white, size: 36),
                 ),
@@ -38,7 +44,7 @@ class AboutPrivacyScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
-                    color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                    color: colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -46,7 +52,7 @@ class AboutPrivacyScreen extends StatelessWidget {
                   '${AppConstants.appTagline} • v${AppConstants.appVersion}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    color: colors.textSecondary,
                   ),
                 ),
               ],
@@ -129,15 +135,15 @@ class AboutPrivacyScreen extends StatelessWidget {
     required String title,
     required String content,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          color: colors.cardBorder,
         ),
       ),
       child: Column(
@@ -145,14 +151,15 @@ class AboutPrivacyScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, color: AppColors.primaryTeal, size: 22),
+              Icon(icon, color: colors.primaryAccent, size: 22),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
+                    color: colors.textPrimary,
                   ),
                 ),
               ),
@@ -164,7 +171,7 @@ class AboutPrivacyScreen extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               height: 1.45,
-              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+              color: colors.textSecondary,
             ),
           ),
         ],

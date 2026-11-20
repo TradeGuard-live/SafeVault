@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/date_formatter.dart';
-import '../../../core/utils/masked_text_formatter.dart';
 import '../../../core/widgets/empty_state_view.dart';
+import '../../../core/widgets/rupee_bunny_mascot.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../authentication/presentation/auth_providers.dart';
 import '../../documents/domain/document_model.dart';
@@ -14,21 +15,21 @@ class ExpiryDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
     final docsAsync = ref.watch(activeDocumentsProvider);
 
     return DefaultTabController(
       length: 5,
       child: Scaffold(
-        backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+        backgroundColor: colors.background,
         appBar: AppBar(
           title: const Text('Expiry Reminders', style: TextStyle(fontWeight: FontWeight.w700)),
           bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
-            labelColor: AppColors.primaryTeal,
-            unselectedLabelColor: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-            indicatorColor: AppColors.primaryTeal,
+            labelColor: colors.primaryAccent,
+            unselectedLabelColor: colors.textSecondary,
+            indicatorColor: colors.primaryAccent,
             tabs: const [
               Tab(text: 'Expiring Soon (30d)'),
               Tab(text: 'Critical (≤7d)'),
@@ -58,22 +59,22 @@ class ExpiryDashboardScreen extends ConsumerWidget {
 
             return TabBarView(
               children: [
-                _buildDocList(context, within30, 'No documents expiring within 30 days.'),
-                _buildDocList(context, critical, 'No documents expiring in the next 7 days.'),
-                _buildDocList(context, expired, 'No expired documents. Everything is up to date!'),
-                _buildDocList(context, upcoming, 'No documents with upcoming expiry dates.'),
-                _buildDocList(context, noExpiry, 'No documents without expiry dates.'),
+                _buildDocList(context, within30, 'No documents expiring within 30 days.', colors),
+                _buildDocList(context, critical, 'No documents expiring in the next 7 days.', colors),
+                _buildDocList(context, expired, 'No expired documents. Everything is up to date!', colors),
+                _buildDocList(context, upcoming, 'No documents with upcoming expiry dates.', colors),
+                _buildDocList(context, noExpiry, 'No documents without expiry dates.', colors),
               ],
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryTeal)),
+          loading: () => Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
           error: (e, _) => Center(child: Text('Error loading documents: $e')),
         ),
       ),
     );
   }
 
-  Widget _buildDocList(BuildContext context, List<DocumentModel> docs, String emptyMessage) {
+  Widget _buildDocList(BuildContext context, List<DocumentModel> docs, String emptyMessage, AppThemeColors colors) {
     if (docs.isEmpty) {
       return Center(
         child: Padding(
@@ -81,20 +82,18 @@ class ExpiryDashboardScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.check_circle_outline_rounded, size: 48, color: AppColors.primaryTeal),
+              Icon(Icons.check_circle_outline_rounded, size: 48, color: colors.primaryAccent),
               const SizedBox(height: 14),
               Text(
                 emptyMessage,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14, color: AppColors.darkTextSecondary),
+                style: TextStyle(fontSize: 14, color: colors.textSecondary),
               ),
             ],
           ),
         ),
       );
     }
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -104,10 +103,10 @@ class ExpiryDashboardScreen extends ConsumerWidget {
         final doc = docs[i];
         return Container(
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkCard : AppColors.lightCard,
+            color: colors.cardBackground,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              color: colors.cardBorder,
             ),
           ),
           child: ListTile(
@@ -117,17 +116,17 @@ class ExpiryDashboardScreen extends ConsumerWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: AppColors.primaryTeal.withOpacity(0.12),
+                color: colors.primaryAccent.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.calendar_month_outlined, color: AppColors.primaryTeal, size: 22),
+              child: Icon(Icons.calendar_month_outlined, color: colors.primaryAccent, size: 22),
             ),
             title: Text(
               doc.name,
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
-                color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                color: colors.textPrimary,
               ),
             ),
             subtitle: Column(
@@ -138,7 +137,7 @@ class ExpiryDashboardScreen extends ConsumerWidget {
                   'Expiry: ${DateFormatter.formatDisplay(doc.expiryDate)}',
                   style: TextStyle(
                     fontSize: 12.5,
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    color: colors.textSecondary,
                   ),
                 ),
               ],

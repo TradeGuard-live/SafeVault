@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../../../core/widgets/pin_pad.dart';
 import '../../authentication/presentation/auth_providers.dart';
@@ -106,12 +106,20 @@ class _InitialSecuritySetupScreenState
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('Mandatory 2FA Setup'),
+        title: Text(
+          _currentStep == SetupStep.finalizing
+              ? 'Finalizing Security'
+              : 'Mandatory 2FA Setup',
+          style: TextStyle(fontWeight: FontWeight.w700, color: colors.textPrimary),
+        ),
+        backgroundColor: colors.background,
+        elevation: 0,
+        iconTheme: IconThemeData(color: colors.textPrimary),
         leading: _currentStep == SetupStep.confirmPin
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
@@ -128,17 +136,16 @@ class _InitialSecuritySetupScreenState
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
           child: _currentStep == SetupStep.finalizing
-              ? _buildFinalizingView()
+              ? _buildFinalizingView(colors)
               : _currentStep == SetupStep.biometricsNotice
-                  ? _buildBiometricsNoticeView()
-                  : _buildPinSetupView(),
+                  ? _buildBiometricsNoticeView(colors)
+                  : _buildPinSetupView(colors),
         ),
       ),
     );
   }
 
-  Widget _buildPinSetupView() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildPinSetupView(dynamic colors) {
     final isCreating = _currentStep == SetupStep.createPin;
 
     return Column(
@@ -147,13 +154,13 @@ class _InitialSecuritySetupScreenState
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.primaryTeal.withOpacity(0.1),
+            color: colors.primaryAccent.withOpacity(0.12),
             shape: BoxShape.circle,
           ),
           child: Icon(
             isCreating ? Icons.pin_outlined : Icons.check_circle_outline_rounded,
             size: 36,
-            color: AppColors.primaryTeal,
+            color: colors.primaryAccent,
           ),
         ),
         const SizedBox(height: 18),
@@ -162,7 +169,7 @@ class _InitialSecuritySetupScreenState
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w700,
-            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+            color: colors.textPrimary,
           ),
         ),
         const SizedBox(height: 6),
@@ -173,7 +180,7 @@ class _InitialSecuritySetupScreenState
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 13,
-            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+            color: colors.textSecondary,
           ),
         ),
         if (_errorMessage != null) ...[
@@ -181,14 +188,14 @@ class _InitialSecuritySetupScreenState
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: AppColors.statusDanger.withOpacity(0.1),
+              color: colors.errorContainer,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.statusDanger.withOpacity(0.3)),
+              border: Border.all(color: colors.error.withOpacity(0.3)),
             ),
             child: Text(
               _errorMessage!,
-              style: const TextStyle(
-                color: AppColors.statusDanger,
+              style: TextStyle(
+                color: colors.error,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -206,22 +213,20 @@ class _InitialSecuritySetupScreenState
     );
   }
 
-  Widget _buildBiometricsNoticeView() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+  Widget _buildBiometricsNoticeView(dynamic colors) {
     return Column(
       children: [
         const Spacer(),
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: AppColors.primaryTeal.withOpacity(0.12),
+            color: colors.primaryAccent.withOpacity(0.12),
             shape: BoxShape.circle,
           ),
-          child: const Icon(
+          child: Icon(
             Icons.fingerprint_rounded,
             size: 64,
-            color: AppColors.primaryTeal,
+            color: colors.primaryAccent,
           ),
         ),
         const SizedBox(height: 24),
@@ -230,7 +235,7 @@ class _InitialSecuritySetupScreenState
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w700,
-            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+            color: colors.textPrimary,
           ),
         ),
         const SizedBox(height: 12),
@@ -241,7 +246,7 @@ class _InitialSecuritySetupScreenState
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13.5,
-              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+              color: colors.textSecondary,
               height: 1.45,
             ),
           ),
@@ -250,24 +255,24 @@ class _InitialSecuritySetupScreenState
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkCard : AppColors.lightCard,
+            color: colors.surfaceSecondary,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              color: colors.cardBorder,
             ),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.info_outline_rounded,
-                  color: AppColors.primaryTeal, size: 20),
+              Icon(Icons.info_outline_rounded,
+                  color: colors.primaryAccent, size: 20),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   'Hardware Keystore Warning: If you alter enrolled biometrics in Android settings, Keystore invalidates the key. Keep your backup safe.',
                   style: TextStyle(
                     fontSize: 12,
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    color: colors.textSecondary,
                     height: 1.35,
                   ),
                 ),
@@ -282,6 +287,9 @@ class _InitialSecuritySetupScreenState
           label: const Text('Complete 2FA Setup'),
           style: ElevatedButton.styleFrom(
             minimumSize: const Size.fromHeight(52),
+            backgroundColor: colors.primaryAccent,
+            foregroundColor: colors.onPrimaryAccent,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
         ),
         const SizedBox(height: 16),
@@ -289,21 +297,19 @@ class _InitialSecuritySetupScreenState
     );
   }
 
-  Widget _buildFinalizingView() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+  Widget _buildFinalizingView(dynamic colors) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(color: AppColors.primaryTeal),
+          CircularProgressIndicator(color: colors.primaryAccent),
           const SizedBox(height: 24),
           Text(
             'Initializing 2FA Vault...',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
@@ -311,7 +317,7 @@ class _InitialSecuritySetupScreenState
             'Splitting Master Key into 2-of-2 secret shares (Biometric ⊕ PIN)',
             style: TextStyle(
               fontSize: 13,
-              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+              color: colors.textSecondary,
             ),
           ),
         ],

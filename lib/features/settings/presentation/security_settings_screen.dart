@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/security/privacy_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../../authentication/presentation/auth_providers.dart';
 import '../../authentication/presentation/two_factor_verification_dialog.dart';
@@ -29,15 +30,21 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
     final newPinController = TextEditingController();
     final confirmPinController = TextEditingController();
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     final changed = await showDialog<bool>(
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          backgroundColor: isDark ? AppColors.darkCardElevated : AppColors.lightCard,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Change 6-Digit App PIN', style: TextStyle(fontWeight: FontWeight.w700)),
+          backgroundColor: colors.cardBackground,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: colors.cardBorder),
+          ),
+          title: Text(
+            'Change 6-Digit App PIN',
+            style: TextStyle(fontWeight: FontWeight.w700, color: colors.textPrimary),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -46,7 +53,10 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                 obscureText: true,
                 keyboardType: TextInputType.number,
                 maxLength: 6,
-                decoration: const InputDecoration(labelText: 'Current 6-digit PIN'),
+                decoration: InputDecoration(
+                  labelText: 'Current 6-digit PIN',
+                  labelStyle: TextStyle(color: colors.textSecondary),
+                ),
               ),
               const SizedBox(height: 10),
               TextField(
@@ -54,7 +64,10 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                 obscureText: true,
                 keyboardType: TextInputType.number,
                 maxLength: 6,
-                decoration: const InputDecoration(labelText: 'New 6-digit PIN'),
+                decoration: InputDecoration(
+                  labelText: 'New 6-digit PIN',
+                  labelStyle: TextStyle(color: colors.textSecondary),
+                ),
               ),
               const SizedBox(height: 10),
               TextField(
@@ -62,16 +75,23 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                 obscureText: true,
                 keyboardType: TextInputType.number,
                 maxLength: 6,
-                decoration: const InputDecoration(labelText: 'Confirm New 6-digit PIN'),
+                decoration: InputDecoration(
+                  labelText: 'Confirm New 6-digit PIN',
+                  labelStyle: TextStyle(color: colors.textSecondary),
+                ),
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel'),
+              child: Text('Cancel', style: TextStyle(color: colors.textSecondary)),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.primaryAccent,
+                foregroundColor: Colors.white,
+              ),
               onPressed: () {
                 if (newPinController.text.length != 6) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -151,11 +171,11 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
     final settings = ref.watch(settingsProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: const Text('Security & Privacy', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
@@ -166,20 +186,20 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : AppColors.lightCard,
+              color: colors.cardBackground,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.primaryTeal.withOpacity(0.35)),
+              border: Border.all(color: colors.primaryAccent.withOpacity(0.35)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.verified_user_rounded, color: AppColors.primaryTeal, size: 20),
-                    SizedBox(width: 8),
+                    Icon(Icons.verified_user_rounded, color: colors.primaryAccent, size: 20),
+                    const SizedBox(width: 8),
                     Text(
                       'Mandatory Two-Factor Architecture',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: colors.textPrimary),
                     ),
                   ],
                 ),
@@ -188,7 +208,7 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                   'Vault enforces 2-of-2 secret sharing (VMK = S_bio ⊕ S_pin). Factor 1 (Biometric) and Factor 2 (6-digit PIN) are both mandatory for every unlock. Neither factor independently grants access to any decrypted document, password, or bank record.',
                   style: TextStyle(
                     fontSize: 12,
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    color: colors.textSecondary,
                     height: 1.4,
                   ),
                 ),
@@ -198,7 +218,7 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
                   style: TextStyle(
                     fontSize: 11.5,
                     fontStyle: FontStyle.italic,
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    color: colors.textSecondary,
                     height: 1.35,
                   ),
                 ),
@@ -211,24 +231,24 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
           _buildSectionHeader('Authentication Controls'),
           _buildCard([
             ListTile(
-              leading: const Icon(Icons.password_rounded, color: AppColors.primaryTeal),
-              title: const Text('Change 6-Digit App PIN', style: TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: const Text('Requires 2FA verification before updating', style: TextStyle(fontSize: 12)),
-              trailing: const Icon(Icons.chevron_right_rounded),
+              leading: Icon(Icons.password_rounded, color: colors.primaryAccent),
+              title: Text('Change 6-Digit App PIN', style: TextStyle(fontWeight: FontWeight.w600, color: colors.textPrimary)),
+              subtitle: Text('Requires 2FA verification before updating', style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+              trailing: Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
               onTap: _showChangePinDialog,
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: colors.cardBorder),
             ListTile(
-              leading: const Icon(Icons.fingerprint_rounded, color: AppColors.primaryTeal),
-              title: const Text('Factor 1: Biometric Authentication', style: TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: const Text('Enforced for all unlocks • Protected by Android Keystore', style: TextStyle(fontSize: 12)),
+              leading: Icon(Icons.fingerprint_rounded, color: colors.primaryAccent),
+              title: Text('Factor 1: Biometric Authentication', style: TextStyle(fontWeight: FontWeight.w600, color: colors.textPrimary)),
+              subtitle: Text('Enforced for all unlocks • Protected by Android Keystore', style: TextStyle(fontSize: 12, color: colors.textSecondary)),
               trailing: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryTeal.withOpacity(0.12),
+                  color: colors.primaryAccent.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Text('MANDATORY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.primaryTeal)),
+                child: Text('MANDATORY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: colors.primaryAccent)),
               ),
             ),
           ]),
@@ -238,11 +258,11 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
           _buildSectionHeader('Auto-Lock Timeout'),
           _buildCard([
             _buildTimeoutOption('Immediately when backgrounded (Recommended)', 0, settings.autoLockDuration),
-            const Divider(height: 1),
+            Divider(height: 1, color: colors.cardBorder),
             _buildTimeoutOption('30 seconds of inactivity', 30, settings.autoLockDuration),
-            const Divider(height: 1),
+            Divider(height: 1, color: colors.cardBorder),
             _buildTimeoutOption('1 minute of inactivity', 60, settings.autoLockDuration),
-            const Divider(height: 1),
+            Divider(height: 1, color: colors.cardBorder),
             _buildTimeoutOption('5 minutes of inactivity', 300, settings.autoLockDuration),
           ]),
           const SizedBox(height: 20),
@@ -251,23 +271,23 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
           _buildSectionHeader('Screen Privacy'),
           _buildCard([
             SwitchListTile(
-              secondary: const Icon(Icons.visibility_off_outlined, color: AppColors.primaryTeal),
-              title: const Text('Block Screenshots & Recordings', style: TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: const Text('Hides preview in recent-apps list (FLAG_SECURE)', style: TextStyle(fontSize: 12)),
+              secondary: Icon(Icons.visibility_off_outlined, color: colors.primaryAccent),
+              title: Text('Block Screenshots & Recordings', style: TextStyle(fontWeight: FontWeight.w600, color: colors.textPrimary)),
+              subtitle: Text('Hides preview in recent-apps list (FLAG_SECURE)', style: TextStyle(fontSize: 12, color: colors.textSecondary)),
               value: settings.screenshotProtection,
-              activeColor: AppColors.primaryTeal,
+              activeColor: colors.primaryAccent,
               onChanged: _toggleScreenshotProtection,
             ),
           ]),
           const SizedBox(height: 24),
 
           // Danger Zone
-          _buildSectionHeader('Danger Zone'),
+          _buildSectionHeader('Danger Zone', color: colors.error),
           _buildCard([
             ListTile(
-              leading: const Icon(Icons.dangerous_outlined, color: AppColors.statusDanger),
-              title: const Text('Destroy & Reset Vault', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.statusDanger)),
-              subtitle: const Text('Permanently wipes all encryption keys, documents, passwords, and bank accounts', style: TextStyle(fontSize: 12)),
+              leading: Icon(Icons.dangerous_outlined, color: colors.error),
+              title: Text('Destroy & Reset Vault', style: TextStyle(fontWeight: FontWeight.w700, color: colors.error)),
+              subtitle: Text('Permanently wipes all encryption keys, documents, passwords, and bank accounts', style: TextStyle(fontSize: 12, color: colors.textSecondary)),
               onTap: _resetVault,
             ),
           ]),
@@ -277,15 +297,16 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, {Color? color}) {
+    final colors = context.themeColors;
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w700,
-          color: AppColors.primaryTeal,
+          color: color ?? colors.primaryAccent,
           letterSpacing: 0.5,
         ),
       ),
@@ -293,24 +314,25 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
   }
 
   Widget _buildCard(List<Widget> children) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+        border: Border.all(color: colors.cardBorder),
       ),
       child: Column(children: children),
     );
   }
 
   Widget _buildTimeoutOption(String label, int seconds, int currentVal) {
+    final colors = context.themeColors;
     return RadioListTile<int>(
-      title: Text(label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500)),
+      title: Text(label, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: colors.textPrimary)),
       value: seconds,
       groupValue: currentVal,
-      activeColor: AppColors.primaryTeal,
+      activeColor: colors.primaryAccent,
       onChanged: (val) {
         if (val != null) _updateAutoLock(val);
       },

@@ -1,25 +1,31 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
+import 'rupee_bunny_mascot.dart';
 
 class EmptyStateView extends StatelessWidget {
-  final IconData icon;
+  final IconData? icon;
+  final MascotPose? mascotPose;
   final String title;
   final String description;
+  final String? message;
   final String? actionLabel;
   final VoidCallback? onAction;
 
   const EmptyStateView({
     super.key,
-    required this.icon,
+    this.icon,
+    this.mascotPose = MascotPose.thinking,
     required this.title,
-    required this.description,
+    String? description,
+    String? message,
     this.actionLabel,
     this.onAction,
-  });
+  })  : message = message ?? description,
+        description = description ?? message ?? '';
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     return Center(
       child: Padding(
@@ -29,23 +35,29 @@ class EmptyStateView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primaryTeal.withOpacity(0.1),
-                border: Border.all(
-                  color: AppColors.primaryTeal.withOpacity(0.2),
-                  width: 1.5,
+            if (mascotPose != null)
+              RupeeBunnyMascot(
+                pose: mascotPose!,
+                size: 110,
+              )
+            else
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: colors.primaryAccent.withOpacity(0.12),
+                  border: Border.all(
+                    color: colors.primaryAccent.withOpacity(0.25),
+                    width: 1.5,
+                  ),
+                ),
+                child: Icon(
+                  icon ?? Icons.inbox_rounded,
+                  size: 38,
+                  color: colors.primaryAccent,
                 ),
               ),
-              child: Icon(
-                icon,
-                size: 38,
-                color: AppColors.primaryTeal,
-              ),
-            ),
             const SizedBox(height: 20),
             Text(
               title,
@@ -53,7 +65,7 @@ class EmptyStateView extends StatelessWidget {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                color: colors.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
@@ -62,7 +74,7 @@ class EmptyStateView extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
-                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                color: colors.textSecondary,
                 height: 1.4,
               ),
             ),
@@ -70,8 +82,20 @@ class EmptyStateView extends StatelessWidget {
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: onAction,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primaryAccent,
+                  foregroundColor: colors.onPrimaryAccent,
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 0,
+                ),
                 icon: const Icon(Icons.add, size: 18),
-                label: Text(actionLabel!),
+                label: Text(
+                  actionLabel!,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
               ),
             ],
           ],
@@ -80,4 +104,3 @@ class EmptyStateView extends StatelessWidget {
     );
   }
 }
-

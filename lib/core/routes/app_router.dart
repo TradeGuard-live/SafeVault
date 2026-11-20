@@ -35,6 +35,7 @@ import '../../features/settings/presentation/about_privacy_screen.dart';
 import '../../features/settings/presentation/general_settings_screen.dart';
 import '../../features/settings/presentation/security_settings_screen.dart';
 import '../../features/settings/presentation/storage_info_screen.dart';
+import '../../features/settings/presentation/theme_selection_screen.dart';
 import '../../features/timeline/presentation/activity_timeline_screen.dart';
 import '../../features/trash/presentation/trash_screen.dart';
 
@@ -315,6 +316,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/about-privacy',
         builder: (context, state) => const AboutPrivacyScreen(),
+      ),
+
+      // Theme Selection Screen
+      GoRoute(
+        path: '/theme-selector',
+        builder: (context, state) => const ThemeSelectionScreen(),
       ),
     ],
   );

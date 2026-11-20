@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/masked_text_formatter.dart';
 import '../../../core/widgets/empty_state_view.dart';
+import '../../../core/widgets/rupee_bunny_mascot.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../authentication/presentation/auth_providers.dart';
 import '../../documents/domain/document_model.dart';
@@ -13,11 +15,11 @@ class FavoritesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
     final favoritesAsync = ref.watch(favoriteDocumentsProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: const Text('Favorite Documents', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
@@ -28,11 +30,12 @@ class FavoritesScreen extends ConsumerWidget {
               icon: Icons.star_border_rounded,
               title: 'No Favorites Yet',
               description: 'Tap the star icon on any document to add it to your favorites for quick access.',
+              mascotPose: MascotPose.friendly,
             );
           }
 
           return RefreshIndicator(
-            color: AppColors.primaryTeal,
+            color: colors.primaryAccent,
             onRefresh: () async {
               ref.invalidate(favoriteDocumentsProvider);
             },
@@ -44,10 +47,10 @@ class FavoritesScreen extends ConsumerWidget {
                 final doc = favDocs[i];
                 return Container(
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                    color: colors.cardBackground,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                      color: colors.cardBorder,
                     ),
                   ),
                   child: ListTile(
@@ -57,7 +60,7 @@ class FavoritesScreen extends ConsumerWidget {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: AppColors.primaryTeal.withOpacity(0.12),
+                        color: Colors.amber.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.star_rounded, color: Colors.amber, size: 24),
@@ -67,7 +70,7 @@ class FavoritesScreen extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                        color: colors.textPrimary,
                       ),
                     ),
                     subtitle: Text(
@@ -76,7 +79,7 @@ class FavoritesScreen extends ConsumerWidget {
                           : (doc.documentType ?? 'Document'),
                       style: TextStyle(
                         fontSize: 12.5,
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                        color: colors.textSecondary,
                       ),
                     ),
                     trailing: StatusBadge.fromExpiry(doc.expiryDate),
@@ -86,7 +89,7 @@ class FavoritesScreen extends ConsumerWidget {
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryTeal)),
+        loading: () => Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
         error: (e, _) => Center(child: Text('Error loading favorites: $e')),
       ),
     );

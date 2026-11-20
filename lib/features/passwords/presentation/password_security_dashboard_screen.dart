@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../authentication/presentation/auth_providers.dart';
 import '../data/password_security_analyzer.dart';
 
@@ -10,12 +11,12 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
     final auditAsync = ref.watch(passwordSecurityAuditProvider);
     final passwordsAsync = ref.watch(allPasswordsProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: const Text('Security Audit'),
       ),
@@ -23,10 +24,10 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
         data: (audit) {
           final score = audit.overallScore;
           final scoreColor = score >= 80
-              ? AppColors.successGreen
+              ? colors.success
               : score >= 50
-                  ? AppColors.statusWarning
-                  : AppColors.errorRed;
+                  ? colors.warning
+                  : colors.error;
 
           return ListView(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
@@ -35,7 +36,7 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                  color: colors.cardBackground,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: scoreColor.withOpacity(0.35), width: 1.5),
                 ),
@@ -74,7 +75,7 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
                       'Evaluated across ${audit.totalPasswords} saved password records.',
                       style: TextStyle(
                         fontSize: 13,
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                        color: colors.textSecondary,
                       ),
                     ),
                   ],
@@ -89,9 +90,9 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
                     child: _buildStatTile(
                       'Reused',
                       audit.reusedCount.toString(),
-                      audit.reusedCount > 0 ? AppColors.errorRed : AppColors.successGreen,
+                      audit.reusedCount > 0 ? colors.error : colors.success,
                       Icons.repeat_rounded,
-                      isDark,
+                      colors,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -99,9 +100,9 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
                     child: _buildStatTile(
                       'Short (<8)',
                       audit.shortCount.toString(),
-                      audit.shortCount > 0 ? AppColors.errorRed : AppColors.successGreen,
+                      audit.shortCount > 0 ? colors.error : colors.success,
                       Icons.warning_amber_rounded,
-                      isDark,
+                      colors,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -109,9 +110,9 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
                     child: _buildStatTile(
                       'Weak',
                       audit.weakCount.toString(),
-                      audit.weakCount > 0 ? AppColors.statusWarning : AppColors.successGreen,
+                      audit.weakCount > 0 ? colors.warning : colors.success,
                       Icons.shield_outlined,
-                      isDark,
+                      colors,
                     ),
                   ),
                 ],
@@ -129,17 +130,17 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                    color: colors.cardBackground,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                      color: colors.cardBorder,
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.verified_user_rounded, color: AppColors.successGreen, size: 28),
-                      SizedBox(width: 14),
-                      Expanded(
+                      Icon(Icons.verified_user_rounded, color: colors.success, size: 28),
+                      const SizedBox(width: 14),
+                      const Expanded(
                         child: Text(
                           'No security issues found. All your passwords are long, strong, and unique.',
                           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
@@ -150,7 +151,7 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
                 )
               else
                 ...audit.issues.map((issue) {
-                  return _buildIssueCard(context, issue, passwordsAsync.valueOrNull ?? [], isDark);
+                  return _buildIssueCard(context, issue, passwordsAsync.valueOrNull ?? [], colors);
                 }),
 
               const SizedBox(height: 24),
@@ -159,24 +160,24 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                  color: colors.cardBackground,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    color: colors.cardBorder,
                   ),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.privacy_tip_outlined,
-                        color: AppColors.primaryTeal, size: 20),
+                    Icon(Icons.privacy_tip_outlined,
+                        color: colors.primaryAccent, size: 20),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         '100% Offline Analysis: Vault audits your credentials entirely in local device memory. Passwords, hashes, and metadata are never transmitted over any network.',
                         style: TextStyle(
                           fontSize: 12,
-                          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                          color: colors.textSecondary,
                           height: 1.4,
                         ),
                       ),
@@ -188,8 +189,8 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
             ],
           );
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.primaryTeal),
+        loading: () => Center(
+          child: CircularProgressIndicator(color: colors.primaryAccent),
         ),
         error: (err, _) => Center(child: Text('Error: $err')),
       ),
@@ -201,15 +202,15 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
     String count,
     Color color,
     IconData icon,
-    bool isDark,
+    AppThemeColors colors,
   ) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          color: colors.cardBorder,
         ),
       ),
       child: Column(
@@ -225,7 +226,7 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
             title,
             style: TextStyle(
               fontSize: 11,
-              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+              color: colors.textSecondary,
             ),
           ),
         ],
@@ -237,20 +238,20 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
     BuildContext context,
     PasswordSecurityIssue issue,
     List<dynamic> allPasswords,
-    bool isDark,
+    AppThemeColors colors,
   ) {
     final isCritical = issue.severity == SecurityIssueSeverity.critical;
     final color = isCritical
-        ? AppColors.errorRed
+        ? colors.error
         : issue.severity == SecurityIssueSeverity.warning
-            ? AppColors.statusWarning
-            : AppColors.primaryTeal;
+            ? colors.warning
+            : colors.primaryAccent;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: color.withOpacity(0.35)),
       ),
@@ -278,7 +279,7 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
             issue.description,
             style: TextStyle(
               fontSize: 12.5,
-              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+              color: colors.textSecondary,
               height: 1.35,
             ),
           ),

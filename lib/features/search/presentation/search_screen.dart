@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/masked_text_formatter.dart';
 import '../../../core/widgets/empty_state_view.dart';
+import '../../../core/widgets/rupee_bunny_mascot.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../authentication/presentation/auth_providers.dart';
 import '../../documents/domain/document_model.dart';
@@ -30,12 +32,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
     final docsAsync = ref.watch(activeDocumentsProvider);
     final catsAsync = ref.watch(categoriesProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: TextField(
           controller: _searchController,
@@ -47,7 +49,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             focusedBorder: InputBorder.none,
             filled: false,
             hintStyle: TextStyle(
-              color: isDark ? AppColors.darkTextTertiary : AppColors.lightTextTertiary,
+              color: colors.textTertiary,
               fontSize: 15,
             ),
           ),
@@ -80,12 +82,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   label: const Text('Favorites Only'),
                   selected: _onlyFavorites,
                   onSelected: (val) => setState(() => _onlyFavorites = val),
-                  backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCardElevated,
+                  backgroundColor: colors.cardBackground,
                   selectedColor: Colors.amber.withOpacity(0.2),
                   checkmarkColor: Colors.amber,
                   labelStyle: TextStyle(
                     fontSize: 12,
-                    color: _onlyFavorites ? Colors.amber : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                    color: _onlyFavorites ? Colors.amber : colors.textSecondary,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -100,12 +102,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         onSelected: (val) {
                           setState(() => _selectedCategory = val ? c.id : null);
                         },
-                        backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCardElevated,
-                        selectedColor: AppColors.primaryTeal.withOpacity(0.2),
-                        checkmarkColor: AppColors.primaryTeal,
+                        backgroundColor: colors.cardBackground,
+                        selectedColor: colors.primaryAccent.withOpacity(0.2),
+                        checkmarkColor: colors.primaryAccent,
                         labelStyle: TextStyle(
                           fontSize: 12,
-                          color: isSel ? AppColors.primaryTeal : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                          color: isSel ? colors.primaryAccent : colors.textSecondary,
                         ),
                       ),
                     );
@@ -147,6 +149,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     icon: Icons.search_off_rounded,
                     title: 'No Matching Documents',
                     description: 'No documents match your search criteria. Try a different query or adjust your filters.',
+                    mascotPose: MascotPose.thinking,
                   );
                 }
 
@@ -159,10 +162,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
                     return Container(
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                        color: colors.cardBackground,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                          color: colors.cardBorder,
                         ),
                       ),
                       child: ListTile(
@@ -172,17 +175,17 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: AppColors.primaryTeal.withOpacity(0.12),
+                            color: colors.primaryAccent.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(Icons.description_outlined, color: AppColors.primaryTeal, size: 22),
+                          child: Icon(Icons.description_outlined, color: colors.primaryAccent, size: 22),
                         ),
                         title: Text(
                           doc.name,
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                            color: colors.textPrimary,
                           ),
                         ),
                         subtitle: Text(
@@ -191,7 +194,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               : (doc.documentType ?? 'Document'),
                           style: TextStyle(
                             fontSize: 12.5,
-                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                            color: colors.textSecondary,
                           ),
                         ),
                         trailing: StatusBadge.fromExpiry(doc.expiryDate),
@@ -200,7 +203,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   },
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryTeal)),
+              loading: () => Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
               error: (e, _) => Center(child: Text('Error searching: $e')),
             ),
           ),

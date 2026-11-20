@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/rupee_bunny_mascot.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
@@ -18,38 +19,20 @@ class WelcomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(),
-              Center(
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.primaryTeal, AppColors.accentEmerald],
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primaryTeal.withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.lock_person_outlined,
-                    color: Colors.white,
-                    size: 44,
-                  ),
+              const Center(
+                child: RupeeBunnyMascot(
+                  pose: MascotPose.friendly,
+                  size: 88,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               Text(
                 'Welcome to Vault',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -58,7 +41,7 @@ class WelcomeScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  color: colors.textSecondary,
                   height: 1.4,
                 ),
               ),
@@ -80,27 +63,27 @@ class WelcomeScreen extends StatelessWidget {
               _buildFeatureItem(
                 context,
                 icon: Icons.fingerprint_rounded,
-                title: 'Biometric & Separate PIN',
-                subtitle: 'Protected by a dedicated app PIN independent of your device screen-lock passcode.',
+                title: 'Mandatory Two-Factor Security',
+                subtitle: 'Protected by both biometric authentication and a dedicated 6-digit vault passcode.',
               ),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryTeal.withOpacity(0.08),
+                  color: colors.primaryAccent.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primaryTeal.withOpacity(0.2)),
+                  border: Border.all(color: colors.primaryAccent.withOpacity(0.2)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline, size: 20, color: AppColors.primaryTeal),
+                    Icon(Icons.info_outline, size: 20, color: colors.primaryAccent),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         'Offline Security Guarantee: If you forget your PIN and biometrics are unavailable, your encrypted vault cannot be recovered.',
                         style: TextStyle(
                           fontSize: 11,
-                          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                          color: colors.textSecondary,
                           height: 1.3,
                         ),
                       ),
@@ -112,8 +95,11 @@ class WelcomeScreen extends StatelessWidget {
               ElevatedButton(
                 onPressed: () => context.go('/setup'),
                 style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primaryAccent,
+                  foregroundColor: colors.onPrimaryAccent,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -140,7 +126,7 @@ class WelcomeScreen extends StatelessWidget {
     required String title,
     required String subtitle,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,13 +134,13 @@ class WelcomeScreen extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkCard : AppColors.lightCardElevated,
+            color: colors.surfaceSecondary,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              color: colors.cardBorder,
             ),
           ),
-          child: Icon(icon, color: AppColors.primaryTeal, size: 22),
+          child: Icon(icon, color: colors.primaryAccent, size: 22),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -166,7 +152,7 @@ class WelcomeScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -174,7 +160,7 @@ class WelcomeScreen extends StatelessWidget {
                 subtitle,
                 style: TextStyle(
                   fontSize: 12.5,
-                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  color: colors.textSecondary,
                   height: 1.35,
                 ),
               ),
@@ -185,4 +171,3 @@ class WelcomeScreen extends StatelessWidget {
     );
   }
 }
-

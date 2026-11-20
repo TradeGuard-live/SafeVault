@@ -1,7 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../data/ocr_extractor.dart';
 import '../data/offline_ocr_service.dart';
@@ -101,10 +102,10 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: const Text('OCR Metadata Review', style: TextStyle(fontWeight: FontWeight.w700)),
         actions: [
@@ -112,8 +113,8 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
           DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: _selectedLanguage,
-              dropdownColor: isDark ? AppColors.darkCardElevated : AppColors.lightCard,
-              icon: const Icon(Icons.language_rounded, size: 20, color: AppColors.primaryTeal),
+              dropdownColor: colors.cardElevated,
+              icon: Icon(Icons.language_rounded, size: 20, color: colors.primaryAccent),
               items: const [
                 DropdownMenuItem(value: 'eng', child: Text('English (eng)')),
                 DropdownMenuItem(value: 'hin', child: Text('Hindi (hin)')),
@@ -135,20 +136,20 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const CircularProgressIndicator(color: AppColors.primaryTeal),
+                  CircularProgressIndicator(color: colors.primaryAccent),
                   const SizedBox(height: 20),
                   Text(
                     'Recognizing Text (Offline Tesseract)...',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                      color: colors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     'Language model: $_selectedLanguage.traineddata',
-                    style: const TextStyle(fontSize: 12, color: AppColors.darkTextSecondary),
+                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
                   ),
                 ],
               ),
@@ -160,9 +161,9 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                 Container(
                   height: 140,
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                    color: colors.cardBackground,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                    border: Border.all(color: colors.cardBorder),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
@@ -178,20 +179,20 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryTeal.withOpacity(0.08),
+                    color: colors.primaryAccent.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.primaryTeal.withOpacity(0.25)),
+                    border: Border.all(color: colors.primaryAccent.withOpacity(0.25)),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.verified_user_outlined, color: AppColors.primaryTeal, size: 20),
+                      Icon(Icons.verified_user_outlined, color: colors.primaryAccent, size: 20),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'On-Device Offline OCR: Models run 100% locally on your phone. Please verify extracted fields before saving to encrypted storage.',
                           style: TextStyle(
                             fontSize: 12,
-                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                            color: colors.textSecondary,
                             height: 1.3,
                           ),
                         ),
@@ -255,8 +256,8 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                           style: TextStyle(
                             fontSize: 13,
                             color: _issueDate != null
-                                ? (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary)
-                                : AppColors.darkTextTertiary,
+                                ? colors.textPrimary
+                                : colors.textTertiary,
                           ),
                         ),
                       ),
@@ -273,8 +274,8 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                           style: TextStyle(
                             fontSize: 13,
                             color: _expiryDate != null
-                                ? (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary)
-                                : AppColors.darkTextTertiary,
+                                ? colors.textPrimary
+                                : colors.textTertiary,
                           ),
                         ),
                       ),
@@ -291,7 +292,7 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkCard : AppColors.lightCardElevated,
+                        color: colors.cardBackground,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: SelectableText(

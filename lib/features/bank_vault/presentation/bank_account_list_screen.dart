@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
+import '../../../core/widgets/empty_state_view.dart';
+import '../../../core/widgets/rupee_bunny_mascot.dart';
 import '../../authentication/presentation/auth_providers.dart';
 import '../domain/bank_account_model.dart';
 
@@ -40,11 +43,11 @@ class _BankAccountListScreenState extends ConsumerState<BankAccountListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
     final accountsAsync = ref.watch(allBankAccountsProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: const Text('Bank Accounts', style: TextStyle(fontWeight: FontWeight.w700)),
         actions: [
@@ -143,31 +146,11 @@ class _BankAccountListScreenState extends ConsumerState<BankAccountListScreen> {
                 }
 
                 if (filtered.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.search_off_rounded,
-                              size: 48,
-                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'No bank accounts match your search',
-                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Try clearing the filters or search bar.',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  return EmptyStateView(
+                    icon: Icons.search_off_rounded,
+                    title: 'No bank accounts match your search',
+                    message: 'Try clearing the filters or search bar.',
+                    mascotPose: MascotPose.thinking,
                   );
                 }
 
@@ -177,12 +160,12 @@ class _BankAccountListScreenState extends ConsumerState<BankAccountListScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, i) {
                     final item = filtered[i];
-                    return _buildListItem(context, item, isDark);
+                    return _buildListItem(context, item, colors);
                   },
                 );
               },
-              loading: () => const Center(
-                child: CircularProgressIndicator(color: AppColors.primaryTeal),
+              loading: () => Center(
+                child: CircularProgressIndicator(color: colors.primaryAccent),
               ),
               error: (err, _) => Center(child: Text('Error: $err')),
             ),
@@ -192,13 +175,13 @@ class _BankAccountListScreenState extends ConsumerState<BankAccountListScreen> {
     );
   }
 
-  Widget _buildListItem(BuildContext context, BankAccountModel item, bool isDark) {
+  Widget _buildListItem(BuildContext context, BankAccountModel item, AppThemeColors colors) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          color: colors.cardBorder,
         ),
       ),
       child: ListTile(
@@ -207,11 +190,11 @@ class _BankAccountListScreenState extends ConsumerState<BankAccountListScreen> {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: AppColors.primaryTeal.withOpacity(0.12),
+            color: colors.primaryAccent.withOpacity(0.12),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: const Center(
-            child: Icon(Icons.account_balance_rounded, color: AppColors.primaryTeal, size: 22),
+          child: Center(
+            child: Icon(Icons.account_balance_rounded, color: colors.primaryAccent, size: 22),
           ),
         ),
         title: Text(
@@ -222,7 +205,7 @@ class _BankAccountListScreenState extends ConsumerState<BankAccountListScreen> {
           '${item.nickname != null ? '${item.nickname} • ' : ''}${item.maskedAccountNumber}',
           style: TextStyle(
             fontSize: 12.5,
-            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+            color: colors.textSecondary,
           ),
         ),
         trailing: Row(

@@ -6,7 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../core/security/file_validator.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/widgets/error_dialog.dart';
 
 class CameraScannerScreen extends StatefulWidget {
@@ -153,6 +154,8 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.themeColors;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -165,7 +168,7 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
               _flashMode == FlashMode.torch
                   ? Icons.flash_on
                   : (_flashMode == FlashMode.auto ? Icons.flash_auto : Icons.flash_off),
-              color: _flashMode != FlashMode.off ? AppColors.primaryTeal : Colors.white,
+              color: _flashMode != FlashMode.off ? colors.primaryAccent : Colors.white,
             ),
             tooltip: 'Flash',
             onPressed: _toggleFlash,
@@ -199,7 +202,7 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
                         margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: AppColors.primaryTeal.withOpacity(0.85),
+                            color: colors.primaryAccent.withOpacity(0.85),
                             width: 2.0,
                           ),
                           borderRadius: BorderRadius.circular(16),
@@ -308,7 +311,7 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
                       child: Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: _isCapturing ? AppColors.statusWarning : AppColors.primaryTeal,
+                          color: _isCapturing ? colors.warning : colors.primaryAccent,
                         ),
                         child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 32),
                       ),
@@ -320,8 +323,8 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
                     ElevatedButton(
                       onPressed: _proceedToReview,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryTeal,
-                        foregroundColor: Colors.white,
+                        backgroundColor: colors.primaryAccent,
+                        foregroundColor: colors.onPrimaryAccent,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),

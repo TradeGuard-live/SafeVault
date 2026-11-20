@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/errors/exceptions.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/pin_pad.dart';
 import 'auth_providers.dart';
 
@@ -136,17 +136,20 @@ class _PinAuthScreenState extends ConsumerState<PinAuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
+        backgroundColor: colors.background,
+        elevation: 0,
+        iconTheme: IconThemeData(color: colors.textPrimary),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           tooltip: 'Back to Biometrics',
           onPressed: _cancelAuthentication,
         ),
-        title: const Text('Factor 2: Vault PIN', style: TextStyle(fontSize: 18)),
+        title: Text('Factor 2: Vault PIN', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: colors.textPrimary)),
       ),
       body: SafeArea(
         child: Padding(
@@ -158,23 +161,23 @@ class _PinAuthScreenState extends ConsumerState<PinAuthScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.successGreen.withOpacity(0.12),
+                      color: colors.successContainer,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.check_circle_rounded,
-                            size: 14, color: AppColors.successGreen),
-                        SizedBox(width: 4),
+                            size: 14, color: colors.success),
+                        const SizedBox(width: 5),
                         Text(
                           'Factor 1: Biometrics Verified',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.successGreen,
+                            color: colors.success,
                           ),
                         ),
                       ],
@@ -189,7 +192,7 @@ class _PinAuthScreenState extends ConsumerState<PinAuthScreen> {
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 6),
@@ -198,7 +201,7 @@ class _PinAuthScreenState extends ConsumerState<PinAuthScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
-                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  color: colors.textSecondary,
                 ),
               ),
 
@@ -221,7 +224,7 @@ class _PinAuthScreenState extends ConsumerState<PinAuthScreen> {
                 icon: const Icon(Icons.cancel_outlined, size: 16),
                 label: const Text('Cancel Authentication'),
                 style: TextButton.styleFrom(
-                  foregroundColor: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  foregroundColor: colors.textSecondary,
                 ),
               ),
               const SizedBox(height: 12),

@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/security/encryption_service.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../../authentication/presentation/auth_providers.dart';
 import '../domain/bank_account_model.dart';
@@ -133,10 +134,10 @@ class _AddEditBankAccountScreenState extends ConsumerState<AddEditBankAccountScr
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Bank Account' : 'Add Bank Account'),
         actions: [
@@ -161,21 +162,21 @@ class _AddEditBankAccountScreenState extends ConsumerState<AddEditBankAccountScr
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.statusWarning.withOpacity(0.12),
+                color: colors.warning.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.statusWarning.withOpacity(0.35)),
+                border: Border.all(color: colors.warning.withOpacity(0.35)),
               ),
-              child: const Row(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.gpp_bad_outlined, color: AppColors.statusWarning, size: 20),
-                  SizedBox(width: 10),
+                  Icon(Icons.gpp_bad_outlined, color: colors.warning, size: 20),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'DO NOT enter ATM PINs, CVVs, UPI PINs, OTPs, or Netbanking passwords. Vault does not support or permit storing transaction credentials.',
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.statusWarning,
+                        color: colors.warning,
                         fontWeight: FontWeight.w600,
                         height: 1.35,
                       ),

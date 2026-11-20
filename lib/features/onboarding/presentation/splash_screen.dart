@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../authentication/presentation/auth_providers.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -64,10 +65,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       body: Center(
         child: FadeTransition(
           opacity: _fadeAnimation,
@@ -80,15 +81,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
                   width: 96,
                   height: 96,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.primaryTeal, AppColors.accentEmerald],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    gradient: colors.heroGradient,
                     borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primaryTeal.withOpacity(0.35),
+                        color: colors.primaryAccent.withOpacity(0.35),
                         blurRadius: 24,
                         offset: const Offset(0, 8),
                       ),
@@ -107,7 +104,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 4.0,
-                    color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                    color: colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -117,16 +114,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 1.5,
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    color: colors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 36),
-                const SizedBox(
+                SizedBox(
                   width: 24,
                   height: 24,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryTeal),
+                    valueColor: AlwaysStoppedAnimation<Color>(colors.primaryAccent),
                   ),
                 ),
               ],

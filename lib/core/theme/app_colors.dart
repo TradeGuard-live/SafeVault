@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'app_theme.dart';
+import 'app_theme_colors.dart';
 
 class AppColors {
-  // Primary & Accent (Teal / Emerald)
+  // Dynamic accessor to active RupeeFlow theme tokens
+  static AppThemeColors get current => AppTheme.currentColors;
+  static AppThemeColors of(BuildContext context) => AppTheme.of(context);
+
+  // Primary & Accent (Teal / Emerald - fallback defaults)
   static const Color primaryTeal = Color(0xFF0D9488); // Teal 600
   static const Color primaryTealLight = Color(0xFF14B8A6); // Teal 500
   static const Color primaryTealDark = Color(0xFF0F766E); // Teal 700
@@ -48,4 +54,3 @@ class AppColors {
   static const Color badgeExpiringSoonBg = Color(0x20F59E0B);
   static const Color badgeValidBg = Color(0x2010B981);
 }
-

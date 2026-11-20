@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/errors/exceptions.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import 'auth_providers.dart';
 
 /// Screen 1 of Mandatory 2FA: Factor 1 - Biometric Verification.
@@ -86,10 +86,10 @@ class _BiometricAuthScreenState extends ConsumerState<BiometricAuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 24.0),
@@ -103,38 +103,39 @@ class _BiometricAuthScreenState extends ConsumerState<BiometricAuthScreen> {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryTeal.withOpacity(0.12),
+                  color: colors.primaryAccent.withOpacity(0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.shield_rounded,
                   size: 38,
-                  color: AppColors.primaryTeal,
+                  color: colors.primaryAccent,
                 ),
               ),
               const SizedBox(height: 20),
 
-              const Text(
+              Text(
                 'Vault',
                 style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.5,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryTeal.withOpacity(0.1),
+                  color: colors.primaryAccent.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
+                child: Text(
                   'Factor 1 of 2 • Biometric Authentication',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.primaryTeal,
+                    color: colors.primaryAccent,
                   ),
                 ),
               ),
@@ -149,23 +150,23 @@ class _BiometricAuthScreenState extends ConsumerState<BiometricAuthScreen> {
                   width: 120,
                   height: 120,
                   decoration: BoxDecoration(
-                    color: AppColors.primaryTeal.withOpacity(0.12),
+                    color: colors.primaryAccent.withOpacity(0.12),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: AppColors.primaryTeal.withOpacity(0.35),
+                      color: colors.primaryAccent.withOpacity(0.35),
                       width: 2.5,
                     ),
                   ),
                   child: Center(
                     child: _isAuthenticating
-                        ? const CircularProgressIndicator(
-                            color: AppColors.primaryTeal,
+                        ? CircularProgressIndicator(
+                            color: colors.primaryAccent,
                             strokeWidth: 3,
                           )
-                        : const Icon(
+                        : Icon(
                             Icons.fingerprint_rounded,
                             size: 68,
-                            color: AppColors.primaryTeal,
+                            color: colors.primaryAccent,
                           ),
                   ),
                 ),
@@ -178,7 +179,7 @@ class _BiometricAuthScreenState extends ConsumerState<BiometricAuthScreen> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -188,7 +189,7 @@ class _BiometricAuthScreenState extends ConsumerState<BiometricAuthScreen> {
                 style: TextStyle(
                   fontSize: 14,
                   height: 1.4,
-                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                  color: colors.textSecondary,
                 ),
               ),
 
@@ -197,22 +198,22 @@ class _BiometricAuthScreenState extends ConsumerState<BiometricAuthScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: AppColors.errorRed.withOpacity(0.1),
+                    color: colors.errorContainer,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.errorRed.withOpacity(0.3)),
+                    border: Border.all(color: colors.error.withOpacity(0.3)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.error_outline_rounded,
-                          size: 16, color: AppColors.errorRed),
+                      Icon(Icons.error_outline_rounded,
+                          size: 16, color: colors.error),
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
                           _errorMessage!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.errorRed,
+                            color: colors.error,
                             fontWeight: FontWeight.w500,
                           ),
                           textAlign: TextAlign.center,
@@ -233,7 +234,10 @@ class _BiometricAuthScreenState extends ConsumerState<BiometricAuthScreen> {
                   icon: const Icon(Icons.fingerprint_rounded, size: 20),
                   label: const Text('Scan Biometrics'),
                   style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.primaryAccent,
+                    foregroundColor: colors.onPrimaryAccent,
                     padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ),

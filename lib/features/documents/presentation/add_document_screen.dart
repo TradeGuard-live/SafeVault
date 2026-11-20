@@ -6,7 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/category_constants.dart';
 import '../../../core/security/file_validator.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../../authentication/presentation/auth_providers.dart';
@@ -144,13 +145,19 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
       firstDate: DateTime(1960),
       lastDate: DateTime(2065),
       builder: (ctx, child) {
+        final colors = context.themeColors;
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.dark(
-              primary: AppColors.primaryTeal,
-              surface: Theme.of(context).brightness == Brightness.dark
-                  ? AppColors.darkCardElevated
-                  : AppColors.lightCard,
+            colorScheme: ColorScheme(
+              brightness: colors.isDark ? Brightness.dark : Brightness.light,
+              primary: colors.primaryAccent,
+              onPrimary: colors.onPrimaryAccent,
+              secondary: colors.primaryPeach,
+              onSecondary: colors.onPrimaryAccent,
+              error: colors.error,
+              onError: colors.onError,
+              surface: colors.cardElevated,
+              onSurface: colors.textPrimary,
             ),
           ),
           child: child!,
@@ -274,11 +281,11 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
     final catsAsync = ref.watch(categoriesProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: Text(
           widget.editDocument != null ? 'Edit Document' : 'Add Document',
@@ -379,8 +386,8 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
                         style: TextStyle(
                           fontSize: 13.5,
                           color: _issueDate != null
-                              ? (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary)
-                              : AppColors.darkTextTertiary,
+                              ? colors.textPrimary
+                              : colors.textTertiary,
                         ),
                       ),
                     ),
@@ -401,8 +408,8 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
                         style: TextStyle(
                           fontSize: 13.5,
                           color: _expiryDate != null
-                              ? (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary)
-                              : AppColors.darkTextTertiary,
+                              ? colors.textPrimary
+                              : colors.textTertiary,
                         ),
                       ),
                     ),
@@ -456,14 +463,14 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                    color: colors.cardBackground,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                    border: Border.all(color: colors.cardBorder),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text(
                       'No files attached yet. Tap "+ Add File/Page" above.',
-                      style: TextStyle(fontSize: 13, color: AppColors.darkTextTertiary),
+                      style: TextStyle(fontSize: 13, color: colors.textTertiary),
                     ),
                   ),
                 )
@@ -474,13 +481,13 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                      color: colors.cardBackground,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      border: Border.all(color: colors.cardBorder),
                     ),
                     child: ListTile(
                       dense: true,
-                      leading: const Icon(Icons.attachment_rounded, color: AppColors.primaryTeal),
+                      leading: Icon(Icons.attachment_rounded, color: colors.primaryAccent),
                       title: Text(
                         'Page ${idx + 1}: ${item['name']}',
                         maxLines: 1,

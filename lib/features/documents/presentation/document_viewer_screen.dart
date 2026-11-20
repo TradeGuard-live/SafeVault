@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pdfx/pdfx.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../../authentication/presentation/auth_providers.dart';
 
@@ -102,6 +103,8 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.themeColors;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -142,13 +145,13 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
       ),
       body: SafeArea(
         child: _isLoading
-            ? const Center(
+            ? Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(color: AppColors.primaryTeal),
-                    SizedBox(height: 16),
-                    Text(
+                    CircularProgressIndicator(color: colors.primaryAccent),
+                    const SizedBox(height: 16),
+                    const Text(
                       'Decrypting Document in Memory...',
                       style: TextStyle(color: Colors.white70, fontSize: 13),
                     ),
@@ -162,7 +165,7 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.lock_clock_outlined, size: 48, color: AppColors.statusDanger),
+                          Icon(Icons.lock_clock_outlined, size: 48, color: colors.error),
                           const SizedBox(height: 16),
                           Text(
                             _errorMessage!,

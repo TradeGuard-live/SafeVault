@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/empty_state_view.dart';
 import '../../../core/widgets/error_dialog.dart';
+import '../../../core/widgets/rupee_bunny_mascot.dart';
 import '../../authentication/presentation/auth_providers.dart';
 
 class ActivityTimelineScreen extends ConsumerStatefulWidget {
@@ -37,23 +39,23 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
     }
   }
 
-  Color _colorForActivity(String type) {
+  Color _colorForActivity(String type, AppThemeColors colors) {
     switch (type) {
       case 'DOCUMENT_ADDED':
       case 'DOCUMENT_SCANNED':
-        return AppColors.primaryTeal;
+        return colors.primaryAccent;
       case 'DOCUMENT_UPDATED':
         return const Color(0xFF2563EB);
       case 'FAVORITE_TOGGLED':
         return Colors.amber;
       case 'MOVED_TO_TRASH':
-        return AppColors.statusWarning;
+        return colors.warning;
       case 'PERMANENTLY_DELETED':
-        return AppColors.statusDanger;
+        return colors.error;
       case 'DOCUMENT_RESTORED':
-        return AppColors.statusSuccess;
+        return colors.success;
       default:
-        return AppColors.darkTextSecondary;
+        return colors.textSecondary;
     }
   }
 
@@ -75,11 +77,11 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
     final activitiesAsync = ref.watch(activitiesProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: const Text('Activity Timeline', style: TextStyle(fontWeight: FontWeight.w700)),
         actions: [
@@ -101,6 +103,7 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
               icon: Icons.history_rounded,
               title: 'No Activity Recorded',
               description: 'Audit logs for document additions, updates, scans, and deletions will appear here.',
+              mascotPose: MascotPose.friendly,
             );
           }
 
@@ -114,11 +117,11 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   children: [
-                    _buildChip('All', null),
-                    _buildChip('Added', 'DOCUMENT_ADDED'),
-                    _buildChip('Scanned', 'DOCUMENT_SCANNED'),
-                    _buildChip('Updated', 'DOCUMENT_UPDATED'),
-                    _buildChip('Trash / Delete', 'MOVED_TO_TRASH'),
+                    _buildChip('All', null, colors),
+                    _buildChip('Added', 'DOCUMENT_ADDED', colors),
+                    _buildChip('Scanned', 'DOCUMENT_SCANNED', colors),
+                    _buildChip('Updated', 'DOCUMENT_UPDATED', colors),
+                    _buildChip('Trash / Delete', 'MOVED_TO_TRASH', colors),
                   ],
                 ),
               ),
@@ -127,7 +130,7 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
               // Chronological Timeline List
               Expanded(
                 child: RefreshIndicator(
-                  color: AppColors.primaryTeal,
+                  color: colors.primaryAccent,
                   onRefresh: () async {
                     ref.invalidate(activitiesProvider);
                   },
@@ -137,15 +140,15 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (ctx, i) {
                       final item = filtered[i];
-                      final color = _colorForActivity(item.activityType);
+                      final color = _colorForActivity(item.activityType, colors);
                       final icon = _iconForActivity(item.activityType);
 
                       return Container(
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                          color: colors.cardBackground,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                            color: colors.cardBorder,
                           ),
                         ),
                         child: ListTile(
@@ -162,7 +165,7 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
                             style: TextStyle(
                               fontSize: 14.5,
                               fontWeight: FontWeight.w700,
-                              color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                              color: colors.textPrimary,
                             ),
                           ),
                           subtitle: Column(
@@ -173,7 +176,7 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
                                 item.details ?? item.activityType.replaceAll('_', ' '),
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                  color: colors.textSecondary,
                                 ),
                               ),
                               const SizedBox(height: 2),
@@ -181,7 +184,7 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
                                 DateFormatter.formatDateTimeDisplay(item.timestamp),
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: isDark ? AppColors.darkTextTertiary : AppColors.lightTextTertiary,
+                                  color: colors.textTertiary,
                                 ),
                               ),
                             ],
@@ -195,15 +198,14 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryTeal)),
+        loading: () => Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
         error: (e, _) => Center(child: Text('Error: $e')),
       ),
     );
   }
 
-  Widget _buildChip(String label, String? type) {
+  Widget _buildChip(String label, String? type, AppThemeColors colors) {
     final isSelected = _selectedFilter == type;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.only(right: 8.0),
@@ -213,11 +215,11 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
         onSelected: (_) {
           setState(() => _selectedFilter = type);
         },
-        backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCardElevated,
-        selectedColor: AppColors.primaryTeal.withOpacity(0.2),
+        backgroundColor: colors.cardBackground,
+        selectedColor: colors.primaryAccent.withOpacity(0.2),
         labelStyle: TextStyle(
           fontSize: 12,
-          color: isSelected ? AppColors.primaryTeal : AppColors.darkTextSecondary,
+          color: isSelected ? colors.primaryAccent : colors.textSecondary,
           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
         ),
       ),

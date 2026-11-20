@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/vault_scaffold.dart';
 import '../../authentication/presentation/auth_providers.dart';
 
@@ -43,6 +43,7 @@ class MainShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(vaultSessionProvider);
+    final colors = context.themeColors;
 
     // If session locked, route to Factor 1 Biometric unlock
     if (!session.isUnlocked) {
@@ -52,15 +53,15 @@ class MainShell extends ConsumerWidget {
     }
 
     final currentIndex = _calculateSelectedIndex(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return VaultScaffold(
       body: child,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
+          color: colors.surface,
           border: Border(
             top: BorderSide(
-              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              color: colors.cardBorder,
               width: 1,
             ),
           ),
@@ -69,8 +70,11 @@ class MainShell extends ConsumerWidget {
           currentIndex: currentIndex,
           onTap: (index) => _onItemTapped(index, context),
           type: BottomNavigationBarType.fixed,
-          selectedItemColor: AppColors.primaryTeal,
-          unselectedItemColor: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+          backgroundColor: colors.surface,
+          selectedItemColor: colors.primaryAccent,
+          unselectedItemColor: colors.textSecondary,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.dashboard_outlined),

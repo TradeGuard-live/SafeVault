@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/security/encryption_service.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../../authentication/presentation/auth_providers.dart';
 import '../data/password_generator.dart';
@@ -160,11 +161,11 @@ class _AddEditPasswordScreenState extends ConsumerState<AddEditPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
     final categoriesAsync = ref.watch(passwordCategoriesProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Password' : 'Add Password'),
         actions: [
@@ -279,7 +280,7 @@ class _AddEditPasswordScreenState extends ConsumerState<AddEditPasswordScreen> {
                       onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.auto_awesome_rounded, color: AppColors.primaryTeal),
+                      icon: Icon(Icons.auto_awesome_rounded, color: colors.primaryAccent),
                       tooltip: 'Generate Strong Password',
                       onPressed: _generateRandomPassword,
                     ),

@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
+import '../../../core/widgets/empty_state_view.dart';
+import '../../../core/widgets/rupee_bunny_mascot.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../authentication/presentation/auth_providers.dart';
 import '../domain/password_entry_model.dart';
@@ -11,19 +15,19 @@ class PasswordDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
     final passwordsAsync = ref.watch(allPasswordsProvider);
     final auditAsync = ref.watch(passwordSecurityAuditProvider);
     final categoriesAsync = ref.watch(passwordCategoriesProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.key_rounded, color: AppColors.primaryTeal, size: 24),
-            SizedBox(width: 10),
-            Text('Passwords', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
+            Icon(Icons.key_rounded, color: colors.primaryAccent, size: 24),
+            const SizedBox(width: 10),
+            const Text('Passwords', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
           ],
         ),
         actions: [
@@ -40,14 +44,14 @@ class PasswordDashboardScreen extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primaryTeal,
-        foregroundColor: Colors.white,
+        backgroundColor: colors.primaryAccent,
+        foregroundColor: colors.onPrimaryAccent,
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Password', style: TextStyle(fontWeight: FontWeight.w700)),
         onPressed: () => context.push('/add-password'),
       ),
       body: RefreshIndicator(
-        color: AppColors.primaryTeal,
+        color: colors.primaryAccent,
         onRefresh: () async {
           ref.invalidate(allPasswordsProvider);
           ref.invalidate(passwordCategoriesProvider);
@@ -57,7 +61,7 @@ class PasswordDashboardScreen extends ConsumerWidget {
           children: [
             // Security Health Header Banner
             auditAsync.when(
-              data: (audit) => _buildSecurityHealthCard(context, audit, isDark),
+              data: (audit) => _buildSecurityHealthCard(context, audit, colors),
               loading: () => const SizedBox.shrink(),
               error: (_, __) => const SizedBox.shrink(),
             ),
@@ -75,8 +79,8 @@ class PasswordDashboardScreen extends ConsumerWidget {
                         title: 'Total Saved',
                         count: list.length.toString(),
                         icon: Icons.vpn_key_outlined,
-                        color: AppColors.primaryTeal,
-                        isDark: isDark,
+                        color: colors.primaryAccent,
+                        colors: colors,
                         onTap: () => context.push('/passwords-list'),
                       ),
                     ),
@@ -88,7 +92,7 @@ class PasswordDashboardScreen extends ConsumerWidget {
                         count: favoritesCount.toString(),
                         icon: Icons.star_outline_rounded,
                         color: Colors.amber,
-                        isDark: isDark,
+                        colors: colors,
                         onTap: () => context.push('/passwords-list?filter=favorites'),
                       ),
                     ),
@@ -180,47 +184,24 @@ class PasswordDashboardScreen extends ConsumerWidget {
             passwordsAsync.when(
               data: (passwords) {
                 if (passwords.isEmpty) {
-                  return Container(
-                    padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkCard : AppColors.lightCard,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(Icons.key_off_outlined,
-                            size: 48,
-                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'No passwords saved yet',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Securely store website and app credentials locally with AES-256-GCM encryption.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
+                  return EmptyStateView(
+                    icon: Icons.key_off_outlined,
+                    title: 'No passwords saved yet',
+                    message: 'Securely store website and app credentials locally with AES-256-GCM encryption.',
+                    mascotPose: MascotPose.saving,
+                    actionLabel: 'Add First Password',
+                    onAction: () => context.push('/add-password'),
                   );
                 }
 
                 return Column(
-                  children: passwords.take(8).map((p) => _buildPasswordRow(context, p, isDark)).toList(),
+                  children: passwords.take(8).map((p) => _buildPasswordRow(context, p, colors)).toList(),
                 );
               },
-              loading: () => const Center(
+              loading: () => Center(
                 child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: CircularProgressIndicator(color: AppColors.primaryTeal),
+                  padding: const EdgeInsets.all(24),
+                  child: CircularProgressIndicator(color: colors.primaryAccent),
                 ),
               ),
               error: (err, _) => Text('Error: $err'),
@@ -232,13 +213,13 @@ class PasswordDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSecurityHealthCard(BuildContext context, dynamic audit, bool isDark) {
+  Widget _buildSecurityHealthCard(BuildContext context, dynamic audit, AppThemeColors colors) {
     final score = audit.overallScore as int;
     final color = score >= 80
-        ? AppColors.successGreen
+        ? colors.success
         : score >= 50
-            ? AppColors.statusWarning
-            : AppColors.errorRed;
+            ? colors.warning
+            : colors.error;
 
     return InkWell(
       onTap: () => context.push('/password-security'),
@@ -246,7 +227,7 @@ class PasswordDashboardScreen extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.darkCard : AppColors.lightCard,
+          color: colors.cardBackground,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: color.withOpacity(0.35)),
         ),
@@ -282,13 +263,13 @@ class PasswordDashboardScreen extends ConsumerWidget {
                         : '${audit.weakCount + audit.shortCount} vulnerable account(s) detected',
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                      color: colors.textSecondary,
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.primaryTeal),
+            Icon(Icons.chevron_right_rounded, color: colors.primaryAccent),
           ],
         ),
       ),
@@ -301,7 +282,7 @@ class PasswordDashboardScreen extends ConsumerWidget {
     required String count,
     required IconData icon,
     required Color color,
-    required bool isDark,
+    required AppThemeColors colors,
     required VoidCallback onTap,
   }) {
     return InkWell(
@@ -310,10 +291,10 @@ class PasswordDashboardScreen extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.darkCard : AppColors.lightCard,
+          color: colors.cardBackground,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+            color: colors.cardBorder,
           ),
         ),
         child: Column(
@@ -330,7 +311,7 @@ class PasswordDashboardScreen extends ConsumerWidget {
               title,
               style: TextStyle(
                 fontSize: 12,
-                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                color: colors.textSecondary,
               ),
             ),
           ],
@@ -339,14 +320,14 @@ class PasswordDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPasswordRow(BuildContext context, PasswordEntryModel p, bool isDark) {
+  Widget _buildPasswordRow(BuildContext context, PasswordEntryModel p, AppThemeColors colors) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          color: colors.cardBorder,
         ),
       ),
       child: ListTile(
@@ -355,11 +336,11 @@ class PasswordDashboardScreen extends ConsumerWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: AppColors.primaryTeal.withOpacity(0.12),
+            color: colors.primaryAccent.withOpacity(0.12),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: const Center(
-            child: Icon(Icons.lock_outline_rounded, color: AppColors.primaryTeal, size: 22),
+          child: Center(
+            child: Icon(Icons.lock_outline_rounded, color: colors.primaryAccent, size: 22),
           ),
         ),
         title: Text(
@@ -370,7 +351,7 @@ class PasswordDashboardScreen extends ConsumerWidget {
           p.decryptedUsername ?? p.decryptedEmail ?? 'No username',
           style: TextStyle(
             fontSize: 13,
-            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+            color: colors.textSecondary,
           ),
         ),
         trailing: p.isFavorite

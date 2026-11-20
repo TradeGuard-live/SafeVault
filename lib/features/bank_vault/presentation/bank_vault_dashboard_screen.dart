@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme_colors.dart';
+import '../../../core/widgets/empty_state_view.dart';
+import '../../../core/widgets/rupee_bunny_mascot.dart';
 import '../../authentication/presentation/auth_providers.dart';
 import '../domain/bank_account_model.dart';
 
@@ -10,17 +13,17 @@ class BankVaultDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.themeColors;
     final accountsAsync = ref.watch(allBankAccountsProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.account_balance_rounded, color: AppColors.primaryTeal, size: 24),
-            SizedBox(width: 10),
-            Text('Bank Vault', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
+            Icon(Icons.account_balance_rounded, color: colors.primaryAccent, size: 24),
+            const SizedBox(width: 10),
+            const Text('Bank Vault', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
           ],
         ),
         actions: [
@@ -32,14 +35,14 @@ class BankVaultDashboardScreen extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primaryTeal,
-        foregroundColor: Colors.white,
+        backgroundColor: colors.primaryAccent,
+        foregroundColor: colors.onPrimaryAccent,
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Account', style: TextStyle(fontWeight: FontWeight.w700)),
         onPressed: () => context.push('/add-bank-account'),
       ),
       body: RefreshIndicator(
-        color: AppColors.primaryTeal,
+        color: colors.primaryAccent,
         onRefresh: () async {
           ref.invalidate(allBankAccountsProvider);
         },
@@ -50,9 +53,9 @@ class BankVaultDashboardScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                color: colors.cardBackground,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.primaryTeal.withOpacity(0.3)),
+                border: Border.all(color: colors.primaryAccent.withOpacity(0.3)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,11 +63,11 @@ class BankVaultDashboardScreen extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryTeal.withOpacity(0.12),
+                      color: colors.primaryAccent.withOpacity(0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.verified_user_rounded,
-                        color: AppColors.primaryTeal, size: 20),
+                    child: Icon(Icons.verified_user_rounded,
+                        color: colors.primaryAccent, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -80,7 +83,7 @@ class BankVaultDashboardScreen extends ConsumerWidget {
                           'Bank Vault only stores local reference details. It does NOT connect to banks, execute transactions, or store ATM PINs, CVVs, or Netbanking passwords.',
                           style: TextStyle(
                             fontSize: 12,
-                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                            color: colors.textSecondary,
                             height: 1.35,
                           ),
                         ),
@@ -108,8 +111,8 @@ class BankVaultDashboardScreen extends ConsumerWidget {
                             'Total Accounts',
                             accounts.length.toString(),
                             Icons.account_balance_rounded,
-                            AppColors.primaryTeal,
-                            isDark,
+                            colors.primaryAccent,
+                            colors,
                             () => context.push('/bank-accounts-list'),
                           ),
                         ),
@@ -120,7 +123,7 @@ class BankVaultDashboardScreen extends ConsumerWidget {
                             favoritesCount.toString(),
                             Icons.star_outline_rounded,
                             Colors.amber,
-                            isDark,
+                            colors,
                             () => context.push('/bank-accounts-list?filter=favorites'),
                           ),
                         ),
@@ -134,8 +137,8 @@ class BankVaultDashboardScreen extends ConsumerWidget {
                             'Savings Accounts',
                             savingsCount.toString(),
                             Icons.savings_outlined,
-                            AppColors.successGreen,
-                            isDark,
+                            colors.success,
+                            colors,
                             () => context.push('/bank-accounts-list?type=savings'),
                           ),
                         ),
@@ -145,8 +148,8 @@ class BankVaultDashboardScreen extends ConsumerWidget {
                             'Current / Business',
                             currentCount.toString(),
                             Icons.business_center_outlined,
-                            Colors.blueAccent,
-                            isDark,
+                            colors.info,
+                            colors,
                             () => context.push('/bank-accounts-list?type=current'),
                           ),
                         ),
@@ -180,47 +183,24 @@ class BankVaultDashboardScreen extends ConsumerWidget {
             accountsAsync.when(
               data: (accounts) {
                 if (accounts.isEmpty) {
-                  return Container(
-                    padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkCard : AppColors.lightCard,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(Icons.account_balance_outlined,
-                            size: 48,
-                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'No bank accounts saved yet',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Safely store your account numbers and IFSC codes with AES-256-GCM encryption.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
+                  return EmptyStateView(
+                    icon: Icons.account_balance_outlined,
+                    title: 'No bank accounts saved yet',
+                    message: 'Safely store your account numbers and IFSC codes with AES-256-GCM encryption.',
+                    mascotPose: MascotPose.saving,
+                    actionLabel: 'Add First Account',
+                    onAction: () => context.push('/add-bank-account'),
                   );
                 }
 
                 return Column(
-                  children: accounts.map((a) => _buildAccountRow(context, a, isDark)).toList(),
+                  children: accounts.map((a) => _buildAccountRow(context, a, colors)).toList(),
                 );
               },
-              loading: () => const Center(
+              loading: () => Center(
                 child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: CircularProgressIndicator(color: AppColors.primaryTeal),
+                  padding: const EdgeInsets.all(24),
+                  child: CircularProgressIndicator(color: colors.primaryAccent),
                 ),
               ),
               error: (err, _) => Text('Error: $err'),
@@ -237,7 +217,7 @@ class BankVaultDashboardScreen extends ConsumerWidget {
     String count,
     IconData icon,
     Color color,
-    bool isDark,
+    AppThemeColors colors,
     VoidCallback onTap,
   ) {
     return InkWell(
@@ -246,10 +226,10 @@ class BankVaultDashboardScreen extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.darkCard : AppColors.lightCard,
+          color: colors.cardBackground,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+            color: colors.cardBorder,
           ),
         ),
         child: Column(
@@ -263,7 +243,7 @@ class BankVaultDashboardScreen extends ConsumerWidget {
               title,
               style: TextStyle(
                 fontSize: 11,
-                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                color: colors.textSecondary,
               ),
             ),
           ],
@@ -272,14 +252,14 @@ class BankVaultDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAccountRow(BuildContext context, BankAccountModel a, bool isDark) {
+  Widget _buildAccountRow(BuildContext context, BankAccountModel a, AppThemeColors colors) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        color: colors.cardBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          color: colors.cardBorder,
         ),
       ),
       child: ListTile(
@@ -288,11 +268,11 @@ class BankVaultDashboardScreen extends ConsumerWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: AppColors.primaryTeal.withOpacity(0.12),
+            color: colors.primaryAccent.withOpacity(0.12),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: const Center(
-            child: Icon(Icons.account_balance_rounded, color: AppColors.primaryTeal, size: 22),
+          child: Center(
+            child: Icon(Icons.account_balance_rounded, color: colors.primaryAccent, size: 22),
           ),
         ),
         title: Text(
@@ -303,7 +283,7 @@ class BankVaultDashboardScreen extends ConsumerWidget {
           '${a.nickname != null ? '${a.nickname} • ' : ''}${a.maskedAccountNumber}',
           style: TextStyle(
             fontSize: 12.5,
-            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+            color: colors.textSecondary,
           ),
         ),
         trailing: a.isFavorite
