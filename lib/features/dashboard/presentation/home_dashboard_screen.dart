@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/security/file_validator.dart';
+import '../../../core/services/native_saf_and_share_service.dart';
 import '../../../core/storage/encrypted_file_storage.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
@@ -42,10 +43,45 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
 
   Future<void> _importDocument() async {
     try {
-      final files = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      final safItems = await NativeSafAndShareService.instance.pickDocuments(
+        allowMultiple: true,
       );
+
+      if (safItems.isNotEmpty) {
+        if (!mounted) return;
+        if (safItems.length == 1) {
+          final first = safItems.first;
+          final file = File(first.path);
+          final validation = await FileValidator.validateFile(file);
+          if (!mounted) return;
+          context.push(
+            '/add-document',
+            extra: {
+              'initialFilePath': first.path,
+              'mimeType': validation.mimeType,
+              'initialFileName': first.name,
+            },
+          );
+        } else {
+          // Multiple documents picked via SAF -> Open incoming share preview
+          if (!mounted) return;
+          context.push('/incoming-share-preview', extra: safItems);
+        }
+        return;
+      }
+
+      // Fallback for non-Android platforms / tests
+      final session = ref.read(vaultSessionProvider);
+      session.beginSystemActivity('FILE_PICKER_FALLBACK');
+      List<PlatformFile> files;
+      try {
+        files = await FilePicker.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+        );
+      } finally {
+        Future.microtask(() => session.endSystemActivity());
+      }
 
       if (files.isEmpty) return;
       final path = files.first.path;

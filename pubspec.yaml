@@ -52,6 +52,7 @@ dependencies:
   camera: ^0.12.2
   tesseract_ocr: ^0.6.0
   pdfx: ^2.11.0
+  syncfusion_flutter_pdf: ^35.2.12
 
 dev_dependencies:
   flutter_test:

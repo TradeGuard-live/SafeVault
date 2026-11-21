@@ -26,7 +26,7 @@ class VaultDatabase {
 
       return await openDatabase(
         dbPath,
-        version: 2, // Upgraded to v2 for Passwords and Bank Vault
+        version: 4, // Upgraded to v4 for Persistent Encrypted Document Drafts
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON;');
         },
@@ -36,11 +36,19 @@ class VaultDatabase {
           await _seedDefaultSettings(db);
           await _createPasswordAndBankTables(db);
           await _seedDefaultPasswordCategories(db);
+          await _createExtractionTables(db);
+          await _createDraftTables(db);
         },
         onUpgrade: (db, oldVersion, newVersion) async {
           if (oldVersion < 2) {
             await _createPasswordAndBankTables(db);
             await _seedDefaultPasswordCategories(db);
+          }
+          if (oldVersion < 3) {
+            await _migrateToV3(db);
+          }
+          if (oldVersion < 4) {
+            await _migrateToV4(db);
           }
         },
       );
@@ -266,6 +274,76 @@ class VaultDatabase {
       'notifications_enabled': 1,
       'trash_retention_days': 30,
     }, conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
+
+  Future<void> _createExtractionTables(Database db) async {
+    // 1. Document Extractions Table
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS document_extractions (
+        id TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL,
+        extracted_text_encrypted TEXT,
+        encrypted_txt_file_path TEXT,
+        extraction_engine TEXT NOT NULL,
+        language TEXT NOT NULL,
+        page_count INTEGER NOT NULL DEFAULT 1,
+        extraction_status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        version INTEGER NOT NULL DEFAULT 1,
+        FOREIGN KEY (document_id) REFERENCES documents (id) ON DELETE CASCADE
+      );
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_extractions_doc ON document_extractions(document_id);');
+
+    // 2. Extracted Fields Table
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS extracted_fields (
+        id TEXT PRIMARY KEY,
+        extraction_id TEXT NOT NULL,
+        field_name TEXT NOT NULL,
+        encrypted_value TEXT NOT NULL,
+        confidence REAL NOT NULL,
+        confidence_category TEXT NOT NULL,
+        source_page INTEGER NOT NULL DEFAULT 1,
+        verification_status TEXT NOT NULL DEFAULT 'unverified',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (extraction_id) REFERENCES document_extractions (id) ON DELETE CASCADE
+      );
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_fields_extraction ON extracted_fields(extraction_id);');
+  }
+
+  Future<void> _migrateToV3(Database db) async {
+    await _createExtractionTables(db);
+    // Add columns to existing documents table safely if not present
+    try {
+      await db.execute('ALTER TABLE documents ADD COLUMN extraction_status TEXT DEFAULT "completed";');
+    } catch (_) {}
+    try {
+      await db.execute('ALTER TABLE documents ADD COLUMN extracted_txt_enc_path TEXT;');
+    } catch (_) {}
+    try {
+      await db.execute('ALTER TABLE document_files ADD COLUMN encrypted_txt_path TEXT;');
+    } catch (_) {}
+    try {
+      await db.execute('ALTER TABLE document_files ADD COLUMN extraction_version INTEGER DEFAULT 1;');
+    } catch (_) {}
+  }
+
+  Future<void> _migrateToV4(Database db) async {
+    await _createDraftTables(db);
+  }
+
+  Future<void> _createDraftTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS document_drafts (
+        id TEXT PRIMARY KEY,
+        encrypted_draft_data TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    ''');
   }
 
   /// Closes database connection.

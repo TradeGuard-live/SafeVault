@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../services/native_saf_and_share_service.dart';
 import '../../features/authentication/presentation/auth_providers.dart';
 import '../../features/authentication/presentation/biometric_auth_screen.dart';
 import '../../features/authentication/presentation/pin_auth_screen.dart';
@@ -12,6 +13,7 @@ import '../../features/documents/presentation/all_documents_screen.dart';
 import '../../features/documents/presentation/category_documents_screen.dart';
 import '../../features/documents/presentation/document_details_screen.dart';
 import '../../features/documents/presentation/document_viewer_screen.dart';
+import '../../features/documents/presentation/incoming_share_preview_screen.dart';
 import '../../features/expiry/presentation/expiry_dashboard_screen.dart';
 import '../../features/favorites/presentation/favorites_screen.dart';
 import '../../features/ocr/presentation/ocr_review_screen.dart';
@@ -39,6 +41,8 @@ import '../../features/settings/presentation/theme_selection_screen.dart';
 import '../../features/timeline/presentation/activity_timeline_screen.dart';
 import '../../features/trash/presentation/trash_screen.dart';
 
+final pendingIncomingShareProvider = StateProvider<List<SafFileItem>>((ref) => []);
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   final session = ref.watch(vaultSessionProvider);
 
@@ -65,14 +69,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         }
       }
 
-      // If unlocked and still sitting on auth/welcome pages, route to dashboard
+      // If unlocked and still sitting on auth/welcome pages, route to dashboard or pending incoming share
       if (session.isUnlocked && (loc == '/pin-unlock' || loc == '/biometric-unlock' || loc == '/welcome')) {
+        final pendingShares = ref.read(pendingIncomingShareProvider);
+        if (pendingShares.isNotEmpty) {
+          return '/incoming-share-preview';
+        }
         return '/dashboard';
       }
 
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/incoming-share-preview',
+        builder: (context, state) {
+          final files = (state.extra is List<SafFileItem>)
+              ? (state.extra as List<SafFileItem>)
+              : ref.read(pendingIncomingShareProvider);
+          return IncomingSharePreviewScreen(incomingFiles: files);
+        },
+      ),
       GoRoute(
         path: '/splash',
         builder: (context, state) => const SplashScreen(),
@@ -210,7 +227,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/document/:id',
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return DocumentDetailsScreen(documentId: id);
+          final tabParam = state.uri.queryParameters['tab'];
+          final initialTab = int.tryParse(tabParam ?? '0') ?? 0;
+          return DocumentDetailsScreen(documentId: id, initialTabIndex: initialTab);
         },
       ),
 

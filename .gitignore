@@ -32,6 +32,8 @@ android/key.properties
 android/local.properties
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
+.kotlin/
+android/.kotlin/
 
 # ---------------------------------------------------------------------------
 # Flutter / Dart / Pub

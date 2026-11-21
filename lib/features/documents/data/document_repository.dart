@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
@@ -7,6 +8,8 @@ import '../../../core/errors/exceptions.dart';
 import '../../../core/notifications/local_notification_service.dart';
 import '../../../core/security/encryption_service.dart';
 import '../../../core/storage/encrypted_file_storage.dart';
+import '../../ocr/data/document_field_extractor.dart';
+import '../../ocr/domain/document_extraction_model.dart';
 import '../../timeline/data/activity_repository.dart';
 import '../domain/document_file_model.dart';
 import '../domain/document_model.dart';
@@ -423,7 +426,9 @@ class DocumentRepository {
     );
 
     final files = fileRows.map((r) => DocumentFileModel.fromMap(r)).toList();
-    return await _mapRowToDocument(docRows.first, files, masterKey);
+    final doc = await _mapRowToDocument(docRows.first, files, masterKey);
+    final extraction = await getExtractionForDocument(documentId, masterKey);
+    return doc.copyWith(extraction: extraction);
   }
 
   /// Queries all non-deleted active documents.
@@ -597,7 +602,197 @@ class DocumentRepository {
       deletedAt: row['deleted_at'] != null ? DateTime.parse(row['deleted_at'] as String) : null,
       thumbnailEncPath: row['thumbnail_enc_path'] as String?,
       documentType: row['document_type'] as String?,
+      extractionStatus: row['extraction_status'] as String? ?? 'completed',
+      extractedTxtEncPath: row['extracted_txt_enc_path'] as String?,
       files: files,
+    );
+  }
+
+  /// Saves a complete document extraction and its structured fields encrypted.
+  Future<DocumentExtractionModel> saveExtraction({
+    required String documentId,
+    required String extractedText,
+    required List<RawExtractedField> fields,
+    required String engine,
+    required String language,
+    required int pageCount,
+    required SecretKey masterKey,
+    String? encryptedTxtFilePath,
+  }) async {
+    final db = await _dbHelper.database;
+    final now = DateTime.now();
+    final extractionId = _uuid.v4();
+
+    // Encrypt the full extracted text with AES-256-GCM
+    final encText = await _encryptionService.encryptString(extractedText, masterKey);
+
+    // Get current version count for this document
+    final existing = await db.query(
+      'document_extractions',
+      where: 'document_id = ?',
+      whereArgs: [documentId],
+      orderBy: 'version DESC',
+      limit: 1,
+    );
+    final version = existing.isNotEmpty ? (existing.first['version'] as int) + 1 : 1;
+
+    final extractionModel = DocumentExtractionModel(
+      id: extractionId,
+      documentId: documentId,
+      extractedTextEncrypted: encText,
+      encryptedTxtFilePath: encryptedTxtFilePath,
+      extractionEngine: engine,
+      language: language,
+      pageCount: pageCount,
+      extractionStatus: 'completed',
+      createdAt: now,
+      updatedAt: now,
+      version: version,
+    );
+
+    await db.transaction((txn) async {
+      await txn.insert('document_extractions', extractionModel.toMap());
+
+      for (final field in fields) {
+        final encValue = await _encryptionService.encryptString(field.value, masterKey);
+        final fieldId = _uuid.v4();
+        await txn.insert('extracted_fields', {
+          'id': fieldId,
+          'extraction_id': extractionId,
+          'field_name': field.fieldName,
+          'encrypted_value': encValue,
+          'confidence': field.confidence,
+          'confidence_category': field.confidenceCategory,
+          'source_page': field.sourcePage,
+          'verification_status': 'unverified',
+          'created_at': now.toIso8601String(),
+          'updated_at': now.toIso8601String(),
+        });
+      }
+
+      await txn.update(
+        'documents',
+        {
+          'extraction_status': 'completed',
+          if (encryptedTxtFilePath != null) 'extracted_txt_enc_path': encryptedTxtFilePath,
+          'updated_at': now.toIso8601String(),
+        },
+        where: 'id = ?',
+        whereArgs: [documentId],
+      );
+    });
+
+    await _activities.logActivity(
+      documentId: documentId,
+      documentName: 'Document',
+      activityType: 'TEXT_EXTRACTED',
+      details: 'Extracted text and recognized ${fields.length} structured fields via $engine (v$version)',
+    );
+
+    return await getExtractionForDocument(documentId, masterKey) ?? extractionModel;
+  }
+
+  /// Retrieves the latest decrypted extraction record for a document.
+  Future<DocumentExtractionModel?> getExtractionForDocument(String documentId, SecretKey masterKey) async {
+    final db = await _dbHelper.database;
+    final rows = await db.query(
+      'document_extractions',
+      where: 'document_id = ?',
+      whereArgs: [documentId],
+      orderBy: 'version DESC',
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+
+    final row = rows.first;
+    final extractionId = row['id'] as String;
+
+    String? decryptedText;
+    final encText = row['extracted_text_encrypted'] as String?;
+    if (encText != null && encText.isNotEmpty) {
+      try {
+        decryptedText = await _encryptionService.decryptString(encText, masterKey);
+      } catch (_) {}
+    }
+
+    final fieldRows = await db.query(
+      'extracted_fields',
+      where: 'extraction_id = ?',
+      whereArgs: [extractionId],
+    );
+
+    final fields = <ExtractedFieldModel>[];
+    for (final fRow in fieldRows) {
+      final encVal = fRow['encrypted_value'] as String;
+      String? plain;
+      try {
+        plain = await _encryptionService.decryptString(encVal, masterKey);
+      } catch (_) {}
+      fields.add(ExtractedFieldModel.fromMap(fRow, plain));
+    }
+
+    return DocumentExtractionModel.fromMap(row, fields).copyWith(
+      extractedTextEncrypted: decryptedText,
+    );
+  }
+
+  /// Updates extraction status for asynchronous tracking (e.g. 'extractingText', 'completed').
+  Future<void> updateExtractionStatus(String documentId, String status) async {
+    final db = await _dbHelper.database;
+    await db.update(
+      'documents',
+      {
+        'extraction_status': status,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [documentId],
+    );
+  }
+
+  /// Encrypts human-readable extracted TXT content using AES-256-GCM and saves to vault_files.
+  Future<String> saveExtractedTxtFile({
+    required String documentId,
+    required String textContent,
+    required SecretKey masterKey,
+  }) async {
+    final bytes = Uint8List.fromList(utf8.encode(textContent));
+    final encryptedPath = await _storage.saveEncryptedFile(
+      plainBytes: bytes,
+      masterKey: masterKey,
+    );
+
+    final db = await _dbHelper.database;
+    await db.update(
+      'documents',
+      {
+        'extracted_txt_enc_path': encryptedPath,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [documentId],
+    );
+
+    return encryptedPath;
+  }
+
+  /// Allows user to manually edit and correct an extracted structured field.
+  Future<void> updateExtractedField({
+    required String fieldId,
+    required String newValue,
+    required SecretKey masterKey,
+  }) async {
+    final db = await _dbHelper.database;
+    final encValue = await _encryptionService.encryptString(newValue.trim(), masterKey);
+    await db.update(
+      'extracted_fields',
+      {
+        'encrypted_value': encValue,
+        'verification_status': 'edited',
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [fieldId],
     );
   }
 
@@ -606,31 +801,40 @@ class DocumentRepository {
     required String documentName,
     required DateTime expiryDate,
   }) async {
-    final db = await _dbHelper.database;
-    final reminderIntervals = [30, 15, 7, 1, 0];
-    final now = DateTime.now();
+    try {
+      final db = await _dbHelper.database;
+      final reminderIntervals = [30, 15, 7, 1, 0];
+      final now = DateTime.now();
 
-    for (final days in reminderIntervals) {
-      final scheduledDate = expiryDate.subtract(Duration(days: days));
-      if (scheduledDate.isAfter(now)) {
-        final notifId = (documentId.hashCode ^ days).abs() % 2147483647;
-        await _notifications.scheduleExpiryReminder(
-          notificationId: notifId,
-          documentName: documentName,
-          scheduledDate: scheduledDate,
-          daysBefore: days,
-        );
+      for (final days in reminderIntervals) {
+        final scheduledDate = expiryDate.subtract(Duration(days: days));
+        if (scheduledDate.isAfter(now)) {
+          final notifId = (documentId.hashCode ^ days).abs() % 2147483647;
+          try {
+            await _notifications.scheduleExpiryReminder(
+              notificationId: notifId,
+              documentName: documentName,
+              scheduledDate: scheduledDate,
+              daysBefore: days,
+            );
 
-        await db.insert('reminders', {
-          'id': _uuid.v4(),
-          'document_id': documentId,
-          'reminder_type': 'EXPIRY_$days',
-          'days_before': days,
-          'scheduled_date': scheduledDate.toIso8601String(),
-          'is_enabled': 1,
-          'notification_id': notifId,
-        });
+            await db.insert('reminders', {
+              'id': _uuid.v4(),
+              'document_id': documentId,
+              'reminder_type': 'EXPIRY_$days',
+              'days_before': days,
+              'scheduled_date': scheduledDate.toIso8601String(),
+              'is_enabled': 1,
+              'notification_id': notifId,
+            });
+          } catch (itemError) {
+            // Notification failure must never fail document storage
+            continue;
+          }
+        }
       }
+    } catch (_) {
+      // Gracefully ignore reminder scheduling failures
     }
   }
 

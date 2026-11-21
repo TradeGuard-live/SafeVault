@@ -1,12 +1,12 @@
-<<<<<<< HEAD
 # Vault — Personal Document Vault & Secure Document Manager
 
 [![Platform](https://img.shields.io/badge/Platform-Android-green.svg)](https://flutter.dev)
 [![Offline](https://img.shields.io/badge/Network-100%25%20Offline-blue.svg)](#)
 [![Security](https://img.shields.io/badge/Encryption-AES--256--GCM-teal.svg)](#)
+[![2FA](https://img.shields.io/badge/Auth-Mandatory%202FA-success.svg)](#)
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](#)
 
-**Vault** is a privacy-first, military-grade personal document safe built using **Flutter** and native **Android Kotlin**. It enables users to scan, store, organize, search, and manage sensitive personal and legal documents entirely on their Android devices with mathematical privacy guarantees.
+**Vault** is a privacy-first, high-assurance personal document safe built using **Flutter** and native **Android Kotlin**. It enables users to securely store, organize, scan, search, and manage sensitive personal documents, passwords, and banking references entirely on their Android devices with mathematical privacy guarantees.
 
 ---
 
@@ -14,61 +14,74 @@
 
 Vault does not rely on cloud services, remote backends, or third-party tracking APIs. Every byte of sensitive data is encrypted before permanent storage.
 
-### 1. Cryptographic Architecture
+### 1. Mandatory Two-Factor Authentication (2FA)
+- **Factor 1: Biometric Verification**: AndroidX `BiometricPrompt` with hardware-backed StrongBox / TEE validation.
+- **Factor 2: Six-Digit Cryptographic Vault Password**: Derived using PBKDF2-HMAC-SHA256 with 100,000 iterations and a unique 32-byte salt.
+- Both factors must succeed in the same unlock sequence. No single-factor fallback is permitted.
+
+### 2. Cryptographic Architecture
 - **Document & File Encryption**: AES-256 in Galois/Counter Mode (**AES-256-GCM**).
 - **Authentication Tags**: 128-bit MAC tags verify ciphertext authenticity and prevent tampering.
 - **Initialization Vectors**: Cryptographically secure 96-bit (12-byte) nonces generated per encryption operation.
-- **Key Derivation (PBKDF2)**: User application PIN is derived into a 256-bit Key Encryption Key (KEK) using PBKDF2 with HMAC-SHA256 and **100,000 iterations** with a unique 32-byte salt.
-- **Dual-Unwrapping Key Hierarchy**:
-  1. A random 256-bit **Vault Master Key** is generated on initial setup.
-  2. One wrapped copy is protected via the PIN-derived KEK.
-  3. An optional wrapped copy is protected via a hardware-backed **Android Keystore** biometric key.
-  4. The master key is held in an ephemeral in-memory session only while the vault is unlocked.
-  5. In-memory buffers are securely zeroed out (`buffer.fillRange(0, length, 0)`) upon locking or auto-lock timeout.
+- **Master Key**: Random 256-bit Vault Master Key stored inside `FlutterSecureStorage` (backed by Android Keystore encrypted shared preferences with `resetOnError: false`).
+- **Encrypted Companion Text**: Extracted plain text is encrypted under AES-256-GCM and stored as a companion `.txt.enc` file linked to the original document.
 
-### 2. Device & OS Privacy
-- **Android `FLAG_SECURE`**: The application window has `FLAG_SECURE` enabled by default to block screenshots, prevent screen recordings, and mask app previews in the Android Recent Tasks switcher.
-- **Android Automatic Cloud Backup Disabled**: `android:allowBackup="false"` and `android:fullBackupContent="false"` in `AndroidManifest.xml` prevent unencrypted document leakage via Google Drive device backups or adb backup transfers.
-- **Zero Network Permissions**: The `INTERNET` and `ACCESS_NETWORK_STATE` permissions are explicitly removed with `tools:node="remove"`.
-- **Private Scoped Internal Storage**: Files are stored in application-private directories (`/data/data/com.vault.vault/app_flutter/vault_files/`) using non-identifying UUID filenames.
+### 3. Device & OS Privacy
+- **Android `FLAG_SECURE`**: Enabled by default to block screenshots, prevent screen recordings, and mask app previews in the Android Recent Tasks switcher.
+- **Android Backup Disabled**: `android:allowBackup="false"` and `data_extraction_rules.xml` exclude all storage domains from cloud backup and device transfer.
+- **Zero Network Permissions**: The `INTERNET` and `ACCESS_NETWORK_STATE` permissions are explicitly stripped from the release binary via `tools:node="remove"`.
+- **Zero Audio/External Storage Permissions**: `RECORD_AUDIO`, `READ_EXTERNAL_STORAGE`, and `WRITE_EXTERNAL_STORAGE` stripped from manifest merger.
+- **Zero-Trust Network Config**: `network_security_config.xml` blocks cleartext and trusts zero CAs.
 
 ---
 
-## 📱 Features
+## 📱 Key Features
 
-1. **First-Time Security Setup**:
-   - Welcome onboarding explaining local offline encryption.
-   - Dedicated application PIN creation (independent of device passcode).
-   - Biometric authentication enrollment (Fingerprint & Face).
-2. **Document Management**:
-   - Full CRUD support with category tagging.
-   - Default Categories: Personal Identity, Vehicle Documents, Financial, Education, Property, Medical, Other.
-   - Extensible Custom Categories: create, rename, and safely delete custom categories (documents automatically re-assigned to "Other").
-   - Multi-page and front/back support for identity cards.
-   - Sensitive metadata masking (tap eye to reveal document numbers).
-3. **On-Device Document Scanner**:
-   - Live camera preview with framing guidelines and flash toggle.
-   - Multi-page capture with bottom thumbnail filmstrip.
-   - Interactive document editing: 90° rotation, cropping, and image enhancement filters (Original, Grayscale, High Contrast, Document B&W thresholding).
-   - Multi-page compilation to standard A4 PDF or JPEG document.
-4. **100% Offline OCR (Tesseract)**:
-   - On-device text recognition with **bundled traineddata models** included directly in the APK assets:
-     - `eng.traineddata` (English)
-     - `hin.traineddata` (Hindi)
-     - `guj.traineddata` (Gujarati)
-   - Intelligent regex extraction for document numbers (Aadhaar, PAN, DL, Passport, Voter ID), dates, owner names, and issuing authorities.
-   - OCR review screen allowing manual verification before saving.
-5. **Expiry Reminders & Local Notifications**:
-   - Scheduled local notifications: 30 days, 15 days, 7 days, 1 day, and on expiration date.
-   - Reboot-safe scheduling with `ScheduledNotificationBootReceiver`.
-   - Expiry Dashboard categorizing Expired, Critical (≤7d), Upcoming (30d), All Upcoming, and No Expiry.
-6. **Timeline & Activity History**:
-   - Local chronological audit log of all document operations (additions, scans, edits, favorites, trash moves, purges).
-7. **Trash & Recovery**:
-   - Two-stage soft deletion with configurable retention periods (7, 15, 30, 60 days).
-   - Permanent deletion securely overwrites and purges files from storage.
-8. **Instant Offline Search & Filtering**:
-   - Instant search across decrypted names, numbers, owners, authorities, and tags.
+### 1. Native Android Storage Access Framework (SAF)
+- Full integration with Android's native system file picker via `ACTION_OPEN_DOCUMENT`.
+- Access Recent files, Downloads, Images, Documents, Gallery, My Files, and OneDrive.
+- Multi-file selection (`EXTRA_ALLOW_MULTIPLE`).
+- Streaming `content://` URIs with 8KB buffer for large files.
+- Export companion `.txt` files directly to user-chosen storage locations via `ACTION_CREATE_DOCUMENT`.
+
+### 2. Android Sharesheet Integration (Incoming & Outgoing)
+- **Incoming Shares (`ACTION_SEND` & `ACTION_SEND_MULTIPLE`)**:
+  - Share PDFs or images from WhatsApp, Gmail, Chrome, or Gallery directly into Vault.
+  - Held securely in staging cache until mandatory 2FA unlock succeeds.
+  - Premium `IncomingSharePreviewScreen` displays thumbnails, file types, editable names, and category assignment.
+- **Outgoing Sharing (`FileProvider`)**:
+  - Granular sharing modal: Share Original Document, Share Extracted Text, Share Selected Fields, or Share Both.
+  - Ephemeral decrypted copies created in private cache with randomized names and read-only permissions (`FLAG_GRANT_READ_URI_PERMISSION`).
+  - Automatically zeroed and wiped on vault lock and next app launch.
+
+### 3. 100% Offline OCR & Text Extraction
+- Bundled Tesseract models inside APK assets:
+  - English (`eng.traineddata`)
+  - Hindi / Devanagari (`hin.traineddata`)
+  - Gujarati (`guj.traineddata`)
+- **Searchable PDF Detection**: Extracts embedded text layers page-by-page.
+- **Scanned PDF Rasterization**: Renders image-only pages and executes offline OCR.
+- **Image Optimization**: EXIF rotation correction and contrast optimization.
+- Fully operational in airplane mode.
+
+### 4. Smart Document Classification & Structured Extraction
+- Automatic category recognition:
+  - Personal Identity: Aadhaar Card, PAN Card, Voter ID, Passport, Birth Certificate.
+  - Vehicle Documents: Driving Licence, Vehicle RC Book, PUC Certificate, Vehicle Insurance.
+  - Financial, Education, Property, Medical, and General Documents.
+- Field extractors with confidence badges (High, Medium, Low):
+  - Aadhaar (Masked: `XXXX XXXX 1234`), PAN (`ABCDE1234F`), DL (`DL0420110012345`), RC (`MH12AB1234`), Passport.
+  - Never invents missing fields.
+
+### 5. Smart Document Details Screen (4 Tabs)
+- **Preview Tab**: High-resolution decrypted document rendering and page navigation.
+- **Extracted Information Tab**: Structured field cards with confidence ratings, individual copy buttons, "Copy All", manual edit capabilities, and OCR language re-run.
+- **Full Text Tab**: Full extracted text with in-document search, live match highlighting, font-size adjustment (`A-`/`A+`), text wrapping toggle, and 2FA-protected "Copy Full Text".
+- **Activity Tab**: Local chronological audit log of all document operations.
+
+### 6. Clipboard Management
+- 30-second auto-clear timer with floating countdown feedback.
+- Content verification before clearing (avoids wiping newer user clipboard content).
 
 ---
 
@@ -76,59 +89,61 @@ Vault does not rely on cloud services, remote backends, or third-party tracking 
 
 ```
 lib/
-  main.dart                               # Entry point, FLAG_SECURE & notification init
+  main.dart                               # Entry point, root lifecycle & touch tracking
   core/
     constants/                            # App constants & default categories
-    theme/                                # Material 3 Fintech theme (Dark & Light)
-    security/                             # AES-256-GCM, PBKDF2, PIN, Biometrics, VaultSession
-    database/                             # SQLite encrypted schema & helpers
-    storage/                              # Encrypted file storage & atomic write management
+    theme/                                # RupeeFlow 4-Theme system
+    security/                             # AES-256-GCM, 2FA Coordinator, PIN, Biometrics, VaultSession
+    database/                             # SQLite schema (v3) with extractions & structured fields
+    storage/                              # Encrypted file storage & ephemeral cache scrubber
+    services/                             # Native SAF and Share MethodChannel bridge
     notifications/                        # Local notifications & reminder scheduler
     routes/                               # GoRouter navigation & auth route guards
     utils/                                # Date formatting, masking, file signatures
-    widgets/                              # PinPad, VaultScaffold, StatusBadge, EmptyState
   features/
-    onboarding/                           # Splash, Welcome, Initial Security Setup
-    authentication/                       # PIN Unlock, Biometric Unlock, Session Providers
-    dashboard/                            # Home Dashboard, Main Navigation Shell
-    documents/                            # All Docs, Category Docs, Details, Add, Viewer
+    onboarding/                           # Welcome, Setup, Splash
+    authentication/                       # PIN Unlock, Biometric Unlock, 2FA Dialogs
+    dashboard/                            # Home Dashboard, Main Shell
+    documents/                            # Details (4 tabs), Add, Viewer, Share Sheet, Incoming Preview
     scanner/                              # Camera Scanner, Image Processing, PDF Compilation
-    ocr/                                  # Offline Tesseract OCR & Extractor Review
-    categories/                           # Custom Category Management
+    ocr/                                  # Offline OCR, Smart Classifier, Field Extractor
+    passwords/                            # Password Manager & Security Analyzer
+    bank_vault/                           # Bank Account Vault
+    categories/                           # Category Management
     favorites/                            # Favorite Documents
     expiry/                               # Expiry Reminders Dashboard
     timeline/                             # Audit Activity History
     trash/                                # Soft-Deletion & Recovery
     search/                               # Full-text Offline Search
-    settings/                             # Security Settings, Storage Info, About & Privacy
 ```
 
 ---
 
-## 🚀 Building & Running
+## 🚀 Building & Testing
 
-### Prerequisites
-- Flutter SDK 3.47+
-- Android SDK 34+ (API Level 24 minimum)
-- Java 17+
-
-### Run Debug
+### Run Tests
 ```bash
-flutter pub get
-flutter run
+flutter test
 ```
+All 63 automated tests pass (100% success rate).
 
-### Build Release APK
+### Static Analysis
+```bash
+flutter analyze
+```
+0 issues found.
+
+### Build Hardened Release APK
 ```bash
 flutter build apk --release
 ```
-Output path: `build/app/outputs/flutter-apk/app-release.apk`
+Output: `build/app/outputs/flutter-apk/app-release.apk`
+- R8 minification & resource shrinking enabled.
+- All network and recording permissions stripped.
 
 ---
 
-## 📜 Licenses
-- **Tesseract OCR Language Models**: Licensed under the **Apache License 2.0** (Copyright Google LLC and Tesseract OCR contributors).
-- Application source code licensed under the MIT License.
-=======
-# SafeVault
->>>>>>> ea37c0b3e5115e070bded5efbb5fb439a1d3e74f
+## 📜 Documentation
+- [DOCUMENT_IMPORT_AND_OCR_REPORT.md](DOCUMENT_IMPORT_AND_OCR_REPORT.md) — Comprehensive technical report on file formats, OCR engines, field extraction, SAF, and sharing architecture.
+- [SECURITY_AUDIT_REPORT.md](SECURITY_AUDIT_REPORT.md) — 27-section comprehensive defensive security audit report.
+- [SECURITY_REMEDIATION_LOG.md](SECURITY_REMEDIATION_LOG.md) — Detailed log of all security remediations.

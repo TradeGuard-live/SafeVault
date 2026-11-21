@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
@@ -7,12 +8,16 @@ import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as p;
 import '../../../core/constants/category_constants.dart';
 import '../../../core/security/file_validator.dart';
+import '../../../core/services/native_saf_and_share_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../../authentication/presentation/auth_providers.dart';
 import '../../categories/domain/category_model.dart';
+import '../../ocr/data/document_text_extractor.dart';
+import '../data/document_draft_repository.dart';
+import '../domain/document_draft_model.dart';
 import '../domain/document_file_model.dart';
 import '../domain/document_model.dart';
 
@@ -55,6 +60,8 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
 
   final List<Map<String, dynamic>> _attachedFiles = [];
   bool _isSaving = false;
+  bool _hasRestoredDraft = false;
+  Timer? _draftAutoSaveTimer;
 
   @override
   void initState() {
@@ -94,10 +101,29 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
         'name': widget.initialFileName ?? 'Imported Document',
       });
     }
+
+    _nameController.addListener(_scheduleDraftAutoSave);
+    _docNumberController.addListener(_scheduleDraftAutoSave);
+    _ownerNameController.addListener(_scheduleDraftAutoSave);
+    _authorityController.addListener(_scheduleDraftAutoSave);
+    _notesController.addListener(_scheduleDraftAutoSave);
+    _tagsController.addListener(_scheduleDraftAutoSave);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _restoreDraftIfAvailable();
+    });
   }
 
   @override
   void dispose() {
+    _draftAutoSaveTimer?.cancel();
+    _nameController.removeListener(_scheduleDraftAutoSave);
+    _docNumberController.removeListener(_scheduleDraftAutoSave);
+    _ownerNameController.removeListener(_scheduleDraftAutoSave);
+    _authorityController.removeListener(_scheduleDraftAutoSave);
+    _notesController.removeListener(_scheduleDraftAutoSave);
+    _tagsController.removeListener(_scheduleDraftAutoSave);
+
     _nameController.dispose();
     _docNumberController.dispose();
     _ownerNameController.dispose();
@@ -107,27 +133,252 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
     super.dispose();
   }
 
-  Future<void> _pickAdditionalFile() async {
+  void _scheduleDraftAutoSave() {
+    if (widget.editDocument != null) return;
+    _draftAutoSaveTimer?.cancel();
+    _draftAutoSaveTimer = Timer(const Duration(milliseconds: 600), () {
+      _saveCurrentDraft();
+    });
+  }
+
+  Future<void> _saveCurrentDraft() async {
+    if (widget.editDocument != null) return;
+    final session = ref.read(vaultSessionProvider);
+    if (!session.isUnlocked || session.masterKey == null) return;
+
+    final tags = _tagsController.text
+        .split(',')
+        .map((t) => t.trim().replaceAll('#', ''))
+        .where((t) => t.isNotEmpty)
+        .toList();
+
+    final draft = DocumentDraftModel(
+      title: _nameController.text,
+      categoryId: _selectedCategoryId,
+      documentType: _selectedDocumentType,
+      documentNumber: _docNumberController.text,
+      ownerName: _ownerNameController.text,
+      issuingAuthority: _authorityController.text,
+      issueDate: _issueDate,
+      expiryDate: _expiryDate,
+      notes: _notesController.text,
+      tags: tags,
+      attachedFiles: List.from(_attachedFiles),
+      updatedAt: DateTime.now(),
+    );
+
+    if (draft.isEmpty) {
+      await ref.read(documentDraftRepositoryProvider).deleteDraft();
+    } else {
+      await ref.read(documentDraftRepositoryProvider).saveDraft(draft, session.masterKey!);
+    }
+  }
+
+  Future<void> _restoreDraftIfAvailable() async {
+    if (widget.editDocument != null) return;
+    final session = ref.read(vaultSessionProvider);
+    if (!session.isUnlocked || session.masterKey == null) return;
+
     try {
-      final files = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      final draft = await ref.read(documentDraftRepositoryProvider).getDraft(session.masterKey!);
+      if (draft != null && draft.isNotEmpty && mounted) {
+        setState(() {
+          if (_nameController.text.isEmpty && draft.title.isNotEmpty) {
+            _nameController.text = draft.title;
+          }
+          if (_docNumberController.text.isEmpty && draft.documentNumber != null) {
+            _docNumberController.text = draft.documentNumber!;
+          }
+          if (_ownerNameController.text.isEmpty && draft.ownerName != null) {
+            _ownerNameController.text = draft.ownerName!;
+          }
+          if (_authorityController.text.isEmpty && draft.issuingAuthority != null) {
+            _authorityController.text = draft.issuingAuthority!;
+          }
+          if (_notesController.text.isEmpty && draft.notes != null) {
+            _notesController.text = draft.notes!;
+          }
+          if (_tagsController.text.isEmpty && draft.tags.isNotEmpty) {
+            _tagsController.text = draft.tags.join(', ');
+          }
+          if (draft.categoryId.isNotEmpty) {
+            _selectedCategoryId = draft.categoryId;
+          }
+          if (draft.documentType != null) {
+            _selectedDocumentType = draft.documentType;
+          }
+          if (draft.issueDate != null) {
+            _issueDate = draft.issueDate;
+          }
+          if (draft.expiryDate != null) {
+            _expiryDate = draft.expiryDate;
+          }
+
+          // Restore attached files that still exist on disk
+          for (final f in draft.attachedFiles) {
+            final path = f['path'] as String?;
+            if (path != null && File(path).existsSync()) {
+              if (!_attachedFiles.any((existing) => existing['path'] == path)) {
+                _attachedFiles.add(Map<String, dynamic>.from(f));
+              }
+            }
+          }
+          _hasRestoredDraft = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to restore document draft: $e');
+    }
+  }
+
+  bool _hasDraftContent() {
+    return _nameController.text.trim().isNotEmpty ||
+        _docNumberController.text.trim().isNotEmpty ||
+        _ownerNameController.text.trim().isNotEmpty ||
+        _authorityController.text.trim().isNotEmpty ||
+        _notesController.text.trim().isNotEmpty ||
+        _tagsController.text.trim().isNotEmpty ||
+        _attachedFiles.isNotEmpty;
+  }
+
+  Future<void> _discardDraft() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Discard Draft?'),
+        content: const Text(
+          'Are you sure you want to discard this draft? All entered information and attached files will be cleared.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Keep Draft'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await ref.read(documentDraftRepositoryProvider).deleteDraft();
+      if (mounted) {
+        setState(() {
+          _nameController.clear();
+          _docNumberController.clear();
+          _ownerNameController.clear();
+          _authorityController.clear();
+          _notesController.clear();
+          _tagsController.clear();
+          _attachedFiles.clear();
+          _hasRestoredDraft = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Draft discarded.')),
+        );
+      }
+    }
+  }
+
+  Future<bool> _onWillPop() async {
+    if (widget.editDocument != null || !_hasDraftContent()) {
+      return true;
+    }
+
+    final action = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Unsaved Document'),
+        content: const Text(
+          'You have unsaved document changes. Would you like to keep the draft for later or discard it?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('cancel'),
+            child: const Text('Continue Editing'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('discard'),
+            style: TextButton.styleFrom(foregroundColor: Theme.of(ctx).colorScheme.error),
+            child: const Text('Discard'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop('keep'),
+            child: const Text('Keep Draft & Exit'),
+          ),
+        ],
+      ),
+    );
+
+    if (action == 'discard') {
+      await ref.read(documentDraftRepositoryProvider).deleteDraft();
+      return true;
+    } else if (action == 'keep') {
+      await _saveCurrentDraft();
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> _pickAdditionalFile() async {
+    // Persist current draft before launching file picker
+    await _saveCurrentDraft();
+
+    try {
+      final safItems = await NativeSafAndShareService.instance.pickDocuments(
+        allowMultiple: true,
       );
 
-      if (files.isEmpty) return;
-
-      for (final pf in files) {
-        if (pf.path != null) {
-          final file = File(pf.path!);
-          final validation = await FileValidator.validateFile(file);
-          setState(() {
-            _attachedFiles.add({
-              'path': pf.path,
-              'mimeType': validation.mimeType,
-              'name': pf.name,
+      if (safItems.isNotEmpty) {
+        for (final item in safItems) {
+          final file = File(item.path);
+          if (await file.exists()) {
+            final validation = await FileValidator.validateFile(file);
+            setState(() {
+              _attachedFiles.add({
+                'path': item.path,
+                'mimeType': validation.mimeType,
+                'name': item.name,
+              });
             });
-          });
+          }
         }
+        await _saveCurrentDraft();
+        return;
+      }
+
+      // Fallback for non-Android / test platforms
+      final session = ref.read(vaultSessionProvider);
+      session.beginSystemActivity('FILE_PICKER_FALLBACK');
+      List<PlatformFile> files;
+      try {
+        final res = await FilePicker.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+        );
+        files = res;
+      } finally {
+        Future.microtask(() => session.endSystemActivity());
+      }
+
+      if (files.isNotEmpty) {
+        for (final pf in files) {
+          if (pf.path != null) {
+            final file = File(pf.path!);
+            final validation = await FileValidator.validateFile(file);
+            setState(() {
+              _attachedFiles.add({
+                'path': pf.path,
+                'mimeType': validation.mimeType,
+                'name': pf.name,
+              });
+            });
+          }
+        }
+        await _saveCurrentDraft();
       }
     } catch (e) {
       if (mounted) {
@@ -257,7 +508,7 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
           );
         }
 
-        await repo.addDocument(
+        final newDoc = await repo.addDocument(
           name: _nameController.text.trim(),
           categoryId: _selectedCategoryId,
           documentNumber: _docNumberController.text.trim().isEmpty ? null : _docNumberController.text.trim(),
@@ -271,7 +522,54 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
           files: encryptedFiles,
           masterKey: session.masterKey!,
         );
+
+        // Automatic Text Extraction Pipeline (Offline)
+        if (encryptedFiles.isNotEmpty) {
+          try {
+            final firstFile = encryptedFiles.first;
+            final plainBytes = await storage.readDecryptedFile(
+              filePath: firstFile.encryptedFilePath,
+              masterKey: session.masterKey!,
+            );
+            final extractor = DocumentTextExtractor();
+            final result = await extractor.processDocumentBytes(
+              bytes: plainBytes,
+              fileName: firstFile.originalFileName,
+              mimeType: firstFile.mimeType,
+            );
+            final formattedTxt = DocumentTextExtractor.generateFormattedTextRecord(
+              documentType: result.classification.documentType,
+              categoryName: _selectedCategoryId,
+              sourceFileName: firstFile.originalFileName,
+              fullText: result.fullText,
+              fields: result.fields,
+              engine: result.extractionEngine,
+              language: result.language,
+              pageCount: result.pageCount,
+            );
+            final encTxtPath = await repo.saveExtractedTxtFile(
+              documentId: newDoc.id,
+              textContent: formattedTxt,
+              masterKey: session.masterKey!,
+            );
+            await repo.saveExtraction(
+              documentId: newDoc.id,
+              extractedText: result.fullText,
+              fields: result.fields,
+              engine: result.extractionEngine,
+              language: result.language,
+              pageCount: result.pageCount,
+              encryptedTxtFilePath: encTxtPath,
+              masterKey: session.masterKey!,
+            );
+          } catch (ocrError) {
+            debugPrint('Auto text extraction during add document error: $ocrError');
+          }
+        }
       }
+
+      // Successful save: delete persisted draft
+      await ref.read(documentDraftRepositoryProvider).deleteDraft();
 
       ref.invalidate(activeDocumentsProvider);
       ref.invalidate(expiringDocumentsProvider);
@@ -292,20 +590,56 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
     final colors = context.themeColors;
     final catsAsync = ref.watch(categoriesProvider);
 
-    return Scaffold(
-      backgroundColor: colors.background,
-      appBar: AppBar(
-        title: Text(
-          widget.editDocument != null ? 'Edit Document' : 'Add Document',
-          style: const TextStyle(fontWeight: FontWeight.w700),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop && context.mounted) {
+          context.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: colors.background,
+        appBar: AppBar(
+          title: Text(
+            widget.editDocument != null ? 'Edit Document' : 'Add Document',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
         ),
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          children: [
-            // Name Field
+        body: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            children: [
+              if (_hasRestoredDraft) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: colors.primaryAccent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.primaryAccent.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.restore_page_rounded, color: colors.primaryAccent, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Restored unsaved draft from your previous session.',
+                          style: TextStyle(fontSize: 12, color: colors.textPrimary, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _discardDraft,
+                        child: Text('Discard', style: TextStyle(color: colors.error, fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              // Name Field
             TextFormField(
               controller: _nameController,
               decoration: const InputDecoration(
@@ -537,6 +871,7 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }

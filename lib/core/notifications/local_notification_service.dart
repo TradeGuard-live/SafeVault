@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -108,14 +109,42 @@ class LocalNotificationService {
 
     const notificationDetails = NotificationDetails(android: androidDetails);
 
-    await _notificationsPlugin.zonedSchedule(
-      id: notificationId,
-      title: title,
-      body: body,
-      scheduledDate: tzDateTime,
-      notificationDetails: notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
+    final androidImplementation = _notificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+
+    bool canUseExact = false;
+    try {
+      canUseExact = await androidImplementation?.canScheduleExactNotifications() ?? false;
+    } catch (_) {}
+
+    final scheduleMode = canUseExact
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
+
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id: notificationId,
+        title: title,
+        body: body,
+        scheduledDate: tzDateTime,
+        notificationDetails: notificationDetails,
+        androidScheduleMode: scheduleMode,
+      );
+    } catch (e) {
+      // If exact alarms are not permitted by Android OS policy, gracefully fallback to inexact
+      try {
+        await _notificationsPlugin.zonedSchedule(
+          id: notificationId,
+          title: title,
+          body: body,
+          scheduledDate: tzDateTime,
+          notificationDetails: notificationDetails,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        );
+      } catch (fallbackError) {
+        debugPrint('LocalNotificationService: Could not schedule reminder: $fallbackError');
+      }
+    }
   }
 
   /// Cancels a specific notification by its integer ID.

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../ocr/domain/document_extraction_model.dart';
 import 'document_file_model.dart';
 
 class DocumentModel {
@@ -18,7 +19,10 @@ class DocumentModel {
   final DateTime? deletedAt;
   final String? thumbnailEncPath;
   final String? documentType;
+  final String? extractionStatus; // 'waiting', 'importing', 'encrypting', 'extractingText', 'recognizingFields', 'needsReview', 'completed', 'failed'
+  final String? extractedTxtEncPath;
   final List<DocumentFileModel> files;
+  final DocumentExtractionModel? extraction;
 
   const DocumentModel({
     required this.id,
@@ -37,7 +41,10 @@ class DocumentModel {
     this.deletedAt,
     this.thumbnailEncPath,
     this.documentType,
+    this.extractionStatus = 'completed',
+    this.extractedTxtEncPath,
     this.files = const [],
+    this.extraction,
   });
 
   bool get isDeleted => deletedAt != null;
@@ -59,7 +66,10 @@ class DocumentModel {
     DateTime? deletedAt,
     String? thumbnailEncPath,
     String? documentType,
+    String? extractionStatus,
+    String? extractedTxtEncPath,
     List<DocumentFileModel>? files,
+    DocumentExtractionModel? extraction,
   }) {
     return DocumentModel(
       id: id ?? this.id,
@@ -78,8 +88,10 @@ class DocumentModel {
       deletedAt: deletedAt ?? this.deletedAt,
       thumbnailEncPath: thumbnailEncPath ?? this.thumbnailEncPath,
       documentType: documentType ?? this.documentType,
+      extractionStatus: extractionStatus ?? this.extractionStatus,
+      extractedTxtEncPath: extractedTxtEncPath ?? this.extractedTxtEncPath,
       files: files ?? this.files,
+      extraction: extraction ?? this.extraction,
     );
   }
 }
-

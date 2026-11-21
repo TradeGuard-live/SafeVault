@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../core/security/file_validator.dart';
+import '../../../core/services/native_saf_and_share_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/widgets/error_dialog.dart';
@@ -129,6 +130,23 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
 
   Future<void> _pickFromGallery() async {
     try {
+      final safItems = await NativeSafAndShareService.instance.pickDocuments(
+        allowMultiple: true,
+        mimeTypes: const ['image/jpeg', 'image/jpg', 'image/png'],
+      );
+      if (safItems.isNotEmpty) {
+        for (final item in safItems) {
+          final file = File(item.path);
+          if (await file.exists()) {
+            await FileValidator.validateFile(file);
+            setState(() {
+              _capturedPagePaths.add(item.path);
+            });
+          }
+        }
+        return;
+      }
+
       final files = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['jpg', 'jpeg', 'png'],

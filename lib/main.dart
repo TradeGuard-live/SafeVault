@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/notifications/local_notification_service.dart';
 import 'core/routes/app_router.dart';
 import 'core/security/privacy_service.dart';
+import 'core/services/native_saf_and_share_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/authentication/presentation/auth_providers.dart';
 
@@ -38,19 +40,47 @@ class VaultApp extends ConsumerStatefulWidget {
 
 class _VaultAppState extends ConsumerState<VaultApp> {
   late final AppLifecycleListener _lifecycleListener;
+  StreamSubscription<List<SafFileItem>>? _shareSubscription;
 
   @override
   void initState() {
     super.initState();
+    final session = ref.read(vaultSessionProvider);
+    NativeSafAndShareService.instance.attachSession(session);
+
     _lifecycleListener = AppLifecycleListener(
       onStateChange: (state) {
         ref.read(vaultSessionProvider).handleLifecycleChange(state);
       },
     );
+
+    // Listen for real-time incoming shares via Android Sharesheet
+    _shareSubscription = NativeSafAndShareService.instance.incomingShareStream.listen((items) {
+      if (items.isNotEmpty) {
+        ref.read(pendingIncomingShareProvider.notifier).state = items;
+        final session = ref.read(vaultSessionProvider);
+        if (session.isUnlocked) {
+          ref.read(appRouterProvider).push('/incoming-share-preview', extra: items);
+        }
+      }
+    });
+
+    // Check for pending launch shares
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final pending = await NativeSafAndShareService.instance.getPendingIncomingShares();
+      if (pending.isNotEmpty && mounted) {
+        ref.read(pendingIncomingShareProvider.notifier).state = pending;
+        final session = ref.read(vaultSessionProvider);
+        if (session.isUnlocked) {
+          ref.read(appRouterProvider).push('/incoming-share-preview', extra: pending);
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
+    _shareSubscription?.cancel();
     _lifecycleListener.dispose();
     super.dispose();
   }

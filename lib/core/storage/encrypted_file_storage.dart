@@ -162,14 +162,21 @@ class EncryptedFileStorage {
           }
         }
       }
-      // Also purge any scan_*, ocr_*, or view_* temporary files in the root cache directory
+      // Also purge any scan_*, ocr_*, view_*, export_*, or staging files in the root cache directory
       final cacheDir = await getTemporaryDirectory();
       if (await cacheDir.exists()) {
-        final cacheEntities = await cacheDir.list().toList();
+        final cacheEntities = await cacheDir.list(recursive: true).toList();
         for (final entity in cacheEntities) {
           if (entity is File) {
             final name = basename(entity.path);
-            if (name.startsWith('scan_') || name.startsWith('ocr_') || name.startsWith('view_')) {
+            if (name.startsWith('scan_') ||
+                name.startsWith('ocr_') ||
+                name.startsWith('view_') ||
+                name.startsWith('export_') ||
+                name.startsWith('saf_import_') ||
+                name.startsWith('incoming_share_') ||
+                entity.path.contains('shared_exports') ||
+                entity.path.contains('staging')) {
               await securelyDeleteFile(entity.path);
             }
           }
