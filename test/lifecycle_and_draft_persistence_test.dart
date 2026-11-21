@@ -40,6 +40,16 @@ void main() {
       expect(session.masterKey, isNull);
     });
 
+    test('A transient inactive state does not lock the vault', () {
+      expect(session.isUnlocked, isTrue);
+
+      // Android sends inactive for a screenshot and other short system UI.
+      session.handleLifecycleChange(AppLifecycleState.inactive);
+
+      expect(session.isUnlocked, isTrue);
+      expect(session.masterKey, isNotNull);
+    });
+
     test('Launching system activity (SAF File Picker) prevents premature lock on paused/inactive', () {
       expect(session.isUnlocked, isTrue);
 
@@ -195,7 +205,7 @@ void main() {
     test('DocumentDraftModel copyWith modifies specified fields without mutating others', () {
       final draft = DocumentDraftModel(
         title: 'Original Title',
-        categoryId: 'financial',
+        categoryId: 'financial_documents',
         updatedAt: DateTime.now(),
       );
 
@@ -206,7 +216,7 @@ void main() {
 
       expect(updated.title, 'Updated Title');
       expect(updated.documentNumber, 'ACC-9988');
-      expect(updated.categoryId, 'financial');
+      expect(updated.categoryId, 'financial_documents');
     });
   });
 

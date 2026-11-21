@@ -318,7 +318,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
                 Icons.chevron_right_rounded,
                 color: colors.textSecondary,
               ),
-              onTap: () => context.push('/timeline'),
+              onTap: () => context.push('/activity-timeline'),
             ),
             const Divider(height: 1),
             ListTile(

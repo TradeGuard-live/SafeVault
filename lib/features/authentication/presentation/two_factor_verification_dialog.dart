@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,8 +12,12 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/pin_pad.dart';
 import 'auth_providers.dart';
 
-/// Modal dialog requiring mandatory Two-Factor Authentication (Biometric + 6-digit PIN)
-/// before revealing sensitive secrets (passwords, full bank account numbers).
+/// Modal dialog requiring mandatory Two-Factor Authentication
+/// (Biometric + 6-digit PIN) before revealing or acting on sensitive secrets
+/// (passwords, full bank account numbers, protected document fields).
+///
+/// The dialog is intentionally non-dismissible by tapping outside. It can only
+/// be closed with the explicit close button or after both factors succeed.
 class TwoFactorVerificationDialog extends ConsumerStatefulWidget {
   final String title;
   final String reason;
@@ -21,13 +28,16 @@ class TwoFactorVerificationDialog extends ConsumerStatefulWidget {
     required this.reason,
   });
 
-  /// Displays the dialog and returns true only if BOTH biometric and PIN succeed.
+  /// Displays the dialog and returns true only if BOTH biometric and PIN
+  /// succeed while the vault session remains unlocked.
   static Future<bool> verify(
     BuildContext context, {
     required String title,
     required String reason,
     VaultSession? session,
   }) async {
+    if (session != null && !session.isUnlocked) return false;
+
     session?.beginSystemActivity('TWO_FACTOR_VERIFICATION');
     try {
       final result = await showDialog<bool>(
@@ -38,7 +48,7 @@ class TwoFactorVerificationDialog extends ConsumerStatefulWidget {
       );
       return result ?? false;
     } finally {
-      Future.microtask(() => session?.endSystemActivity());
+      session?.endSystemActivity();
     }
   }
 
@@ -49,8 +59,10 @@ class TwoFactorVerificationDialog extends ConsumerStatefulWidget {
 
 class _TwoFactorVerificationDialogState
     extends ConsumerState<TwoFactorVerificationDialog> {
+  late final VaultSession _session;
   bool _biometricPassed = false;
   bool _isAuthenticatingBio = false;
+  bool _isVerifyingPin = false;
   Uint8List? _ephemeralBioShare;
   String? _errorMessage;
   int _lockoutSeconds = 0;
@@ -58,15 +70,29 @@ class _TwoFactorVerificationDialogState
   @override
   void initState() {
     super.initState();
+    _session = ref.read(vaultSessionProvider);
+    _session.addListener(_handleSessionChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _startBiometric();
+      if (mounted) _startBiometric();
     });
   }
 
   @override
   void dispose() {
+    _session.removeListener(_handleSessionChange);
     _cleanupBioShare();
+    // Ensure a biometric prompt cannot outlive the dialog.
+    unawaited(ref.read(biometricServiceProvider).cancelAuthentication());
     super.dispose();
+  }
+
+  void _handleSessionChange() {
+    // A lock during the prompt must invalidate the whole verification. Never
+    // leave a dialog open that could later return true for a locked vault.
+    if (!_session.isUnlocked && mounted) {
+      _cleanupBioShare();
+      Navigator.of(context).pop(false);
+    }
   }
 
   void _cleanupBioShare() {
@@ -78,9 +104,7 @@ class _TwoFactorVerificationDialogState
 
   Future<void> _startBiometric() async {
     if (_isAuthenticatingBio) return;
-    ref
-        .read(vaultSessionProvider)
-        .beginSystemActivity('TWO_FACTOR_VERIFICATION');
+
     setState(() {
       _isAuthenticatingBio = true;
       _errorMessage = null;
@@ -91,25 +115,33 @@ class _TwoFactorVerificationDialogState
       final keyService = ref.read(keyManagementServiceProvider);
 
       final success = await bioService.authenticate(reason: widget.reason);
+      if (!mounted) return;
+
       if (!success) {
-        if (mounted) {
-          setState(() {
-            _isAuthenticatingBio = false;
-            _errorMessage = 'Biometric verification cancelled.';
-          });
-        }
+        setState(() {
+          _isAuthenticatingBio = false;
+          _errorMessage = 'Biometric verification cancelled.';
+        });
         return;
       }
 
+      // The hardware Keystore key is valid for a short window after the
+      // biometric prompt. Unwrap the biometric share immediately.
       final share = await keyService.startTwoFactorBiometricUnlock();
-
-      if (mounted) {
-        setState(() {
-          _ephemeralBioShare = share;
-          _biometricPassed = true;
-          _isAuthenticatingBio = false;
-        });
+      if (!mounted) {
+        share.fillRange(0, share.length, 0);
+        return;
       }
+
+      // Keep the session protected while the user enters Factor 2. The static
+      // verify() wrapper ends this lease when the dialog closes.
+      _session.beginSystemActivity('TWO_FACTOR_PIN_ENTRY');
+
+      setState(() {
+        _ephemeralBioShare = share;
+        _biometricPassed = true;
+        _isAuthenticatingBio = false;
+      });
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -123,32 +155,44 @@ class _TwoFactorVerificationDialogState
   }
 
   Future<void> _handlePinSubmitted(String pin) async {
-    if (_ephemeralBioShare == null) {
+    if (_isVerifyingPin) return;
+
+    final share = _ephemeralBioShare;
+    if (share == null) {
       Navigator.of(context).pop(false);
       return;
     }
 
+    setState(() {
+      _isVerifyingPin = true;
+      _errorMessage = null;
+    });
+
     final pinService = ref.read(pinServiceProvider);
     final keyService = ref.read(keyManagementServiceProvider);
 
-    final isLocked = await pinService.isLockedOut();
-    if (isLocked) {
-      final rem = await pinService.getRemainingLockoutSeconds();
-      setState(() => _lockoutSeconds = rem);
-      return;
-    }
-
     try {
-      // Complete two-factor unlock
+      if (await pinService.isLockedOut()) {
+        final remaining = await pinService.getRemainingLockoutSeconds();
+        if (!mounted) return;
+        setState(() {
+          _isVerifyingPin = false;
+          _lockoutSeconds = remaining;
+        });
+        return;
+      }
+
+      // Factor 2: verify the PIN and reconstruct the master key. The
+      // reconstructed key is deliberately not persisted here; the active
+      // session already holds the unlocked key.
       await keyService.completeTwoFactorPinUnlock(
-        bioShare: Uint8List.fromList(_ephemeralBioShare!),
+        bioShare: Uint8List.fromList(share),
         pin: pin,
       );
 
-      // Both passed!
       await pinService.resetFailedAttempts();
       _cleanupBioShare();
-      ref.read(vaultSessionProvider).recordUserActivity();
+      _session.recordUserActivity();
 
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -158,31 +202,31 @@ class _TwoFactorVerificationDialogState
       _cleanupBioShare();
       try {
         final count = await pinService.recordFailedAttempt();
-        if (mounted) {
-          setState(() {
-            _biometricPassed = false; // Reset to factor 1
-            _errorMessage =
-                'Incorrect PIN ($count failed attempts). Please retry from Factor 1.';
-          });
-        }
+        if (!mounted) return;
+        setState(() {
+          _biometricPassed = false; // Reset to Factor 1
+          _isVerifyingPin = false;
+          _errorMessage =
+              'Incorrect PIN ($count failed attempts). Verify biometrics again.';
+        });
       } on PinLockedOutException catch (e) {
-        if (mounted) {
-          setState(() {
-            _biometricPassed = false;
-            _lockoutSeconds = e.lockDurationSeconds;
-            _errorMessage =
-                'Too many failed attempts. Locked for ${e.lockDurationSeconds}s.';
-          });
-        }
+        if (!mounted) return;
+        setState(() {
+          _biometricPassed = false;
+          _isVerifyingPin = false;
+          _lockoutSeconds = e.lockDurationSeconds;
+          _errorMessage =
+              'Too many failed attempts. Locked for ${e.lockDurationSeconds}s.';
+        });
       }
     } catch (e) {
       _cleanupBioShare();
-      if (mounted) {
-        setState(() {
-          _biometricPassed = false;
-          _errorMessage = 'Authentication error. Please retry.';
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _biometricPassed = false;
+        _isVerifyingPin = false;
+        _errorMessage = 'Authentication error. Please retry.';
+      });
     }
   }
 
@@ -276,11 +320,19 @@ class _TwoFactorVerificationDialogState
                         width: 2,
                       ),
                     ),
-                    child: Icon(
-                      Icons.fingerprint_rounded,
-                      size: 48,
-                      color: colors.primaryAccent,
-                    ),
+                    child: _isAuthenticatingBio
+                        ? Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: CircularProgressIndicator(
+                              color: colors.primaryAccent,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : Icon(
+                            Icons.fingerprint_rounded,
+                            size: 48,
+                            color: colors.primaryAccent,
+                          ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -341,11 +393,17 @@ class _TwoFactorVerificationDialogState
                   ],
                 ),
                 const SizedBox(height: 12),
-                PinPad(
-                  pinLength: 6,
-                  onPinComplete: _handlePinSubmitted,
-                  errorMessage: _errorMessage,
-                  lockoutRemainingSeconds: _lockoutSeconds,
+                AbsorbPointer(
+                  absorbing: _isVerifyingPin,
+                  child: Opacity(
+                    opacity: _isVerifyingPin ? 0.55 : 1,
+                    child: PinPad(
+                      pinLength: 6,
+                      onPinComplete: _handlePinSubmitted,
+                      errorMessage: _errorMessage,
+                      lockoutRemainingSeconds: _lockoutSeconds,
+                    ),
+                  ),
                 ),
               ],
             ],

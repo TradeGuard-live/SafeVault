@@ -28,6 +28,7 @@ class _CameraScannerScreenState extends State<CameraScannerScreen>
   bool _isCameraInitialized = false;
   bool _isCapturing = false;
   FlashMode _flashMode = FlashMode.off;
+  int _cameraGeneration = 0;
 
   final List<String> _capturedPagePaths = [];
 
@@ -41,7 +42,10 @@ class _CameraScannerScreenState extends State<CameraScannerScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _controller?.dispose();
+    _cameraGeneration++;
+    final controller = _controller;
+    _controller = null;
+    controller?.dispose();
     // Wipe any un-saved captured camera photos if screen was exited
     for (final path in _capturedPagePaths) {
       try {
@@ -54,52 +58,82 @@ class _CameraScannerScreenState extends State<CameraScannerScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_controller == null || !_controller!.value.isInitialized) return;
     if (state == AppLifecycleState.inactive) {
-      _controller?.dispose();
+      // A disposed controller must never be rendered when Android temporarily
+      // takes the camera for a system surface (for example the app switcher).
+      _cameraGeneration++;
+      final controller = _controller;
+      _controller = null;
+      if (mounted) {
+        setState(() => _isCameraInitialized = false);
+      }
+      controller?.dispose();
     } else if (state == AppLifecycleState.resumed) {
       _initializeCamera();
     }
   }
 
   Future<void> _initializeCamera() async {
+    final generation = ++_cameraGeneration;
+    final previousController = _controller;
+    _controller = null;
+    if (mounted) {
+      setState(() => _isCameraInitialized = false);
+    }
+    await previousController?.dispose();
+
     try {
-      _cameras = await availableCameras();
-      if (_cameras.isEmpty) {
+      final cameras = await availableCameras();
+      if (!mounted || generation != _cameraGeneration) return;
+
+      if (cameras.isEmpty) {
         setState(() => _isCameraInitialized = false);
         return;
       }
 
-      final camera = _cameras[_selectedCameraIndex];
-      _controller = CameraController(
+      if (_selectedCameraIndex >= cameras.length) {
+        _selectedCameraIndex = 0;
+      }
+
+      final camera = cameras[_selectedCameraIndex];
+      final controller = CameraController(
         camera,
         ResolutionPreset.high,
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
 
-      await _controller!.initialize();
-      await _controller!.setFlashMode(_flashMode);
+      await controller.initialize();
+      await controller.setFlashMode(_flashMode);
 
+      if (!mounted || generation != _cameraGeneration) {
+        await controller.dispose();
+        return;
+      }
+
+      _controller = controller;
+      _cameras = cameras;
       if (mounted) {
         setState(() => _isCameraInitialized = true);
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && generation == _cameraGeneration) {
         setState(() => _isCameraInitialized = false);
       }
     }
   }
 
   Future<void> _toggleFlash() async {
-    if (_controller == null || !_controller!.value.isInitialized) return;
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
 
     final nextMode = _flashMode == FlashMode.off
         ? FlashMode.torch
         : (_flashMode == FlashMode.torch ? FlashMode.auto : FlashMode.off);
 
     try {
-      await _controller!.setFlashMode(nextMode);
+      await controller.setFlashMode(nextMode);
+      if (!mounted || controller != _controller) return;
       setState(() => _flashMode = nextMode);
     } catch (_) {}
   }
@@ -107,14 +141,12 @@ class _CameraScannerScreenState extends State<CameraScannerScreen>
   Future<void> _switchCamera() async {
     if (_cameras.length <= 1) return;
     _selectedCameraIndex = (_selectedCameraIndex + 1) % _cameras.length;
-    await _controller?.dispose();
-    _initializeCamera();
+    await _initializeCamera();
   }
 
   Future<void> _capturePhoto() async {
-    if (_controller == null ||
-        !_controller!.value.isInitialized ||
-        _isCapturing) {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized || _isCapturing) {
       return;
     }
 
@@ -122,20 +154,21 @@ class _CameraScannerScreenState extends State<CameraScannerScreen>
     HapticFeedback.mediumImpact();
 
     try {
-      final xFile = await _controller!.takePicture();
+      final xFile = await controller.takePicture();
+      if (!mounted || controller != _controller) {
+        try {
+          await File(xFile.path).delete();
+        } catch (_) {}
+        return;
+      }
       setState(() {
         _capturedPagePaths.add(xFile.path);
         _isCapturing = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isCapturing = false);
-      if (mounted) {
-        ErrorDialog.show(
-          context,
-          title: 'Capture Failed',
-          message: e.toString(),
-        );
-      }
+      ErrorDialog.show(context, title: 'Capture Failed', message: e.toString());
     }
   }
 
@@ -146,15 +179,16 @@ class _CameraScannerScreenState extends State<CameraScannerScreen>
         mimeTypes: const ['image/jpeg', 'image/jpg', 'image/png'],
       );
       if (safItems.isNotEmpty) {
+        final validatedPaths = <String>[];
         for (final item in safItems) {
           final file = File(item.path);
           if (await file.exists()) {
             await FileValidator.validateFile(file);
-            setState(() {
-              _capturedPagePaths.add(item.path);
-            });
+            validatedPaths.add(item.path);
           }
         }
+        if (!mounted) return;
+        setState(() => _capturedPagePaths.addAll(validatedPaths));
         return;
       }
 
@@ -164,15 +198,16 @@ class _CameraScannerScreenState extends State<CameraScannerScreen>
       );
       if (files.isEmpty) return;
 
+      final validatedPaths = <String>[];
       for (final pf in files) {
         if (pf.path != null) {
           final file = File(pf.path!);
           await FileValidator.validateFile(file);
-          setState(() {
-            _capturedPagePaths.add(pf.path!);
-          });
+          validatedPaths.add(pf.path!);
         }
       }
+      if (!mounted) return;
+      setState(() => _capturedPagePaths.addAll(validatedPaths));
     } catch (e) {
       if (mounted) {
         ErrorDialog.show(

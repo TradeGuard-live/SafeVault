@@ -136,7 +136,24 @@ void main() {
     );
 
     test(
-      '5. Android data extraction rules disallow all cloud and D2D transfers',
+      '5. Debug and profile manifests do not re-add network permissions',
+      () {
+        for (final path in [
+          'android/app/src/debug/AndroidManifest.xml',
+          'android/app/src/profile/AndroidManifest.xml',
+        ]) {
+          final content = File(path).readAsStringSync();
+          expect(content, isNot(contains('android.permission.INTERNET')));
+          expect(
+            content,
+            isNot(contains('android.permission.ACCESS_NETWORK_STATE')),
+          );
+        }
+      },
+    );
+
+    test(
+      '6. Android data extraction rules disallow all cloud and D2D transfers',
       () {
         final rulesFile = File(
           'android/app/src/main/res/xml/data_extraction_rules.xml',
@@ -151,7 +168,7 @@ void main() {
       },
     );
 
-    test('6. Network security config permits zero cleartext traffic and trusts no anchors', () {
+    test('7. Network security config permits zero cleartext traffic and trusts no anchors', () {
       final netConfigFile = File(
         'android/app/src/main/res/xml/network_security_config.xml',
       );
@@ -163,7 +180,7 @@ void main() {
     });
 
     test(
-      '7. R8 and ProGuard rules exist and configure minification and shrinking',
+      '8. R8 and ProGuard rules exist and configure minification and shrinking',
       () {
         final gradleFile = File('android/app/build.gradle.kts');
         expect(gradleFile.existsSync(), isTrue);

@@ -15,7 +15,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../../authentication/presentation/auth_providers.dart';
-import '../../authentication/presentation/two_factor_verification_dialog.dart';
 import '../domain/document_model.dart';
 
 class DocumentShareSheet extends ConsumerStatefulWidget {
@@ -63,7 +62,7 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
       ),
       title: 'Authorize Export',
       reason:
-          'Biometric + PIN verification required before decrypting files for export: $actionTitle',
+          'Confirm with biometrics before decrypting files for export: $actionTitle',
     );
   }
 
@@ -423,7 +422,7 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Outgoing sharing creates a temporary decrypted file outside Vault. 2FA is required.',
+                      'Outgoing sharing creates a temporary decrypted file outside Vault. Biometric confirmation is required.',
                       style: TextStyle(
                         color: theme.textSecondary,
                         fontSize: 11,

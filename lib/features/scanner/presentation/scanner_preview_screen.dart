@@ -26,7 +26,9 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
 
   late List<ScannerPage> _pages;
   int _currentPageIndex = 0;
+  bool _isLoadingPages = true;
   bool _isProcessing = false;
+  String? _loadError;
 
   @override
   void initState() {
@@ -36,64 +38,101 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
   }
 
   Future<void> _loadPages() async {
-    for (final path in widget.pagePaths) {
-      final file = File(path);
-      if (await file.exists()) {
-        final bytes = await file.readAsBytes();
-        _pages.add(ScannerPage(originalPath: path, currentBytes: bytes));
+    try {
+      final pages = <ScannerPage>[];
+      for (final path in widget.pagePaths) {
+        final file = File(path);
+        if (await file.exists()) {
+          final bytes = await file.readAsBytes();
+          if (bytes.isNotEmpty) {
+            pages.add(ScannerPage(originalPath: path, currentBytes: bytes));
+          }
+        }
       }
+
+      if (!mounted) return;
+      setState(() {
+        _pages = pages;
+        _isLoadingPages = false;
+        _loadError = pages.isEmpty
+            ? 'The selected scan files are unavailable or empty.'
+            : null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingPages = false;
+        _loadError = 'Unable to load the selected scan files.';
+      });
     }
-    if (mounted) setState(() {});
+  }
+
+  void _showProcessingError(String title, Object error) {
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+    ErrorDialog.show(context, title: title, message: error.toString());
   }
 
   Future<void> _applyRotation() async {
-    if (_pages.isEmpty) return;
+    if (_pages.isEmpty || _isProcessing) return;
+    final page = _pages[_currentPageIndex];
+    final nextRotation = (page.rotationDegrees + 90) % 360;
     setState(() => _isProcessing = true);
 
-    final page = _pages[_currentPageIndex];
-    page.rotationDegrees = (page.rotationDegrees + 90) % 360;
+    try {
+      final processed = await _scannerService.processImageBytes(
+        await File(page.originalPath).readAsBytes(),
+        rotationDegrees: nextRotation,
+        filter: page.filter,
+      );
 
-    final processed = await _scannerService.processImageBytes(
-      await File(page.originalPath).readAsBytes(),
-      rotationDegrees: page.rotationDegrees,
-      filter: page.filter,
-    );
-
-    setState(() {
-      page.currentBytes = processed;
-      _isProcessing = false;
-    });
+      if (!mounted) return;
+      setState(() {
+        page.rotationDegrees = nextRotation;
+        page.currentBytes = processed;
+        _isProcessing = false;
+      });
+    } catch (error) {
+      _showProcessingError('Image Rotation Error', error);
+    }
   }
 
   Future<void> _applyFilter(ImageFilterType filter) async {
-    if (_pages.isEmpty) return;
+    if (_pages.isEmpty || _isProcessing) return;
+    final page = _pages[_currentPageIndex];
     setState(() => _isProcessing = true);
 
-    final page = _pages[_currentPageIndex];
-    page.filter = filter;
+    try {
+      final processed = await _scannerService.processImageBytes(
+        await File(page.originalPath).readAsBytes(),
+        rotationDegrees: page.rotationDegrees,
+        filter: filter,
+      );
 
-    final processed = await _scannerService.processImageBytes(
-      await File(page.originalPath).readAsBytes(),
-      rotationDegrees: page.rotationDegrees,
-      filter: filter,
-    );
-
-    setState(() {
-      page.currentBytes = processed;
-      _isProcessing = false;
-    });
+      if (!mounted) return;
+      setState(() {
+        page.filter = filter;
+        page.currentBytes = processed;
+        _isProcessing = false;
+      });
+    } catch (error) {
+      _showProcessingError('Image Filter Error', error);
+    }
   }
 
   Future<void> _runOcr() async {
-    if (_pages.isEmpty) return;
+    if (_pages.isEmpty || _isProcessing) return;
     final page = _pages[_currentPageIndex];
+    setState(() => _isProcessing = true);
 
-    // Write current processed image to temp cache file for OCR
-    final tempDir = await getTemporaryDirectory();
-    final tempFile = File('${tempDir.path}/ocr_${_uuid.v4()}.jpg');
-    await tempFile.writeAsBytes(page.currentBytes);
+    try {
+      // Write current processed image to temp cache file for OCR.
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/ocr_${_uuid.v4()}.jpg');
+      await tempFile.writeAsBytes(page.currentBytes);
 
-    if (mounted) {
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
       context.push(
         '/ocr-review',
         extra: {
@@ -101,11 +140,13 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
           'allPageBytes': _pages.map((p) => p.currentBytes).toList(),
         },
       );
+    } catch (error) {
+      _showProcessingError('OCR Preparation Error', error);
     }
   }
 
   Future<void> _saveAsPdf() async {
-    if (_pages.isEmpty) return;
+    if (_pages.isEmpty || _isProcessing) return;
     setState(() => _isProcessing = true);
 
     try {
@@ -116,32 +157,23 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
       final pdfFile = File('${tempDir.path}/scan_${_uuid.v4()}.pdf');
       await pdfFile.writeAsBytes(pdfBytes);
 
+      if (!mounted) return;
       setState(() => _isProcessing = false);
-
-      if (mounted) {
-        context.push(
-          '/add-document',
-          extra: {
-            'initialFilePath': pdfFile.path,
-            'mimeType': 'application/pdf',
-            'initialFileName': 'Scanned Document.pdf',
-          },
-        );
-      }
-    } catch (e) {
-      setState(() => _isProcessing = false);
-      if (mounted) {
-        ErrorDialog.show(
-          context,
-          title: 'PDF Compilation Error',
-          message: e.toString(),
-        );
-      }
+      context.push(
+        '/add-document',
+        extra: {
+          'initialFilePath': pdfFile.path,
+          'mimeType': 'application/pdf',
+          'initialFileName': 'Scanned Document.pdf',
+        },
+      );
+    } catch (error) {
+      _showProcessingError('PDF Compilation Error', error);
     }
   }
 
   Future<void> _saveAsImages() async {
-    if (_pages.isEmpty) return;
+    if (_pages.isEmpty || _isProcessing) return;
     setState(() => _isProcessing = true);
 
     try {
@@ -150,27 +182,18 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
       final imgFile = File('${tempDir.path}/scan_${_uuid.v4()}.jpg');
       await imgFile.writeAsBytes(page.currentBytes);
 
+      if (!mounted) return;
       setState(() => _isProcessing = false);
-
-      if (mounted) {
-        context.push(
-          '/add-document',
-          extra: {
-            'initialFilePath': imgFile.path,
-            'mimeType': 'image/jpeg',
-            'initialFileName': 'Scanned Image.jpg',
-          },
-        );
-      }
-    } catch (e) {
-      setState(() => _isProcessing = false);
-      if (mounted) {
-        ErrorDialog.show(
-          context,
-          title: 'Image Export Error',
-          message: e.toString(),
-        );
-      }
+      context.push(
+        '/add-document',
+        extra: {
+          'initialFilePath': imgFile.path,
+          'mimeType': 'image/jpeg',
+          'initialFileName': 'Scanned Image.jpg',
+        },
+      );
+    } catch (error) {
+      _showProcessingError('Image Export Error', error);
     }
   }
 
@@ -178,11 +201,39 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
   Widget build(BuildContext context) {
     final colors = context.themeColors;
 
-    if (_pages.isEmpty) {
+    if (_isLoadingPages) {
       return Scaffold(
         appBar: AppBar(title: const Text('Review Scans')),
         body: Center(
           child: CircularProgressIndicator(color: colors.primaryAccent),
+        ),
+      );
+    }
+
+    if (_loadError != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Review Scans')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.error_outline_rounded,
+                  color: colors.error,
+                  size: 48,
+                ),
+                const SizedBox(height: 12),
+                Text(_loadError!, textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                OutlinedButton(
+                  onPressed: () => context.pop(),
+                  child: const Text('Back to Scanner'),
+                ),
+              ],
+            ),
+          ),
         ),
       );
     }
@@ -205,13 +256,15 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
           IconButton(
             icon: const Icon(Icons.document_scanner_outlined),
             tooltip: 'Run Offline OCR',
-            onPressed: _runOcr,
+            onPressed: _isProcessing ? null : _runOcr,
           ),
           if (_pages.length > 1)
             IconButton(
               icon: const Icon(Icons.delete_outline_rounded),
               tooltip: 'Delete Page',
-              onPressed: () {
+              onPressed: _isProcessing
+                  ? null
+                  : () {
                 setState(() {
                   _pages.removeAt(_currentPageIndex);
                   if (_currentPageIndex >= _pages.length) {
@@ -329,7 +382,7 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: _runOcr,
+                      onPressed: _isProcessing ? null : _runOcr,
                       icon: const Icon(Icons.manage_search_rounded, size: 18),
                       label: const Text('Extract OCR'),
                     ),
@@ -337,7 +390,7 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _saveAsPdf,
+                      onPressed: _isProcessing ? null : _saveAsPdf,
                       icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
                       label: Text(
                         _pages.length > 1
@@ -366,7 +419,7 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
-      onSelected: (_) => _applyFilter(type),
+      onSelected: _isProcessing ? null : (_) => _applyFilter(type),
       backgroundColor: colors.cardBackground,
       selectedColor: colors.primaryAccent.withOpacity(0.2),
       labelStyle: TextStyle(

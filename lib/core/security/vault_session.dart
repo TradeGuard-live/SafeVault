@@ -157,8 +157,16 @@ class VaultSession extends ChangeNotifier {
   void handleLifecycleChange(AppLifecycleState state) {
     if (!isUnlocked) return;
 
+    // Android reports `inactive` for short-lived system UI, including the
+    // screenshot animation, notification shade, and biometric prompt. Those
+    // interruptions do not mean the user has left the vault and must not
+    // force a password prompt. A real background transition proceeds to
+    // `hidden` or `paused`, which remain protected below.
+    if (state == AppLifecycleState.inactive) {
+      return;
+    }
+
     if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden) {
       if (_isSystemActivityActive) {
         // App was paused/inactive because an explicit system activity was launched

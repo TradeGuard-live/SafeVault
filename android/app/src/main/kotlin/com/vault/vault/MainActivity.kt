@@ -366,13 +366,14 @@ class MainActivity : FlutterFragmentActivity() {
         }
 
         try {
-            val exportDirCanonical = File(cacheDir, "shared_exports").canonicalPath
+            val exportDirCanonical = File(cacheDir, "shared_exports").canonicalFile.path
+            val exportDirectoryPrefix = "$exportDirCanonical${File.separator}"
             val uris = ArrayList<Uri>()
 
             for (path in filePaths) {
                 val file = File(path).canonicalFile
                 // Enforce that only files inside shared_exports directory can be shared
-                if (!file.canonicalPath.startsWith(exportDirCanonical)) {
+                if (!file.path.startsWith(exportDirectoryPrefix) || !file.isFile) {
                     result.error(
                         "ACCESS_DENIED",
                         "Security violation: Only files inside shared_exports directory may be shared.",

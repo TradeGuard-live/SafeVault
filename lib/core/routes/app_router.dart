@@ -294,6 +294,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             initialFilePath: extra?['initialFilePath'] as String?,
             mimeType: extra?['mimeType'] as String?,
             initialFileName: extra?['initialFileName'] as String?,
+            defaultCategoryId: extra?['defaultCategoryId'] as String?,
+            editDocument: extra?['editDocument'] as DocumentModel?,
             ocrData: extra?['ocrData'] as Map<String, dynamic>?,
           );
         },

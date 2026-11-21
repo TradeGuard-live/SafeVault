@@ -18,11 +18,8 @@ import '../../../core/utils/masked_text_formatter.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../authentication/presentation/auth_providers.dart';
-import '../../authentication/presentation/two_factor_verification_dialog.dart';
 import '../../ocr/data/document_text_extractor.dart';
 import '../../ocr/domain/document_extraction_model.dart';
-import '../../timeline/data/activity_repository.dart';
-import '../../timeline/domain/activity_model.dart';
 import '../domain/document_file_model.dart';
 import '../domain/document_model.dart';
 import 'document_share_sheet.dart';
@@ -47,26 +44,19 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
   late TabController _tabController;
   DocumentModel? _document;
   DocumentExtractionModel? _extraction;
-  List<ActivityModel> _activities = [];
   bool _isLoading = true;
   bool _isReprocessing = false;
   Timer? _visibilityTimer;
   bool _revealDocumentNumber = false;
   Uint8List? _firstPagePreviewBytes;
 
-  // Full Text tab state
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  double _fontSize = 14.0;
-  bool _isTextWrapped = true;
-
   @override
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 4,
+      length: 2,
       vsync: this,
-      initialIndex: widget.initialTabIndex.clamp(0, 3),
+      initialIndex: widget.initialTabIndex.clamp(0, 1),
     );
     _loadDocument();
   }
@@ -82,7 +72,6 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
   void dispose() {
     _visibilityTimer?.cancel();
     _tabController.dispose();
-    _searchController.dispose();
     super.dispose();
   }
 
@@ -104,16 +93,10 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
         session.masterKey!,
       );
 
-      final activityRepo = ActivityRepository();
-      final acts = await activityRepo.getActivities(
-        documentId: widget.documentId,
-      );
-
       if (mounted) {
         setState(() {
           _document = doc;
           _extraction = extraction;
-          _activities = acts;
           _isLoading = false;
         });
 
@@ -144,8 +127,6 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
             });
           } else if (pending.type == VaultActionType.copyAllFields) {
             _copyAllFields();
-          } else if (pending.type == VaultActionType.viewExtractedText) {
-            _copyFullText();
           }
         }
       }
@@ -176,7 +157,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
         returnRoute: '/document/${widget.documentId}',
       ),
       title: 'Reveal Document Number',
-      reason: 'Biometric + PIN verification required to reveal masked document number',
+      reason: 'Confirm with biometrics to reveal the masked document number.',
     );
     if (verified && mounted) {
       setState(() => _revealDocumentNumber = true);
@@ -269,8 +250,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
           returnRoute: '/dashboard',
         ),
         title: 'Authorize Move to Trash',
-        reason:
-            'Biometric + PIN authorization required to delete "${_document?.name}".',
+        reason: 'Confirm with biometrics to delete "${_document?.name}".',
       );
       if (!verified || !mounted) return;
 
@@ -475,7 +455,8 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
         returnRoute: '/document/${widget.documentId}',
       ),
       title: 'Authorize Copy All Fields',
-      reason: 'Biometric + PIN authorization required to copy all structured fields to clipboard.',
+      reason:
+          'Confirm with biometrics to copy all structured fields to clipboard.',
     );
     if (!verified || !mounted) return;
 
@@ -489,32 +470,6 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
       context,
       text: buffer.toString(),
       label: 'All Structured Fields',
-    );
-  }
-
-  Future<void> _copyFullText() async {
-    final text = _extraction?.extractedTextEncrypted;
-    if (text == null || text.trim().isEmpty) return;
-
-    final gate = ref.read(authenticationGateProvider);
-    final verified = await gate.authenticateForAction(
-      context,
-      action: PendingVaultAction(
-        type: VaultActionType.viewExtractedText,
-        targetId: widget.documentId,
-        targetName: _document?.name ?? 'Document',
-        returnRoute: '/document/${widget.documentId}',
-      ),
-      title: 'Copy Full Text',
-      reason:
-          'Biometric + PIN authorization required to copy full extracted text',
-    );
-    if (!verified || !mounted) return;
-
-    await ClipboardSecurityService.instance.copySensitive(
-      context,
-      text: text,
-      label: 'Full Extracted Text',
     );
   }
 
@@ -605,11 +560,6 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
               icon: Icon(Icons.auto_awesome_rounded, size: 18),
               text: 'Extracted Info',
             ),
-            Tab(
-              icon: Icon(Icons.text_snippet_rounded, size: 18),
-              text: 'Full Text',
-            ),
-            Tab(icon: Icon(Icons.history_rounded, size: 18), text: 'Activity'),
           ],
         ),
       ),
@@ -621,12 +571,6 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
 
           // TAB 2: Extracted Information
           _buildExtractedInfoTab(doc, colors),
-
-          // TAB 3: Full Text
-          _buildFullTextTab(colors),
-
-          // TAB 4: Activity Timeline
-          _buildActivityTab(colors),
         ],
       ),
     );
@@ -1241,269 +1185,6 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
           ),
         ],
       ),
-    );
-  }
-
-  // =========================================================================
-  // TAB 3: FULL TEXT
-  // =========================================================================
-  Widget _buildFullTextTab(AppThemeColors colors) {
-    final fullText = _extraction?.extractedTextEncrypted ?? '';
-
-    if (fullText.trim().isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.text_snippet_outlined,
-              size: 54,
-              color: colors.textSecondary.withValues(alpha: 0.4),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No extracted text available.',
-              style: TextStyle(color: colors.textSecondary),
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton.icon(
-              onPressed: _reprocessDocument,
-              icon: const Icon(Icons.play_arrow_rounded),
-              label: const Text('Extract Text Now'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        // Controls Toolbar
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: colors.surface,
-          child: Column(
-            children: [
-              // Search input
-              TextField(
-                controller: _searchController,
-                style: TextStyle(color: colors.textPrimary, fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: 'Search inside document...',
-                  isDense: true,
-                  prefixIcon: const Icon(Icons.search_rounded, size: 18),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, size: 16),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                        )
-                      : null,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                onChanged: (val) => setState(() => _searchQuery = val.trim()),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.text_decrease_rounded, size: 18),
-                    tooltip: 'Decrease font size',
-                    onPressed: _fontSize > 10
-                        ? () => setState(() => _fontSize -= 2)
-                        : null,
-                  ),
-                  Text(
-                    '${_fontSize.toInt()}pt',
-                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.text_increase_rounded, size: 18),
-                    tooltip: 'Increase font size',
-                    onPressed: _fontSize < 24
-                        ? () => setState(() => _fontSize += 2)
-                        : null,
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: Icon(
-                      _isTextWrapped
-                          ? Icons.wrap_text_rounded
-                          : Icons.format_align_left_rounded,
-                      size: 18,
-                    ),
-                    tooltip: _isTextWrapped ? 'Wrap text' : 'Unwrap text',
-                    onPressed: () =>
-                        setState(() => _isTextWrapped = !_isTextWrapped),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: _copyFullText,
-                    icon: const Icon(Icons.copy_rounded, size: 16),
-                    label: const Text('Copy Full Text'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.primaryAccent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const Divider(height: 1),
-
-        // Text Content
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: _isTextWrapped ? Axis.vertical : Axis.horizontal,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              padding: const EdgeInsets.all(18),
-              child: _buildHighlightedText(fullText, _searchQuery, colors),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHighlightedText(
-    String text,
-    String query,
-    AppThemeColors colors,
-  ) {
-    if (query.isEmpty) {
-      return SelectableText(
-        text,
-        style: TextStyle(
-          color: colors.textPrimary,
-          fontSize: _fontSize,
-          height: 1.5,
-          fontFamily: 'monospace',
-        ),
-      );
-    }
-
-    final spans = <TextSpan>[];
-    final pattern = RegExp(RegExp.escape(query), caseSensitive: false);
-    int start = 0;
-
-    for (final match in pattern.allMatches(text)) {
-      if (match.start > start) {
-        spans.add(TextSpan(text: text.substring(start, match.start)));
-      }
-      spans.add(
-        TextSpan(
-          text: text.substring(match.start, match.end),
-          style: const TextStyle(
-            backgroundColor: Colors.amberAccent,
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      );
-      start = match.end;
-    }
-
-    if (start < text.length) {
-      spans.add(TextSpan(text: text.substring(start)));
-    }
-
-    return SelectableText.rich(
-      TextSpan(
-        style: TextStyle(
-          color: colors.textPrimary,
-          fontSize: _fontSize,
-          height: 1.5,
-          fontFamily: 'monospace',
-        ),
-        children: spans,
-      ),
-    );
-  }
-
-  // =========================================================================
-  // TAB 4: ACTIVITY
-  // =========================================================================
-  Widget _buildActivityTab(AppThemeColors colors) {
-    if (_activities.isEmpty) {
-      return Center(
-        child: Text(
-          'No activity records for this document.',
-          style: TextStyle(color: colors.textSecondary),
-        ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.all(18),
-      itemCount: _activities.length,
-      separatorBuilder: (_, __) => const Divider(height: 16),
-      itemBuilder: (context, index) {
-        final act = _activities[index];
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: colors.primaryAccent.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.check_circle_outline_rounded,
-                color: colors.primaryAccent,
-                size: 16,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    act.activityType.replaceAll('_', ' '),
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  if (act.details != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        act.details!,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 4),
-                  Text(
-                    DateFormatter.formatDateTimeDisplay(act.timestamp),
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: colors.textSecondary.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 }

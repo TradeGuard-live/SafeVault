@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,21 +12,21 @@ import 'core/services/native_saf_and_share_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/authentication/presentation/auth_providers.dart';
 
+class StartupDiagnostics {
+  final String serviceName;
+  final String error;
+  final DateTime timestamp;
+
+  StartupDiagnostics({required this.serviceName, required this.error})
+    : timestamp = DateTime.now();
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Set system UI orientation & overlays
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
-
-  // Privacy First: Block screenshots & hide recent-apps previews by default
-  await PrivacyService.setScreenshotProtection(true);
-
-  // Initialize local notifications service offline
-  await LocalNotificationService.instance.initialize();
-
+  // Do not await noncritical platform work before the first Flutter frame.
+  // MainActivity enables FLAG_SECURE natively in onCreate, so moving this
+  // configuration after runApp does not expose the vault to screenshots.
   runApp(const ProviderScope(child: VaultApp()));
 }
 
@@ -39,6 +40,7 @@ class VaultApp extends ConsumerStatefulWidget {
 class _VaultAppState extends ConsumerState<VaultApp> {
   late final AppLifecycleListener _lifecycleListener;
   StreamSubscription<List<SafFileItem>>? _shareSubscription;
+  StartupDiagnostics? _startupDiagnostics;
 
   @override
   void initState() {
@@ -46,6 +48,7 @@ class _VaultAppState extends ConsumerState<VaultApp> {
     final session = ref.read(vaultSessionProvider);
     NativeSafAndShareService.instance.attachSession(session);
     ref.read(biometricServiceProvider).attachVaultSession(session);
+    unawaited(_initializeNonCriticalServices());
 
     _lifecycleListener = AppLifecycleListener(
       onStateChange: (state) {
@@ -90,6 +93,44 @@ class _VaultAppState extends ConsumerState<VaultApp> {
     super.dispose();
   }
 
+  Future<void> _initializeNonCriticalServices() async {
+    await _runStartupTask(
+      serviceName: 'Display configuration',
+      task: () => SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]),
+    );
+    await _runStartupTask(
+      serviceName: 'Screenshot protection',
+      // FLAG_SECURE is already active in MainActivity before Flutter renders.
+      task: () => PrivacyService.setScreenshotProtection(true),
+    );
+    await _runStartupTask(
+      serviceName: 'Local notifications',
+      task: () => LocalNotificationService.instance.initialize(),
+    );
+  }
+
+  Future<void> _runStartupTask({
+    required String serviceName,
+    required Future<dynamic> Function() task,
+  }) async {
+    try {
+      await task();
+    } catch (error) {
+      debugPrint('Startup notice: $serviceName: $error');
+      if (mounted && _startupDiagnostics == null) {
+        setState(() {
+          _startupDiagnostics = StartupDiagnostics(
+            serviceName: serviceName,
+            error: error.toString(),
+          );
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
@@ -114,6 +155,30 @@ class _VaultAppState extends ConsumerState<VaultApp> {
         debugShowCheckedModeBanner: false,
         theme: activeTheme,
         routerConfig: router,
+        builder: (context, child) {
+          final diagnostics = _startupDiagnostics;
+          if (!kDebugMode || diagnostics == null) {
+            return child ?? const SizedBox.shrink();
+          }
+
+          return Stack(
+            children: [
+              child ?? const SizedBox.shrink(),
+              SafeArea(
+                child: Material(
+                  color: Colors.amber.shade100,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Text(
+                      '${diagnostics.serviceName} failed during startup: ${diagnostics.error}',
+                      style: const TextStyle(color: Colors.black, fontSize: 12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

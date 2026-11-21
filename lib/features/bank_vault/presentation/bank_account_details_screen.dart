@@ -10,7 +10,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../authentication/presentation/auth_providers.dart';
-import '../../authentication/presentation/two_factor_verification_dialog.dart';
 import '../domain/bank_account_model.dart';
 
 class BankAccountDetailsScreen extends ConsumerStatefulWidget {
@@ -100,6 +99,18 @@ class _BankAccountDetailsScreenState
     );
 
     if (verified && mounted) {
+      final accountNumber = _account?.decryptedAccountNumber;
+      if (accountNumber == null || accountNumber.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'The account number could not be decrypted. Please edit and save this account again.',
+            ),
+          ),
+        );
+        return;
+      }
+
       setState(() => _isDetailsRevealed = true);
       _visibilityTimer?.cancel();
       _visibilityTimer = Timer(const Duration(seconds: 60), () {
@@ -188,7 +199,7 @@ class _BankAccountDetailsScreenState
         ),
         title: 'Authorize Account Deletion',
         reason:
-            'Biometric + PIN authorization required to delete bank account "${_account?.bankName}".',
+            'Confirm with biometrics to delete bank account "${_account?.bankName}".',
       );
       if (!verified || !mounted) return;
 
@@ -241,10 +252,19 @@ class _BankAccountDetailsScreenState
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Edit',
             onPressed: () async {
-              final verified = await TwoFactorVerificationDialog.verify(
+              final verified = await ref
+                  .read(authenticationGateProvider)
+                  .authenticateForAction(
                 context,
+                action: PendingVaultAction(
+                  type: VaultActionType.editBankAccount,
+                  targetId: account.id,
+                  targetName: account.bankName,
+                  returnRoute: '/bank-account/${account.id}',
+                ),
                 title: 'Authorize Bank Account Edit',
-                reason: 'Factor 1: Authenticate with biometrics before editing bank details',
+                reason:
+                    'Confirm with biometrics before editing these bank details.',
               );
               if (!verified) return;
               if (context.mounted) {
@@ -364,7 +384,7 @@ class _BankAccountDetailsScreenState
                             size: 16,
                           ),
                           label: Text(
-                            _isDetailsRevealed ? 'Hide' : 'Reveal (2FA)',
+                            _isDetailsRevealed ? 'Hide' : 'Reveal',
                           ),
                           style: TextButton.styleFrom(
                             foregroundColor: colors.primaryAccent,

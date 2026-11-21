@@ -94,7 +94,7 @@ class AboutPrivacyScreen extends StatelessWidget {
             context,
             icon: Icons.key_rounded,
             title: 'Password Manager & AAD Binding',
-            content: 'Passwords, usernames, emails, and notes are encrypted at rest with AES-256-GCM. Each field is bound to its record identity and field name using Associated Authenticated Data (AAD) to prevent ciphertext swapping. Revealing any stored password requires fresh two-factor authentication.',
+            content: 'Passwords, usernames, emails, and notes are encrypted at rest with AES-256-GCM. Each field is bound to its record identity and field name using Associated Authenticated Data (AAD) to prevent ciphertext swapping. After the vault is unlocked, revealing a stored password requires fresh biometric verification.',
           ),
           const SizedBox(height: 14),
 
@@ -102,7 +102,7 @@ class AboutPrivacyScreen extends StatelessWidget {
             context,
             icon: Icons.account_balance_rounded,
             title: 'Bank Vault Restrictions & Strict Privacy',
-            content: 'Bank Vault stores encrypted reference data ONLY. It does NOT connect to banks or process transactions. Vault STRICTLY PROHIBITS and has NO fields for ATM PINs, CVVs, UPI PINs, OTPs, or Netbanking passwords. Full account numbers are masked by default and require fresh 2FA verification to reveal.',
+            content: 'Bank Vault stores encrypted reference data ONLY. It does NOT connect to banks or process transactions. Vault STRICTLY PROHIBITS and has NO fields for ATM PINs, CVVs, UPI PINs, OTPs, or Netbanking passwords. Full account numbers are masked by default and require fresh biometric verification to reveal during an unlocked session.',
           ),
           const SizedBox(height: 14),
 

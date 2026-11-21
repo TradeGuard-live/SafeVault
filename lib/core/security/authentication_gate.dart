@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../features/authentication/presentation/auth_providers.dart';
-import '../../features/authentication/presentation/two_factor_verification_dialog.dart';
+import 'biometric_service.dart';
 import 'vault_session.dart';
 
 enum VaultActionType {
@@ -13,6 +13,7 @@ enum VaultActionType {
   revealPassword,
   copyPassword,
   editPassword,
+  editBankAccount,
   deletePassword,
   revealDocumentField,
   copyDocumentField,
@@ -28,7 +29,8 @@ enum VaultActionType {
 
 enum SensitivityLevel { low, medium, high }
 
-/// Represents a pending protected operation awaiting mandatory two-factor authentication.
+/// Represents a protected operation awaiting confirmation or the initial vault
+/// unlock flow.
 class PendingVaultAction {
   final String id;
   final VaultActionType type;
@@ -70,21 +72,28 @@ class PendingVaultAction {
 final authenticationGateProvider = ChangeNotifierProvider<AuthenticationGate>((
   ref,
 ) {
-  final session = ref.watch(vaultSessionProvider);
-  return AuthenticationGate(session);
+  // AuthenticationGate owns the action that must be resumed after unlock.
+  // Reading (rather than watching) the session keeps that action intact when
+  // VaultSession notifies listeners during the unlock transition.
+  final session = ref.read(vaultSessionProvider);
+  final biometricService = ref.read(biometricServiceProvider);
+  return AuthenticationGate(session, biometricService: biometricService);
 });
 
 /// Central authentication gate for the entire application.
-/// Ensures that protected operations (e.g. reveal account number, reveal password,
-/// copy sensitive data, export document, delete document) require mandatory Two-Factor Authentication
-/// (Biometric + 6-digit PIN) and return directly to the requesting screen and action,
-/// never redirecting to the home screen.
+/// The initial vault unlock requires both biometric verification and the
+/// six-digit PIN. Once unlocked, protected operations require a fresh
+/// biometric confirmation only; the PIN is not requested again during the
+/// same vault session.
 class AuthenticationGate extends ChangeNotifier {
   final VaultSession _session;
+  final BiometricService _biometricService;
   PendingVaultAction? _pendingAction;
   bool _isAuthenticating = false;
 
-  AuthenticationGate(this._session);
+  AuthenticationGate(this._session, {BiometricService? biometricService})
+    : _biometricService =
+          biometricService ?? BiometricService(vaultSession: _session);
 
   PendingVaultAction? get pendingAction => _pendingAction;
   bool get isAuthenticating => _isAuthenticating;
@@ -116,8 +125,8 @@ class AuthenticationGate extends ChangeNotifier {
     return action;
   }
 
-  /// Authenticates the user for a specific protected operation using mandatory 2FA.
-  /// Returns `true` only if BOTH Biometric and 6-digit PIN verifications succeed.
+  /// Authenticates a sensitive action with biometrics while the vault is
+  /// already unlocked. The initial unlock remains biometric + PIN.
   /// Guarantees that the navigation stack is preserved and the user is NEVER
   /// redirected to the home screen.
   Future<bool> authenticateForAction(
@@ -128,29 +137,24 @@ class AuthenticationGate extends ChangeNotifier {
     SensitivityLevel sensitivityLevel = SensitivityLevel.high,
   }) async {
     // Prevent duplicate concurrent prompt execution from multiple taps
-    if (_isAuthenticating) return false;
+    if (_isAuthenticating || !_session.isUnlocked) return false;
     _isAuthenticating = true;
 
     // 1. Record the pending action
     setPendingAction(action);
 
-    // 2. Mark system activity to prevent lifecycle false auto-locks
     _session.beginSystemActivity('AUTHENTICATION_GATE_${action.type.name}');
 
     try {
-      final dialogTitle = title ?? _defaultTitleFor(action.type);
+      final actionTitle = title ?? _defaultTitleFor(action.type);
       final dialogReason =
           reason ?? _defaultReasonFor(action.type, action.targetName);
 
-      // 3. Display in-place Two-Factor Verification Dialog (Biometric + 6-digit PIN)
-      final verified = await TwoFactorVerificationDialog.verify(
-        context,
-        title: dialogTitle,
-        reason: dialogReason,
-        session: _session,
+      final verified = await _biometricService.authenticate(
+        reason: '$actionTitle. $dialogReason',
       );
 
-      if (verified) {
+      if (verified && _session.isUnlocked) {
         action.isExecuted = true;
         _session.recordUserActivity();
         clearPendingAction();
@@ -161,12 +165,15 @@ class AuthenticationGate extends ChangeNotifier {
       }
     } catch (e) {
       clearPendingAction();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Biometric verification failed.')),
+        );
+      }
       return false;
     } finally {
       _isAuthenticating = false;
-      Future.microtask(() {
-        _session.endSystemActivity();
-      });
+      Future.microtask(_session.endSystemActivity);
     }
   }
 
@@ -184,6 +191,8 @@ class AuthenticationGate extends ChangeNotifier {
         return 'Copy Password';
       case VaultActionType.editPassword:
         return 'Edit Password';
+      case VaultActionType.editBankAccount:
+        return 'Edit Bank Account';
       case VaultActionType.deletePassword:
         return 'Authorize Password Deletion';
       case VaultActionType.revealDocumentField:
@@ -205,7 +214,7 @@ class AuthenticationGate extends ChangeNotifier {
       case VaultActionType.permanentlyDeleteDocument:
         return 'Confirm Permanent Destruction';
       case VaultActionType.custom:
-        return 'Two-Factor Authentication';
+        return 'Biometric Authentication';
     }
   }
 
@@ -213,39 +222,41 @@ class AuthenticationGate extends ChangeNotifier {
     final name = targetName != null ? ' for "$targetName"' : '';
     switch (type) {
       case VaultActionType.revealBankDetails:
-        return 'Authenticate with biometrics and 6-digit PIN to reveal full bank account details$name.';
+        return 'Confirm with biometrics to reveal full bank account details$name.';
       case VaultActionType.copyBankDetails:
-        return 'Authenticate with biometrics and 6-digit PIN to copy bank details$name to clipboard.';
+        return 'Confirm with biometrics to copy bank details$name to clipboard.';
       case VaultActionType.deleteBankAccount:
-        return 'Authenticate with biometrics and 6-digit PIN to delete bank account$name.';
+        return 'Confirm with biometrics to delete bank account$name.';
       case VaultActionType.revealPassword:
-        return 'Authenticate with biometrics and 6-digit PIN to reveal password$name.';
+        return 'Confirm with biometrics to reveal password$name.';
       case VaultActionType.copyPassword:
-        return 'Authenticate with biometrics and 6-digit PIN to copy password$name.';
+        return 'Confirm with biometrics to copy password$name.';
       case VaultActionType.editPassword:
-        return 'Authenticate to edit password record$name.';
+        return 'Confirm with biometrics to edit password record$name.';
+      case VaultActionType.editBankAccount:
+        return 'Confirm with biometrics to edit bank account$name.';
       case VaultActionType.deletePassword:
-        return 'Authenticate to delete password record$name.';
+        return 'Confirm with biometrics to delete password record$name.';
       case VaultActionType.revealDocumentField:
-        return 'Authenticate to reveal confidential document numbers$name.';
+        return 'Confirm with biometrics to reveal confidential document numbers$name.';
       case VaultActionType.copyDocumentField:
-        return 'Authenticate to copy confidential document information$name.';
+        return 'Confirm with biometrics to copy confidential document information$name.';
       case VaultActionType.copyAllFields:
-        return 'Authenticate to copy all structured fields$name to clipboard.';
+        return 'Confirm with biometrics to copy all structured fields$name to clipboard.';
       case VaultActionType.viewExtractedText:
-        return 'Authenticate to view complete raw extracted document text$name.';
+        return 'Confirm with biometrics to view complete raw extracted document text$name.';
       case VaultActionType.exportDocument:
-        return 'Authenticate to export decrypted document$name.';
+        return 'Confirm with biometrics to export decrypted document$name.';
       case VaultActionType.shareDocument:
-        return 'Authenticate to share decrypted document$name.';
+        return 'Confirm with biometrics to share decrypted document$name.';
       case VaultActionType.deleteDocument:
-        return 'Authenticate to delete document$name.';
+        return 'Confirm with biometrics to delete document$name.';
       case VaultActionType.restoreDocument:
-        return 'Authenticate to restore document$name from trash.';
+        return 'Confirm with biometrics to restore document$name from trash.';
       case VaultActionType.permanentlyDeleteDocument:
-        return 'Authenticate to permanently delete and overwrite document$name.';
+        return 'Confirm with biometrics to permanently delete and overwrite document$name.';
       case VaultActionType.custom:
-        return 'Authenticate with biometrics and 6-digit PIN to proceed.';
+        return 'Confirm with biometrics to proceed.';
     }
   }
 }

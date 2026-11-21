@@ -180,7 +180,16 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
   }
 
   Future<void> _restoreDraftIfAvailable() async {
-    if (widget.editDocument != null) return;
+    // A draft belongs only to a blank manual add flow. It must never replace
+    // metadata or attachments supplied by a newly scanned, shared, or OCR'd
+    // document.
+    if (!mounted ||
+        widget.editDocument != null ||
+        widget.initialFilePath != null ||
+        widget.ocrData != null ||
+        widget.defaultCategoryId != null) {
+      return;
+    }
     final session = ref.read(vaultSessionProvider);
     if (!session.isUnlocked || session.masterKey == null) return;
 

@@ -11,7 +11,6 @@ import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../../authentication/presentation/auth_providers.dart';
-import '../../authentication/presentation/two_factor_verification_dialog.dart';
 import '../domain/password_entry_model.dart';
 
 class PasswordDetailsScreen extends ConsumerStatefulWidget {
@@ -91,7 +90,7 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
       return;
     }
 
-    // Mandatory Two-Factor Verification via central AuthenticationGate
+    // The vault was unlocked with 2FA; a fresh biometric confirms this action.
     final gate = ref.read(authenticationGateProvider);
     final verified = await gate.authenticateForAction(
       context,
@@ -193,7 +192,7 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
         ),
         title: 'Authorize Password Deletion',
         reason:
-            'Biometric + PIN authorization required to delete password "${_entry?.title}".',
+            'Confirm with biometrics to delete password "${_entry?.title}".',
       );
       if (!verified || !mounted) return;
 
@@ -245,10 +244,18 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Edit',
             onPressed: () async {
-              final verified = await TwoFactorVerificationDialog.verify(
+              final verified = await ref
+                  .read(authenticationGateProvider)
+                  .authenticateForAction(
                 context,
+                action: PendingVaultAction(
+                  type: VaultActionType.editPassword,
+                  targetId: entry.id,
+                  targetName: entry.title,
+                  returnRoute: '/password/${entry.id}',
+                ),
                 title: 'Authorize Password Edit',
-                reason: 'Factor 1: Authenticate with biometrics before editing password',
+                reason: 'Confirm with biometrics before editing this password.',
               );
               if (!verified) return;
               if (context.mounted) {
@@ -395,7 +402,7 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
                             size: 16,
                           ),
                           label: Text(
-                            _isPasswordRevealed ? 'Hide' : 'Reveal (2FA)',
+                            _isPasswordRevealed ? 'Hide' : 'Reveal',
                           ),
                           style: TextButton.styleFrom(
                             foregroundColor: colors.primaryAccent,

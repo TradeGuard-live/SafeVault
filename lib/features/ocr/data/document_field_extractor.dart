@@ -665,21 +665,28 @@ class DocumentFieldExtractor {
     // 2. Full Name
     String? dlName;
     for (int i = 0; i < lines.length; i++) {
-      final line = lines[i].toUpperCase();
-      if ((line.contains('NAME') &&
-              !line.contains('FATHER') &&
-              !line.contains('RTO')) &&
+      if (RegExp(
+            r'^\s*(?:FULL\s+)?NAME\s*[-:]?\s*$',
+            caseSensitive: false,
+          ).hasMatch(lines[i]) &&
           i + 1 < lines.length) {
-        dlName = _cleanName(lines[i + 1]);
-        break;
+        final candidate = _cleanName(lines[i + 1]);
+        if (_isLikelyPersonName(candidate)) {
+          dlName = candidate;
+          break;
+        }
       }
     }
     final dlSameLine = RegExp(
-      r'(?:NAME)[\s:]*([A-Za-z ]{3,35})',
+      r'^\s*(?:FULL\s+)?NAME\s*[-:]\s*([A-Za-z .]{3,35})\s*$',
       caseSensitive: false,
+      multiLine: true,
     ).firstMatch(fullText);
     if (dlSameLine != null && (dlName == null || dlName.isEmpty)) {
-      dlName = _cleanName(dlSameLine.group(1)!);
+      final candidate = _cleanName(dlSameLine.group(1)!);
+      if (_isLikelyPersonName(candidate)) {
+        dlName = candidate;
+      }
     }
     if (dlName != null && dlName.isNotEmpty) {
       fields.add(
@@ -694,14 +701,18 @@ class DocumentFieldExtractor {
 
     // 3. Father's / Husband's Name
     final relMatch = RegExp(
-      r'(?:S/O|D/O|W/O|FATHER(?:\x27S)?\s*NAME)[\s:]*([A-Za-z ]{3,35})',
+      r'^\s*(?:S/O|D/O|W/O|FATHER(?:\x27S)?\s*NAME)\s*[-:]\s*([A-Za-z .]{3,35})\s*$',
       caseSensitive: false,
+      multiLine: true,
     ).firstMatch(fullText);
-    if (relMatch != null) {
+    final relativeName = relMatch == null
+        ? null
+        : _cleanName(relMatch.group(1)!);
+    if (relativeName != null && _isLikelyPersonName(relativeName)) {
       fields.add(
         RawExtractedField(
           fieldName: "Father's / Husband's Name",
-          value: _cleanName(relMatch.group(1)!),
+          value: relativeName,
           confidence: 0.86,
           confidenceCategory: 'High',
         ),
@@ -800,15 +811,22 @@ class DocumentFieldExtractor {
     }
 
     // 10. Authorised Vehicle Class
+    final hasVehicleClassEvidence =
+        dlMatch != null ||
+        RegExp(
+          r'(?:AUTHORI[ZS]ED\s+(?:TO\s+DRIVE\s+)?VEHICLE|VEHICLE\s+CLASS|CLASS\s+OF\s+VEHICLE|DL\s+CLASS)',
+        ).hasMatch(upper);
     final classes = <String>[];
-    if (upper.contains('MCWG') || upper.contains('M/CYL')) {
-      classes.add('MCWG (Motorcycle with Gear)');
-    }
-    if (upper.contains('LMV')) {
-      classes.add('LMV (Light Motor Vehicle)');
-    }
-    if (upper.contains('TRANS') || upper.contains('HMV')) {
-      classes.add('Transport (Commercial)');
+    if (hasVehicleClassEvidence) {
+      if (upper.contains('MCWG') || upper.contains('M/CYL')) {
+        classes.add('MCWG (Motorcycle with Gear)');
+      }
+      if (upper.contains('LMV')) {
+        classes.add('LMV (Light Motor Vehicle)');
+      }
+      if (upper.contains('TRANS') || upper.contains('HMV')) {
+        classes.add('Transport (Commercial)');
+      }
     }
     if (classes.isNotEmpty) {
       fields.add(
@@ -826,16 +844,17 @@ class DocumentFieldExtractor {
       r'(?:LICENSING AUTHORITY|ISSUING AUTHORITY|RTO)[\s:]*([A-Za-z0-9 \(\)\.\-]{3,35})',
       caseSensitive: false,
     ).firstMatch(fullText);
-    fields.add(
-      RawExtractedField(
-        fieldName: 'Issuing Authority',
-        value: rtoMatch != null
-            ? rtoMatch.group(1)!.trim()
-            : 'Licensing Authority / Transport Department',
-        confidence: 0.88,
-        confidenceCategory: 'High',
-      ),
-    );
+    final authority = rtoMatch?.group(1)?.trim();
+    if (authority != null && _isLikelyAuthority(authority)) {
+      fields.add(
+        RawExtractedField(
+          fieldName: 'Issuing Authority',
+          value: authority,
+          confidence: 0.88,
+          confidenceCategory: 'High',
+        ),
+      );
+    }
   }
 
   // =========================================================================
@@ -1210,7 +1229,7 @@ class DocumentFieldExtractor {
   ) {
     // 1. Policy Number
     final policyMatch = RegExp(
-      r'(?:POLICY NO|POLICY NUMBER)[\s:]*([A-Z0-9\/-]{8,30})',
+      r'(?:POLICY\s*(?:NO\.?|NUMBER))[\s:#.]*([A-Z0-9\/-]{8,30})',
     ).firstMatch(upper);
     if (policyMatch != null) {
       fields.add(
@@ -1245,14 +1264,17 @@ class DocumentFieldExtractor {
       caseSensitive: false,
     ).firstMatch(fullText);
     if (nameMatch != null) {
-      fields.add(
-        RawExtractedField(
-          fieldName: 'Insured Name',
-          value: _cleanName(nameMatch.group(1)!),
-          confidence: 0.88,
-          confidenceCategory: 'High',
-        ),
-      );
+      final insuredName = _cleanName(nameMatch.group(1)!);
+      if (_isLikelyPersonName(insuredName)) {
+        fields.add(
+          RawExtractedField(
+            fieldName: 'Insured Name',
+            value: insuredName,
+            confidence: 0.88,
+            confidenceCategory: 'High',
+          ),
+        );
+      }
     }
 
     // 4. Vehicle Registration Number
@@ -2115,6 +2137,39 @@ class DocumentFieldExtractor {
     return clean.length >= 3 &&
         clean.length <= 40 &&
         RegExp(r'^[A-Za-z \.]+$').hasMatch(clean);
+  }
+
+  /// Avoid presenting arbitrary OCR prose as a person's name. This is stricter
+  /// than _isValidName because extracted data is shown as verified-looking
+  /// information in the document screen.
+  static bool _isLikelyPersonName(String value) {
+    final clean = value.trim();
+    if (!_isValidName(clean) || clean.split(RegExp(r'\s+')).length < 2) {
+      return false;
+    }
+    final upper = clean.toUpperCase();
+    const disallowed = [
+      'POLICY',
+      'PACKAGE',
+      'INSURANCE',
+      'VEHICLE',
+      'REGISTRATION',
+      'CERTIFICATE',
+      'DEPARTMENT',
+      'AUTHORITY',
+    ];
+    return !disallowed.any(upper.contains);
+  }
+
+  static bool _isLikelyAuthority(String value) {
+    final upper = value.toUpperCase();
+    return !upper.contains('POLICY') &&
+        !upper.contains('REGISTRATION') &&
+        !upper.contains('VEHICLE') &&
+        (upper.contains('RTO') ||
+            upper.contains('TRANSPORT') ||
+            upper.contains('LICENSING') ||
+            upper.contains('REGIONAL'));
   }
 
   static bool _isSensitiveExcludedKey(String key) {

@@ -66,6 +66,19 @@ class OcrExtractor {
       if (aadharMatch != null) {
         docNumber = aadharMatch.group(0);
       }
+    } else if ((upper.contains('MOTOR INSURANCE') ||
+            upper.contains('VEHICLE INSURANCE') ||
+            upper.contains('PACKAGE POLICY') ||
+            upper.contains('LIABILITY ONLY POLICY')) &&
+        (upper.contains('REGISTRATION NO') ||
+            upper.contains('REGISTRATION NUMBER') ||
+            upper.contains('INSURED VEHICLE') ||
+            upper.contains('VEHICLE REGISTRATION'))) {
+      // Policies can include a driver's licence number. Prefer the document's
+      // own policy and vehicle markers over that incidental information.
+      name = 'Vehicle Insurance Policy';
+      categoryId = 'vehicle_documents';
+      docType = 'Vehicle Insurance';
     } else if (upper.contains('DRIVING LICENCE') ||
         upper.contains('DRIVING LICENSE') ||
         upper.contains('UNION OF INDIA DRIVING')) {

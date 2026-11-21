@@ -61,6 +61,10 @@ class _PinAuthScreenState extends ConsumerState<PinAuthScreen> {
     final pinService = ref.read(pinServiceProvider);
     final keyService = ref.read(keyManagementServiceProvider);
     final session = ref.read(vaultSessionProvider);
+    // Keep the intended destination before unlocking. Unlocking notifies
+    // providers, so looking this up only afterwards can lose a protected
+    // action such as "Reveal account number".
+    final pendingAction = ref.read(authenticationGateProvider).pendingAction;
 
     // Consume ephemeral biometric share
     final bioShare = coordinator.consumeBiometricShare();
@@ -87,11 +91,10 @@ class _PinAuthScreenState extends ConsumerState<PinAuthScreen> {
       await session.unlock(masterKey);
 
       if (mounted) {
-        final gate = ref.read(authenticationGateProvider);
-        if (gate.pendingAction != null &&
-            gate.pendingAction!.returnRoute != null &&
-            !gate.pendingAction!.isExpired) {
-          final target = gate.pendingAction!.returnRoute!;
+        if (pendingAction != null &&
+            pendingAction.returnRoute != null &&
+            !pendingAction.isExpired) {
+          final target = pendingAction.returnRoute!;
           context.go(target);
         } else {
           final pendingShares = ref.read(pendingIncomingShareProvider);

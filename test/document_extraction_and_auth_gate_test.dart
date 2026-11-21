@@ -1,8 +1,23 @@
+import 'package:cryptography/cryptography.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vault/core/security/authentication_gate.dart';
+import 'package:vault/core/security/biometric_service.dart';
 import 'package:vault/core/security/vault_session.dart';
 import 'package:vault/features/ocr/data/document_field_extractor.dart';
 import 'package:vault/features/ocr/domain/document_extraction_model.dart';
+
+class _SuccessfulBiometricService extends BiometricService {
+  int promptCount = 0;
+  String? lastReason;
+
+  @override
+  Future<bool> authenticate({String reason = 'Authenticate'}) async {
+    promptCount++;
+    lastReason = reason;
+    return true;
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -80,6 +95,73 @@ void main() {
 
       gate.clearPendingAction();
       expect(gate.pendingAction, isNull);
+    });
+
+    testWidgets(
+      'an unlocked vault reauthorizes a sensitive action with biometrics only',
+      (tester) async {
+        final biometric = _SuccessfulBiometricService();
+        gate = AuthenticationGate(session, biometricService: biometric);
+        await session.unlock(await AesGcm.with256bits().newSecretKey());
+
+        late BuildContext context;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (ctx) {
+                context = ctx;
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        );
+
+        final action = PendingVaultAction(
+          type: VaultActionType.revealPassword,
+          targetId: 'password_1',
+          targetName: 'Example Password',
+        );
+
+        expect(
+          await gate.authenticateForAction(context, action: action),
+          isTrue,
+        );
+        expect(biometric.promptCount, 1);
+        expect(biometric.lastReason, contains('biometrics'));
+        expect(action.isExecuted, isTrue);
+        expect(gate.pendingAction, isNull);
+      },
+    );
+
+    testWidgets('a locked vault cannot use biometric-only reauthorization', (
+      tester,
+    ) async {
+      final biometric = _SuccessfulBiometricService();
+      gate = AuthenticationGate(session, biometricService: biometric);
+
+      late BuildContext context;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (ctx) {
+              context = ctx;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+
+      expect(
+        await gate.authenticateForAction(
+          context,
+          action: PendingVaultAction(
+            type: VaultActionType.revealBankDetails,
+            targetId: 'bank_1',
+          ),
+        ),
+        isFalse,
+      );
+      expect(biometric.promptCount, 0);
     });
   });
 

@@ -64,6 +64,33 @@ void main() {
       },
     );
 
+    test('Vehicle insurance is not misclassified as a driving licence', () {
+      const insuranceText = '''
+      HDFC ERGO GENERAL INSURANCE
+      BUNDLED PACKAGE POLICY
+      POLICY NO: HDFC/2026/12345678
+      INSURED NAME: PRIYA SHAH
+      VEHICLE REGISTRATION NO: GJ13AB1234
+      DRIVER DRIVING LICENCE: GJ13 20190000000
+      VEHICLE CLASS: TRANSPORT
+      ''';
+
+      final classification = SmartDocumentClassifier.classify(insuranceText);
+      final fields = DocumentFieldExtractor.extractFields(
+        fullText: insuranceText,
+        documentType: classification.documentType,
+      );
+      final values = {for (final field in fields) field.fieldName: field.value};
+
+      expect(classification.documentType, 'Vehicle Insurance');
+      expect(values['Policy Number'], 'HDFC/2026/12345678');
+      expect(values['Insurance Company'], 'HDFC ERGO');
+      expect(values['Insured Name'], 'PRIYA SHAH');
+      expect(values['Vehicle Registration Number'], 'GJ13AB1234');
+      expect(values.containsKey('Full Name'), isFalse);
+      expect(values.containsKey('Authorised Vehicle Class'), isFalse);
+    });
+
     test('SmartDocumentClassifier classifies PAN Card correctly', () {
       const panSample = '''
       INCOME TAX DEPARTMENT
@@ -134,6 +161,23 @@ void main() {
       expect(classification.categoryId, 'vehicle_documents');
       expect(classification.confidence, greaterThanOrEqualTo(0.90));
     });
+
+    test(
+      'SmartDocumentClassifier uses the persisted financial category ID',
+      () {
+        const statement = '''
+      HDFC BANK
+      STATEMENT OF ACCOUNT
+      ACCOUNT NUMBER: 123456789012
+      IFSC: HDFC0001234
+      ''';
+
+        final classification = SmartDocumentClassifier.classify(statement);
+
+        expect(classification.documentType, 'Bank Document');
+        expect(classification.categoryId, 'financial_documents');
+      },
+    );
 
     test('SmartDocumentClassifier classifies Passport correctly', () {
       const passportSample = '''

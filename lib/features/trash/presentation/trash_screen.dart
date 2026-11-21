@@ -30,7 +30,7 @@ class TrashScreen extends ConsumerWidget {
       ),
       title: 'Authorize Restoration',
       reason:
-          'Biometric + PIN verification required to restore "${doc.name}" from trash.',
+          'Confirm with biometrics to restore "${doc.name}" from trash.',
     );
     if (!verified || !context.mounted) return;
 
@@ -71,7 +71,7 @@ class TrashScreen extends ConsumerWidget {
         ),
         title: 'Confirm Permanent Destruction',
         reason:
-            'Biometric + PIN authorization required to permanently destroy "${doc.name}".',
+            'Confirm with biometrics to permanently destroy "${doc.name}".',
       );
       if (!verified || !context.mounted) return;
 
@@ -100,7 +100,7 @@ class TrashScreen extends ConsumerWidget {
           returnRoute: '/settings',
         ),
         title: 'Authorize Empty Trash',
-        reason: 'Biometric + PIN authorization required to permanently purge all documents in Trash.',
+        reason: 'Confirm with biometrics to permanently purge all documents in Trash.',
       );
       if (!verified || !context.mounted) return;
 

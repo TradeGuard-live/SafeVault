@@ -116,7 +116,7 @@ class _IncomingSharePreviewScreenState
     });
     if (_items.isEmpty && mounted) {
       NativeSafAndShareService.instance.clearPendingIncomingShares();
-      context.go('/documents');
+      context.go('/all-documents');
     }
   }
 
@@ -313,7 +313,7 @@ class _IncomingSharePreviewScreenState
           icon: const Icon(Icons.close_rounded),
           onPressed: () {
             NativeSafAndShareService.instance.clearPendingIncomingShares();
-            context.go('/documents');
+            context.go('/all-documents');
           },
         ),
       ),
@@ -391,7 +391,7 @@ class _IncomingSharePreviewScreenState
                           : () {
                               NativeSafAndShareService.instance
                                   .clearPendingIncomingShares();
-                              context.go('/documents');
+                              context.go('/all-documents');
                             },
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -556,7 +556,7 @@ class _IncomingSharePreviewScreenState
                       child: Text('Vehicle Documents'),
                     ),
                     DropdownMenuItem(
-                      value: 'financial',
+                      value: 'financial_documents',
                       child: Text('Financial'),
                     ),
                     DropdownMenuItem(

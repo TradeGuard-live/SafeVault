@@ -50,7 +50,27 @@ class SmartDocumentClassifier {
       );
     }
 
-    // 3. Vehicle Documents: Driving Licence
+    // 3. Vehicle Documents: Vehicle Insurance
+    // This must run before the licence check. Motor policies often contain a
+    // driver's licence number and the word "transport", neither of which
+    // makes the policy itself a driving licence.
+    if ((upper.contains('MOTOR INSURANCE') ||
+            upper.contains('VEHICLE INSURANCE') ||
+            upper.contains('PACKAGE POLICY') ||
+            upper.contains('LIABILITY ONLY POLICY')) &&
+        (upper.contains('REGISTRATION NO') ||
+            upper.contains('REGISTRATION NUMBER') ||
+            upper.contains('INSURED VEHICLE') ||
+            upper.contains('VEHICLE REGISTRATION'))) {
+      return const ClassifiedDocumentInfo(
+        categoryId: 'vehicle_documents',
+        documentType: 'Vehicle Insurance',
+        suggestedName: 'Vehicle Insurance Policy',
+        confidence: 0.92,
+      );
+    }
+
+    // 4. Vehicle Documents: Driving Licence
     if (upper.contains('DRIVING LICENCE') ||
         upper.contains('DRIVING LICENSE') ||
         upper.contains('UNION OF INDIA DRIVING') ||
@@ -64,7 +84,7 @@ class SmartDocumentClassifier {
       );
     }
 
-    // 4. Vehicle Documents: Vehicle RC Book
+    // 5. Vehicle Documents: Vehicle RC Book
     if (upper.contains('CERTIFICATE OF REGISTRATION') ||
         upper.contains('REGISTRATION CERTIFICATE') ||
         upper.contains('FORM 23') ||
@@ -78,7 +98,7 @@ class SmartDocumentClassifier {
       );
     }
 
-    // 5. Vehicle Documents: PUC Certificate
+    // 6. Vehicle Documents: PUC Certificate
     if (upper.contains('POLLUTION UNDER CONTROL') ||
         upper.contains('PUC CERTIFICATE') ||
         upper.contains('PUCC') ||
@@ -88,21 +108,6 @@ class SmartDocumentClassifier {
         documentType: 'PUC Certificate',
         suggestedName: 'PUC Certificate',
         confidence: 0.92,
-      );
-    }
-
-    // 6. Vehicle Documents: Vehicle Insurance
-    if ((upper.contains('MOTOR INSURANCE') ||
-            upper.contains('VEHICLE INSURANCE') ||
-            upper.contains('PACKAGE POLICY') ||
-            upper.contains('LIABILITY ONLY POLICY')) &&
-        (upper.contains('REGISTRATION NO') ||
-            upper.contains('INSURED VEHICLE'))) {
-      return const ClassifiedDocumentInfo(
-        categoryId: 'vehicle_documents',
-        documentType: 'Vehicle Insurance',
-        suggestedName: 'Vehicle Insurance Policy',
-        confidence: 0.88,
       );
     }
 
@@ -152,7 +157,7 @@ class SmartDocumentClassifier {
         upper.contains('SAVINGS ACCOUNT') ||
         upper.contains('CURRENT ACCOUNT')) {
       return const ClassifiedDocumentInfo(
-        categoryId: 'financial',
+        categoryId: 'financial_documents',
         documentType: 'Bank Document',
         suggestedName: 'Bank Document',
         confidence: 0.85,
@@ -165,7 +170,7 @@ class SmartDocumentClassifier {
         upper.contains('ITR-V') ||
         upper.contains('INCOME TAX RETURN')) {
       return const ClassifiedDocumentInfo(
-        categoryId: 'financial',
+        categoryId: 'financial_documents',
         documentType: 'Tax Document',
         suggestedName: 'Tax Document',
         confidence: 0.88,
