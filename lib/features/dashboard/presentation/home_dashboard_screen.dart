@@ -123,6 +123,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     final favoritesAsync = ref.watch(favoriteDocumentsProvider);
     final passwordsAsync = ref.watch(allPasswordsProvider);
     final bankAccountsAsync = ref.watch(allBankAccountsProvider);
+    final cardsAsync = ref.watch(allPaymentCardsProvider);
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -202,6 +203,9 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
           ref.invalidate(activeDocumentsProvider);
           ref.invalidate(expiringDocumentsProvider);
           ref.invalidate(favoriteDocumentsProvider);
+          ref.invalidate(allPaymentCardsProvider);
+          ref.invalidate(allBankAccountsProvider);
+          ref.invalidate(allPasswordsProvider);
         },
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
@@ -212,6 +216,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
               docsAsync,
               passwordsAsync,
               bankAccountsAsync,
+              cardsAsync,
             ),
             const SizedBox(height: 20),
 
@@ -243,10 +248,12 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     AsyncValue<List<DocumentModel>> docsAsync,
     AsyncValue<dynamic> passwordsAsync,
     AsyncValue<dynamic> bankAccountsAsync,
+    AsyncValue<dynamic> cardsAsync,
   ) {
     final docsCount = docsAsync.valueOrNull?.length ?? 0;
     final passwordsCount = passwordsAsync.valueOrNull?.length ?? 0;
     final bankAccountsCount = bankAccountsAsync.valueOrNull?.length ?? 0;
+    final cardsCount = cardsAsync.valueOrNull?.length ?? 0;
     final expiringCount =
         docsAsync.valueOrNull
             ?.where(
@@ -323,7 +330,12 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                 Icons.vpn_key_outlined,
               ),
               _buildStatItem(
-                'Bank Accounts',
+                'Cards',
+                '$cardsCount',
+                Icons.credit_card_outlined,
+              ),
+              _buildStatItem(
+                'Bank Accts',
                 '$bankAccountsCount',
                 Icons.account_balance_outlined,
               ),
@@ -389,7 +401,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
             onTap: () => context.push('/camera-scanner'),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         Expanded(
           child: _buildActionTile(
             label: 'Import',
@@ -399,7 +411,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
             onTap: _importDocument,
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         Expanded(
           child: _buildActionTile(
             label: 'Add Pass',
@@ -409,7 +421,17 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
             onTap: () => context.push('/add-password'),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
+        Expanded(
+          child: _buildActionTile(
+            label: 'Add Card',
+            icon: Icons.credit_card_rounded,
+            color: const Color(0xFF8B5CF6),
+            colors: colors,
+            onTap: () => context.push('/add-card'),
+          ),
+        ),
+        const SizedBox(width: 6),
         Expanded(
           child: _buildActionTile(
             label: 'Add Bank',
@@ -434,7 +456,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: colors.surfaceSecondary,
           borderRadius: BorderRadius.circular(16),
@@ -443,18 +465,18 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.14),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: color, size: 20),
+              child: Icon(icon, color: color, size: 18),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               label,
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: colors.textPrimary,
               ),

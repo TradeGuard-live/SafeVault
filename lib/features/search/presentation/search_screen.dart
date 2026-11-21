@@ -10,6 +10,7 @@ import '../../../core/widgets/empty_state_view.dart';
 import '../../../core/widgets/rupee_bunny_mascot.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../authentication/presentation/auth_providers.dart';
+import '../../cards/domain/payment_card_model.dart';
 import '../../documents/domain/document_model.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -36,6 +37,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final colors = context.themeColors;
     final docsAsync = ref.watch(activeDocumentsProvider);
     final catsAsync = ref.watch(categoriesProvider);
+    final cardsAsync = ref.watch(allPaymentCardsProvider);
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -162,73 +164,172 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   }).toList();
                 }
 
-                if (results.isEmpty) {
+                List<PaymentCardModel> matchingCards = [];
+                if (_selectedCategory == null &&
+                    cardsAsync.valueOrNull != null) {
+                  matchingCards = cardsAsync.valueOrNull!.where((card) {
+                    if (_onlyFavorites && !card.isFavorite) return false;
+                    if (_query.isEmpty) return false;
+                    final q = _query.toLowerCase();
+                    return card.bankName.toLowerCase().contains(q) ||
+                        card.cardNickname.toLowerCase().contains(q) ||
+                        card.lastFourDigits.contains(q) ||
+                        (card.decryptedCardholderName?.toLowerCase().contains(
+                              q,
+                            ) ??
+                            false);
+                  }).toList();
+                }
+
+                if (results.isEmpty && matchingCards.isEmpty) {
                   return const EmptyStateView(
                     icon: Icons.search_off_rounded,
-                    title: 'No Matching Documents',
-                    description: 'No documents match your search criteria. Try a different query or adjust your filters.',
+                    title: 'No Matching Items',
+                    description: 'No documents or payment cards match your search criteria. Try a different query or adjust your filters.',
                     mascotPose: MascotPose.thinking,
                   );
                 }
 
-                return ListView.separated(
+                return ListView(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 12,
                   ),
-                  itemCount: results.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (ctx, i) {
-                    final doc = results[i];
-
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: colors.cardBackground,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: colors.cardBorder),
-                      ),
-                      child: ListTile(
-                        onTap: () => context.push('/document/${doc.id}'),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 6,
-                        ),
-                        leading: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: colors.primaryAccent.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            Icons.description_outlined,
-                            color: colors.primaryAccent,
-                            size: 22,
-                          ),
-                        ),
-                        title: Text(
-                          doc.name,
+                  children: [
+                    if (matchingCards.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8, top: 4),
+                        child: Text(
+                          'Payment Cards (${matchingCards.length})',
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: colors.textPrimary,
+                            color: colors.primaryAccent,
                           ),
                         ),
-                        subtitle: Text(
-                          doc.documentNumber != null
-                              ? MaskedTextFormatter.maskDocumentNumber(
-                                  doc.documentNumber,
-                                )
-                              : (doc.documentType ?? 'Document'),
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                        trailing: StatusBadge.fromExpiry(doc.expiryDate),
                       ),
-                    );
-                  },
+                      ...matchingCards.map(
+                        (card) => Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          decoration: BoxDecoration(
+                            color: colors.cardBackground,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: colors.cardBorder),
+                          ),
+                          child: ListTile(
+                            onTap: () => context.push('/card/${card.id}'),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 4,
+                            ),
+                            leading: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: colors.primaryAccent.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.credit_card_rounded,
+                                color: colors.primaryAccent,
+                                size: 22,
+                              ),
+                            ),
+                            title: Text(
+                              card.bankName,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${card.cardNickname} • ${card.maskedCardNumber}',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                            trailing: card.isFavorite
+                                ? const Icon(
+                                    Icons.star_rounded,
+                                    color: Colors.amber,
+                                    size: 20,
+                                  )
+                                : const Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: 20,
+                                  ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (results.isNotEmpty) ...[
+                      if (matchingCards.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8, top: 4),
+                          child: Text(
+                            'Documents (${results.length})',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: colors.primaryAccent,
+                            ),
+                          ),
+                        ),
+                      ...results.map(
+                        (doc) => Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          decoration: BoxDecoration(
+                            color: colors.cardBackground,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: colors.cardBorder),
+                          ),
+                          child: ListTile(
+                            onTap: () => context.push('/document/${doc.id}'),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 6,
+                            ),
+                            leading: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: colors.primaryAccent.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.description_outlined,
+                                color: colors.primaryAccent,
+                                size: 22,
+                              ),
+                            ),
+                            title: Text(
+                              doc.name,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                            subtitle: Text(
+                              doc.documentNumber != null
+                                  ? MaskedTextFormatter.maskDocumentNumber(
+                                      doc.documentNumber,
+                                    )
+                                  : (doc.documentType ?? 'Document'),
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                            trailing: StatusBadge.fromExpiry(doc.expiryDate),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 );
               },
               loading: () => Center(

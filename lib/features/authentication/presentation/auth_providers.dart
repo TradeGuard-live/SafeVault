@@ -16,6 +16,8 @@ import '../../passwords/domain/password_category_model.dart';
 import '../../passwords/domain/password_entry_model.dart';
 import '../../bank_vault/data/bank_vault_repository.dart';
 import '../../bank_vault/domain/bank_account_model.dart';
+import '../../cards/data/card_repository.dart';
+import '../../cards/domain/payment_card_model.dart';
 import '../../settings/data/settings_repository.dart';
 import '../../settings/domain/vault_settings_model.dart';
 import '../../timeline/data/activity_repository.dart';
@@ -240,4 +242,42 @@ final favoriteBankAccountsProvider = FutureProvider<List<BankAccountModel>>((
   }
   final repo = ref.watch(bankVaultRepositoryProvider);
   return await repo.getFavoriteAccounts(session.masterKey!);
+});
+
+// Payment Cards (Credit & Debit) Providers
+final cardRepositoryProvider = Provider<CardRepository>((ref) {
+  return CardRepository();
+});
+
+final allPaymentCardsProvider = FutureProvider<List<PaymentCardModel>>((
+  ref,
+) async {
+  final session = ref.watch(vaultSessionProvider);
+  if (!session.isUnlocked || session.masterKey == null) {
+    return [];
+  }
+  final repo = ref.watch(cardRepositoryProvider);
+  return await repo.getCards(session.masterKey!);
+});
+
+final favoritePaymentCardsProvider = FutureProvider<List<PaymentCardModel>>((
+  ref,
+) async {
+  final session = ref.watch(vaultSessionProvider);
+  if (!session.isUnlocked || session.masterKey == null) {
+    return [];
+  }
+  final repo = ref.watch(cardRepositoryProvider);
+  return await repo.getFavoriteCards(session.masterKey!);
+});
+
+final expiringPaymentCardsProvider = FutureProvider<List<PaymentCardModel>>((
+  ref,
+) async {
+  final session = ref.watch(vaultSessionProvider);
+  if (!session.isUnlocked || session.masterKey == null) {
+    return [];
+  }
+  final repo = ref.watch(cardRepositoryProvider);
+  return await repo.getExpiringCards(session.masterKey!);
 });

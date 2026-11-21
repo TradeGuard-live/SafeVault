@@ -162,6 +162,95 @@ class LocalNotificationService {
     }
   }
 
+  /// Schedules an offline card expiry reminder without leaking full PAN or sensitive data.
+  /// Example: "Your HDFC debit card is expiring soon."
+  Future<void> scheduleCardExpiryReminder({
+    required int notificationId,
+    required String bankName,
+    required String cardType,
+    required DateTime scheduledDate,
+    required int daysBefore,
+  }) async {
+    await initialize();
+
+    final now = DateTime.now();
+    if (scheduledDate.isBefore(now)) {
+      return;
+    }
+
+    final title = 'Card Expiry Reminder';
+    final body = daysBefore <= 0
+        ? 'Your $bankName ${cardType.toLowerCase()} card is expiring this month.'
+        : 'Your $bankName ${cardType.toLowerCase()} card is expiring soon.';
+
+    final scheduledTime = DateTime(
+      scheduledDate.year,
+      scheduledDate.month,
+      scheduledDate.day,
+      9,
+      0,
+    );
+
+    final tzDateTime = tz.TZDateTime.from(
+      scheduledTime.isBefore(now)
+          ? scheduledTime.add(const Duration(minutes: 5))
+          : scheduledTime,
+      tz.local,
+    );
+
+    const androidDetails = AndroidNotificationDetails(
+      AppConstants.notificationChannelId,
+      AppConstants.notificationChannelName,
+      channelDescription: AppConstants.notificationChannelDesc,
+      importance: Importance.high,
+      priority: Priority.high,
+      showWhen: true,
+    );
+
+    const notificationDetails = NotificationDetails(android: androidDetails);
+
+    final androidImplementation = _notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+
+    bool canUseExact = false;
+    try {
+      canUseExact =
+          await androidImplementation?.canScheduleExactNotifications() ?? false;
+    } catch (_) {}
+
+    final scheduleMode = canUseExact
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
+
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id: notificationId,
+        title: title,
+        body: body,
+        scheduledDate: tzDateTime,
+        notificationDetails: notificationDetails,
+        androidScheduleMode: scheduleMode,
+      );
+    } catch (e) {
+      try {
+        await _notificationsPlugin.zonedSchedule(
+          id: notificationId,
+          title: title,
+          body: body,
+          scheduledDate: tzDateTime,
+          notificationDetails: notificationDetails,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        );
+      } catch (fallbackError) {
+        debugPrint(
+          'LocalNotificationService: Could not schedule card reminder: $fallbackError',
+        );
+      }
+    }
+  }
+
   /// Cancels a specific notification by its integer ID.
   Future<void> cancelNotification(int notificationId) async {
     await initialize();

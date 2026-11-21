@@ -27,8 +27,7 @@ class VaultDatabase {
 
       return await openDatabase(
         dbPath,
-        version:
-            6, // v6 syncs custom managed categories with password categories
+        version: 8, // v8 adds AES-256-GCM encrypted card number and start date fields
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON;');
         },
@@ -40,6 +39,7 @@ class VaultDatabase {
           await _seedDefaultPasswordCategories(db);
           await _createExtractionTables(db);
           await _createDraftTables(db);
+          await _createCardTables(db);
         },
         onUpgrade: (db, oldVersion, newVersion) async {
           if (oldVersion < 2) {
@@ -57,6 +57,12 @@ class VaultDatabase {
           }
           if (oldVersion < 6) {
             await _migrateToV6(db);
+          }
+          if (oldVersion < 7) {
+            await _migrateToV7(db);
+          }
+          if (oldVersion < 8) {
+            await _migrateToV8(db);
           }
         },
       );
@@ -477,6 +483,71 @@ class VaultDatabase {
       FROM categories
       WHERE is_default = 0
     ''');
+  }
+
+  Future<void> _migrateToV7(Database db) async {
+    await _createCardTables(db);
+  }
+
+  Future<void> _migrateToV8(Database db) async {
+    try {
+      await db.execute(
+        'ALTER TABLE payment_cards ADD COLUMN card_number_enc TEXT;',
+      );
+    } catch (_) {}
+    try {
+      await db.execute(
+        'ALTER TABLE payment_cards ADD COLUMN start_month INTEGER;',
+      );
+    } catch (_) {}
+    try {
+      await db.execute(
+        'ALTER TABLE payment_cards ADD COLUMN start_year INTEGER;',
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _createCardTables(Database db) async {
+    // 10. Payment Cards Table (Credit & Debit Cards)
+    // Strictly NO CVVs, ATM PINs, UPI PINs, OTPs, or Magnetic Stripe Data.
+    // Card numbers are authenticated and encrypted at rest with AES-256-GCM.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS payment_cards (
+        id TEXT PRIMARY KEY,
+        card_nickname TEXT NOT NULL,
+        cardholder_name_enc TEXT,
+        card_number_enc TEXT,
+        bank_name TEXT NOT NULL,
+        card_type TEXT NOT NULL,
+        network TEXT NOT NULL,
+        last_four_digits TEXT NOT NULL,
+        start_month INTEGER,
+        start_year INTEGER,
+        expiry_month INTEGER NOT NULL,
+        expiry_year INTEGER NOT NULL,
+        card_color INTEGER NOT NULL DEFAULT 0,
+        notes_enc TEXT,
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_cards_fav ON payment_cards(is_favorite);',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_cards_type ON payment_cards(card_type);',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_cards_network ON payment_cards(network);',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_cards_bank ON payment_cards(bank_name COLLATE NOCASE);',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_cards_expiry ON payment_cards(expiry_year, expiry_month);',
+    );
   }
 
   Future<void> _createDraftTables(Database db) async {

@@ -33,6 +33,9 @@ import '../../features/bank_vault/presentation/add_edit_bank_account_screen.dart
 import '../../features/bank_vault/presentation/bank_account_details_screen.dart';
 import '../../features/bank_vault/presentation/bank_account_list_screen.dart';
 import '../../features/bank_vault/presentation/bank_vault_dashboard_screen.dart';
+import '../../features/cards/presentation/add_edit_card_screen.dart';
+import '../../features/cards/presentation/card_details_screen.dart';
+import '../../features/cards/presentation/cards_list_screen.dart';
 import '../../features/scanner/presentation/camera_scanner_screen.dart';
 import '../../features/scanner/presentation/scanner_preview_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
@@ -253,6 +256,34 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
           return BankAccountDetailsScreen(accountId: id);
+        },
+      ),
+
+      // Payment Cards (Credit & Debit)
+      GoRoute(
+        path: '/cards-list',
+        builder: (context, state) {
+          final filter = state.uri.queryParameters['filter'];
+          final type = state.uri.queryParameters['type'];
+          return CardsListScreen(initialFilter: filter, initialType: type);
+        },
+      ),
+      GoRoute(
+        path: '/add-card',
+        builder: (context, state) => const AddEditCardScreen(),
+      ),
+      GoRoute(
+        path: '/edit-card/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          return AddEditCardScreen(cardId: id);
+        },
+      ),
+      GoRoute(
+        path: '/card/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return CardDetailsScreen(cardId: id);
         },
       ),
 

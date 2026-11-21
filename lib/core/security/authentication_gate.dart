@@ -10,6 +10,10 @@ enum VaultActionType {
   revealBankDetails,
   copyBankDetails,
   deleteBankAccount,
+  revealCardDetails,
+  copyCardDetails,
+  editCard,
+  deleteCard,
   revealPassword,
   copyPassword,
   editPassword,
@@ -185,6 +189,14 @@ class AuthenticationGate extends ChangeNotifier {
         return 'Authorize Account Copy';
       case VaultActionType.deleteBankAccount:
         return 'Authorize Bank Deletion';
+      case VaultActionType.revealCardDetails:
+        return 'Reveal Card Details';
+      case VaultActionType.copyCardDetails:
+        return 'Copy Card Details';
+      case VaultActionType.editCard:
+        return 'Edit Card';
+      case VaultActionType.deleteCard:
+        return 'Authorize Card Deletion';
       case VaultActionType.revealPassword:
         return 'Reveal Password';
       case VaultActionType.copyPassword:
@@ -227,6 +239,14 @@ class AuthenticationGate extends ChangeNotifier {
         return 'Confirm with biometrics to copy bank details$name to clipboard.';
       case VaultActionType.deleteBankAccount:
         return 'Confirm with biometrics to delete bank account$name.';
+      case VaultActionType.revealCardDetails:
+        return 'Confirm with biometrics to reveal payment card details$name.';
+      case VaultActionType.copyCardDetails:
+        return 'Confirm with biometrics to copy card details$name.';
+      case VaultActionType.editCard:
+        return 'Confirm with biometrics to edit payment card$name.';
+      case VaultActionType.deleteCard:
+        return 'Confirm with biometrics to delete payment card$name.';
       case VaultActionType.revealPassword:
         return 'Confirm with biometrics to reveal password$name.';
       case VaultActionType.copyPassword:
