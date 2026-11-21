@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../security/authentication_gate.dart';
 import '../services/native_saf_and_share_service.dart';
 import '../../features/authentication/presentation/auth_providers.dart';
 import '../../features/authentication/presentation/biometric_auth_screen.dart';
@@ -16,6 +17,7 @@ import '../../features/documents/presentation/document_viewer_screen.dart';
 import '../../features/documents/presentation/incoming_share_preview_screen.dart';
 import '../../features/expiry/presentation/expiry_dashboard_screen.dart';
 import '../../features/favorites/presentation/favorites_screen.dart';
+import '../../features/ocr/presentation/extraction_review_screen.dart';
 import '../../features/ocr/presentation/ocr_review_screen.dart';
 import '../../features/onboarding/presentation/initial_security_setup_screen.dart';
 import '../../features/onboarding/presentation/splash_screen.dart';
@@ -58,6 +60,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       // If locked and trying to access sensitive vault pages, redirect to Factor 1 Biometric unlock
       if (!session.isUnlocked && !isAuthFlow) {
+        final gate = ref.read(authenticationGateProvider);
+        if (gate.pendingAction == null && loc.isNotEmpty && loc != '/' && loc != '/dashboard') {
+          gate.setPendingAction(
+            PendingVaultAction(
+              type: VaultActionType.custom,
+              returnRoute: loc,
+            ),
+          );
+        }
         return '/biometric-unlock';
       }
 
@@ -69,8 +80,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         }
       }
 
-      // If unlocked and still sitting on auth/welcome pages, route to dashboard or pending incoming share
+      // If unlocked and still sitting on auth/welcome pages, route to returnRoute, pending incoming share, or dashboard
       if (session.isUnlocked && (loc == '/pin-unlock' || loc == '/biometric-unlock' || loc == '/welcome')) {
+        final gate = ref.read(authenticationGateProvider);
+        if (gate.pendingAction != null &&
+            gate.pendingAction!.returnRoute != null &&
+            !gate.pendingAction!.isExpired) {
+          return gate.pendingAction!.returnRoute!;
+        }
+
         final pendingShares = ref.read(pendingIncomingShareProvider);
         if (pendingShares.isNotEmpty) {
           return '/incoming-share-preview';
@@ -230,6 +248,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final tabParam = state.uri.queryParameters['tab'];
           final initialTab = int.tryParse(tabParam ?? '0') ?? 0;
           return DocumentDetailsScreen(documentId: id, initialTabIndex: initialTab);
+        },
+      ),
+
+      // Extraction Review & Selection
+      GoRoute(
+        path: '/extraction-review/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return ExtractionReviewScreen(documentId: id);
         },
       ),
 

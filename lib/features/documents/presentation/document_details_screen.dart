@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/security/authentication_gate.dart';
 import '../../../core/security/clipboard_security_service.dart';
 import '../../../core/security/file_validator.dart';
 import '../../../core/services/native_saf_and_share_service.dart';
@@ -109,6 +110,15 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
             }
           }
         }
+
+        // Resume any pending action targeting this document
+        final gate = ref.read(authenticationGateProvider);
+        final pending = gate.consumePendingAction(widget.documentId);
+        if (pending != null && mounted) {
+          if (pending.type == VaultActionType.revealDocumentField) {
+            setState(() => _revealDocumentNumber = true);
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -123,8 +133,15 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
       setState(() => _revealDocumentNumber = false);
       return;
     }
-    final verified = await TwoFactorVerificationDialog.verify(
+    final gate = ref.read(authenticationGateProvider);
+    final verified = await gate.authenticateForAction(
       context,
+      action: PendingVaultAction(
+        type: VaultActionType.revealDocumentField,
+        targetId: widget.documentId,
+        targetName: _document?.name ?? 'Document',
+        returnRoute: '/document/${widget.documentId}',
+      ),
       title: 'Reveal Document Number',
       reason: 'Biometric + PIN verification required to reveal masked document number',
     );
@@ -298,6 +315,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
 
       await repo.saveExtraction(
         documentId: doc.id,
+        documentType: result.classification.documentType,
         extractedText: result.fullText,
         fields: result.fields,
         engine: result.extractionEngine,
@@ -387,8 +405,15 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
     final text = _extraction?.extractedTextEncrypted;
     if (text == null || text.trim().isEmpty) return;
 
-    final verified = await TwoFactorVerificationDialog.verify(
+    final gate = ref.read(authenticationGateProvider);
+    final verified = await gate.authenticateForAction(
       context,
+      action: PendingVaultAction(
+        type: VaultActionType.viewExtractedText,
+        targetId: widget.documentId,
+        targetName: _document?.name ?? 'Document',
+        returnRoute: '/document/${widget.documentId}',
+      ),
       title: 'Copy Full Text',
       reason: 'Biometric + PIN authorization required to copy full extracted text',
     );
@@ -822,18 +847,31 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
                       style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 10)),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: fields.isEmpty ? null : _copyAllFields,
-                      icon: const Icon(Icons.copy_all_rounded, size: 16),
-                      label: const Text('Copy All'),
+                      onPressed: fields.isEmpty
+                          ? null
+                          : () async {
+                              final changed = await context.push<bool>('/extraction-review/${widget.documentId}');
+                              if (changed == true) {
+                                _loadDocument();
+                              }
+                            },
+                      icon: const Icon(Icons.fact_check_outlined, size: 16),
+                      label: const Text('Review Fields'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: colors.primaryAccent,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: fields.isEmpty ? null : _copyAllFields,
+                    icon: const Icon(Icons.copy_all_rounded, size: 20),
+                    tooltip: 'Copy All Fields',
                   ),
                 ],
               ),
@@ -864,12 +902,45 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
             ),
           )
         else ...[
-          Text(
-            'Recognized Structured Fields (${fields.length})',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: colors.textPrimary),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Saved Fields (${fields.where((f) => f.isSelected).length} of ${fields.length})',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: colors.textPrimary),
+              ),
+              TextButton.icon(
+                onPressed: () async {
+                  final changed = await context.push<bool>('/extraction-review/${widget.documentId}');
+                  if (changed == true) {
+                    _loadDocument();
+                  }
+                },
+                icon: Icon(Icons.tune_rounded, size: 14, color: colors.primaryAccent),
+                label: Text('Edit / Select', style: TextStyle(color: colors.primaryAccent, fontSize: 12)),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
-          for (final field in fields) _buildExtractedFieldCard(field, colors),
+          for (final field in fields.where((f) => f.isSelected))
+            _buildExtractedFieldCard(field, colors),
+          if (fields.any((f) => !f.isSelected)) ...[
+            const SizedBox(height: 12),
+            Center(
+              child: TextButton(
+                onPressed: () async {
+                  final changed = await context.push<bool>('/extraction-review/${widget.documentId}');
+                  if (changed == true) {
+                    _loadDocument();
+                  }
+                },
+                child: Text(
+                  '+ ${fields.where((f) => !f.isSelected).length} more unselected fields available in Review',
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                ),
+              ),
+            ),
+          ],
         ],
       ],
     );

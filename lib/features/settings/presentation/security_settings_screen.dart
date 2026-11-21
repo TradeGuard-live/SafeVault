@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/security/authentication_gate.dart';
 import '../../../core/security/privacy_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
@@ -17,9 +18,15 @@ class SecuritySettingsScreen extends ConsumerStatefulWidget {
 
 class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen> {
   Future<void> _showChangePinDialog() async {
-    // 1. Mandatory 2FA Verification before sensitive PIN change
-    final verified = await TwoFactorVerificationDialog.verify(
+    // 1. Mandatory 2FA Verification before sensitive PIN change via AuthenticationGate
+    final gate = ref.read(authenticationGateProvider);
+    final verified = await gate.authenticateForAction(
       context,
+      action: PendingVaultAction(
+        type: VaultActionType.custom,
+        targetName: 'Change App PIN',
+        returnRoute: '/settings',
+      ),
       title: 'Authorize PIN Change',
       reason: 'Factor 1: Verify your identity with biometrics before changing PIN',
     );

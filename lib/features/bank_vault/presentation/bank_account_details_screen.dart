@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/security/authentication_gate.dart';
 import '../../../core/security/clipboard_security_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
@@ -50,6 +51,17 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
         _account = account;
         _isLoading = false;
       });
+
+      // Resume any pending action targeting this bank account
+      final gate = ref.read(authenticationGateProvider);
+      final pending = gate.consumePendingAction(widget.accountId);
+      if (pending != null && mounted) {
+        if (pending.type == VaultActionType.revealBankDetails) {
+          setState(() => _isDetailsRevealed = true);
+        } else if (pending.type == VaultActionType.copyBankDetails && account?.decryptedAccountNumber != null) {
+          _copyAccountNumber();
+        }
+      }
     }
   }
 
@@ -59,11 +71,15 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
       return;
     }
 
-    // Mandatory Two-Factor Verification (Biometric + 6-digit PIN)
-    final verified = await TwoFactorVerificationDialog.verify(
+    final gate = ref.read(authenticationGateProvider);
+    final verified = await gate.authenticateForAction(
       context,
-      title: 'Reveal Bank Account',
-      reason: 'Factor 1: Authenticate with biometrics to reveal full bank account details',
+      action: PendingVaultAction(
+        type: VaultActionType.revealBankDetails,
+        targetId: widget.accountId,
+        targetName: _account?.bankName ?? 'Bank Account',
+        returnRoute: '/bank-account/${widget.accountId}',
+      ),
     );
 
     if (verified && mounted) {
@@ -74,10 +90,15 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
   Future<void> _copyAccountNumber() async {
     if (_account?.decryptedAccountNumber == null) return;
     if (!_isDetailsRevealed) {
-      final verified = await TwoFactorVerificationDialog.verify(
+      final gate = ref.read(authenticationGateProvider);
+      final verified = await gate.authenticateForAction(
         context,
-        title: 'Authorize Account Copy',
-        reason: 'Factor 1: Authenticate with biometrics to copy account number to clipboard',
+        action: PendingVaultAction(
+          type: VaultActionType.copyBankDetails,
+          targetId: widget.accountId,
+          targetName: _account?.bankName ?? 'Bank Account',
+          returnRoute: '/bank-account/${widget.accountId}',
+        ),
       );
       if (!mounted || !verified) return;
     }

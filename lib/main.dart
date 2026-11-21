@@ -47,6 +47,7 @@ class _VaultAppState extends ConsumerState<VaultApp> {
     super.initState();
     final session = ref.read(vaultSessionProvider);
     NativeSafAndShareService.instance.attachSession(session);
+    ref.read(biometricServiceProvider).attachVaultSession(session);
 
     _lifecycleListener = AppLifecycleListener(
       onStateChange: (state) {

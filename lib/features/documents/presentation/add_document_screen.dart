@@ -554,6 +554,7 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
             );
             await repo.saveExtraction(
               documentId: newDoc.id,
+              documentType: result.classification.documentType,
               extractedText: result.fullText,
               fields: result.fields,
               engine: result.extractionEngine,

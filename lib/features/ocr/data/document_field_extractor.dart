@@ -7,6 +7,8 @@ class RawExtractedField {
   final String confidenceCategory;
   final int sourcePage;
   final String? sourceSnippet;
+  final bool isSelected;
+  final bool isRecommended;
 
   const RawExtractedField({
     required this.fieldName,
@@ -15,7 +17,31 @@ class RawExtractedField {
     required this.confidenceCategory,
     this.sourcePage = 1,
     this.sourceSnippet,
-  });
+    this.isSelected = true,
+    bool? isRecommended,
+  }) : isRecommended = isRecommended ?? (confidence >= 0.8);
+
+  RawExtractedField copyWith({
+    String? fieldName,
+    String? value,
+    double? confidence,
+    String? confidenceCategory,
+    int? sourcePage,
+    String? sourceSnippet,
+    bool? isSelected,
+    bool? isRecommended,
+  }) {
+    return RawExtractedField(
+      fieldName: fieldName ?? this.fieldName,
+      value: value ?? this.value,
+      confidence: confidence ?? this.confidence,
+      confidenceCategory: confidenceCategory ?? this.confidenceCategory,
+      sourcePage: sourcePage ?? this.sourcePage,
+      sourceSnippet: sourceSnippet ?? this.sourceSnippet,
+      isSelected: isSelected ?? this.isSelected,
+      isRecommended: isRecommended ?? this.isRecommended,
+    );
+  }
 }
 
 class DocumentFieldExtractor {
@@ -26,32 +52,49 @@ class DocumentFieldExtractor {
   }) {
     final fields = <RawExtractedField>[];
     final upper = fullText.toUpperCase();
-    final lines = fullText.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+    final lines = fullText
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
 
     switch (documentType) {
-      case 'PAN Card':
-        _extractPanFields(upper, lines, fields);
+      case 'Vehicle RC Book':
+        _extractVehicleRcFields(fullText, upper, lines, fields);
+        break;
+      case 'Driving Licence':
+        _extractDrivingLicenceFields(fullText, upper, lines, fields);
         break;
       case 'Aadhaar Card':
         _extractAadhaarFields(fullText, upper, lines, fields);
         break;
-      case 'Driving Licence':
-        _extractDrivingLicenceFields(upper, lines, fields);
-        break;
-      case 'Vehicle RC Book':
-        _extractVehicleRcFields(upper, lines, fields);
+      case 'PAN Card':
+        _extractPanFields(fullText, upper, lines, fields);
         break;
       case 'PUC Certificate':
-        _extractPucFields(upper, lines, fields);
+        _extractPucFields(fullText, upper, lines, fields);
         break;
       case 'Vehicle Insurance':
-        _extractVehicleInsuranceFields(upper, lines, fields);
+      case 'Vehicle Insurance Policy':
+        _extractVehicleInsuranceFields(fullText, upper, lines, fields);
         break;
       case 'Passport':
-        _extractPassportFields(upper, lines, fields);
+        _extractPassportFields(fullText, upper, lines, fields);
+        break;
+      case 'Bank Document':
+      case 'Bank Statement':
+      case 'Bank Passbook':
+      case 'Cheque':
+        _extractBankDocumentFields(fullText, upper, lines, fields);
+        break;
+      case 'Academic Certificate':
+      case 'Degree Certificate':
+      case 'Mark Sheet':
+      case 'Education Certificate':
+        _extractEducationCertificateFields(fullText, upper, lines, fields);
         break;
       default:
-        _extractGenericFields(upper, lines, fields);
+        _extractGenericFields(fullText, upper, lines, fields);
         break;
     }
 
@@ -59,18 +102,618 @@ class DocumentFieldExtractor {
   }
 
   // =========================================================================
-  // PAN CARD EXTRACTOR
+  // 1. VEHICLE RC BOOK (25+ FIELDS)
   // =========================================================================
-  static void _extractPanFields(String upper, List<String> lines, List<RawExtractedField> fields) {
+  static void _extractVehicleRcFields(
+    String fullText,
+    String upper,
+    List<String> lines,
+    List<RawExtractedField> fields,
+  ) {
+    // 1. Registration Number
+    final regMatch = RegExp(r'\b([A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4})\b').firstMatch(upper);
+    if (regMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Registration Number',
+        value: regMatch.group(1)!,
+        confidence: 0.98,
+        confidenceCategory: 'High',
+        sourceSnippet: regMatch.group(1),
+      ));
+    }
+
+    // 2. Registration Date
+    final regDateMatch = RegExp(r'(?:REG\.?\s*DATE|DATE OF REG|DT OF REG)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})').firstMatch(upper);
+    if (regDateMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Registration Date',
+        value: regDateMatch.group(1)!,
+        confidence: 0.95,
+        confidenceCategory: 'High',
+        sourceSnippet: regDateMatch.group(0),
+      ));
+    }
+
+    // 3. Chassis Number
+    final chassisMatch = RegExp(r'(?:CHASSIS(?:\s*NO)?|CH\.NO|VIN)[\s:]*([A-HJ-NPR-Z0-9]{10,21})').firstMatch(upper);
+    if (chassisMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Chassis Number',
+        value: chassisMatch.group(1)!,
+        confidence: 0.96,
+        confidenceCategory: 'High',
+        sourceSnippet: chassisMatch.group(0),
+      ));
+    }
+
+    // 4. Engine Number
+    final engineMatch = RegExp(r'(?:ENGINE(?:\s*NO)?|ENG\.NO|MOTOR NO)[\s:]*([A-Z0-9]{6,18})').firstMatch(upper);
+    if (engineMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Engine Number',
+        value: engineMatch.group(1)!,
+        confidence: 0.95,
+        confidenceCategory: 'High',
+        sourceSnippet: engineMatch.group(0),
+      ));
+    }
+
+    // 5. Owner Name
+    String? ownerName;
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i].toUpperCase();
+      if ((line.contains('OWNER NAME') || line.contains('NAME OF OWNER') || line.contains('REG OWNER') || line.contains('REGISTERED OWNER')) && i + 1 < lines.length) {
+        ownerName = _cleanName(lines[i + 1]);
+        break;
+      }
+    }
+    final ownerSameLine = RegExp(r'(?:REGISTERED OWNER|OWNER NAME|NAME OF OWNER)[\s:]*([A-Za-z ]{3,35})', caseSensitive: false).firstMatch(fullText);
+    if (ownerSameLine != null && (ownerName == null || ownerName.isEmpty)) {
+      ownerName = _cleanName(ownerSameLine.group(1)!);
+    }
+    if (ownerName != null && ownerName.isNotEmpty) {
+      fields.add(RawExtractedField(
+        fieldName: 'Owner Name',
+        value: ownerName,
+        confidence: 0.88,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 6. Father / Husband Name
+    final relationMatch = RegExp(r'(?:S/O|D/O|W/O|FATHER(?:\x27S)?\s*NAME)[\s:]*([A-Za-z ]{3,35})', caseSensitive: false).firstMatch(fullText);
+    if (relationMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: "Father's / Husband's Name",
+        value: _cleanName(relationMatch.group(1)!),
+        confidence: 0.85,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 7. Present / Permanent Address
+    final addrIdx = lines.indexWhere((l) => l.toUpperCase().contains('ADDRESS') || l.toUpperCase().contains('RESIDENCE'));
+    if (addrIdx != -1 && addrIdx + 1 < lines.length) {
+      final addr = lines.skip(addrIdx + 1).take(2).join(', ');
+      fields.add(RawExtractedField(
+        fieldName: 'Address',
+        value: addr,
+        confidence: 0.78,
+        confidenceCategory: 'Medium',
+      ));
+    }
+
+    // 8. Vehicle Class
+    final classMatch = RegExp(r'(?:VEHICLE CLASS|CLASS OF VEHICLE|VCH CLASS)[\s:]*([A-Z0-9 \(\)\/-]{3,25})').firstMatch(upper);
+    if (classMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Vehicle Class',
+        value: classMatch.group(1)!.trim(),
+        confidence: 0.92,
+        confidenceCategory: 'High',
+      ));
+    } else {
+      if (upper.contains('MOTOR CAR') || upper.contains('LMV')) {
+        fields.add(const RawExtractedField(
+          fieldName: 'Vehicle Class',
+          value: 'LMV (Light Motor Vehicle / Motor Car)',
+          confidence: 0.85,
+          confidenceCategory: 'High',
+        ));
+      } else if (upper.contains('MOTOR CYCLE') || upper.contains('MCWG')) {
+        fields.add(const RawExtractedField(
+          fieldName: 'Vehicle Class',
+          value: 'MCWG (Motor Cycle with Gear)',
+          confidence: 0.85,
+          confidenceCategory: 'High',
+        ));
+      }
+    }
+
+    // 9. Maker / Manufacturer
+    final makerMatch = RegExp(r'(?:MAKER|MANUFACTURER|MFG)[\s:]*([A-Za-z0-9 \.\-]{3,30})', caseSensitive: false).firstMatch(fullText);
+    if (makerMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Maker / Manufacturer',
+        value: makerMatch.group(1)!.trim(),
+        confidence: 0.88,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 10. Model Name
+    final modelMatch = RegExp(r'(?:MODEL|COMMERCIAL NAME)[\s:]*([A-Za-z0-9 \.\-\+]{2,30})', caseSensitive: false).firstMatch(fullText);
+    if (modelMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Model Name',
+        value: modelMatch.group(1)!.trim(),
+        confidence: 0.86,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 11. Vehicle Category / Type
+    final catMatch = RegExp(r'(?:VEHICLE CATEGORY|TYPE OF VEHICLE)[\s:]*([A-Z0-9\-]+)').firstMatch(upper);
+    if (catMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Vehicle Category',
+        value: catMatch.group(1)!,
+        confidence: 0.85,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 12. Body Type
+    final bodyMatch = RegExp(r'(?:BODY TYPE|TYPE OF BODY)[\s:]*([A-Z ]{3,20})').firstMatch(upper);
+    if (bodyMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Body Type',
+        value: bodyMatch.group(1)!.trim(),
+        confidence: 0.84,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 13. Fuel Type
+    final fuelMatch = RegExp(r'\b(PETROL|DIESEL|CNG|ELECTRIC|HYBRID|LPG|BATTERY)\b').firstMatch(upper);
+    if (fuelMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Fuel Type',
+        value: fuelMatch.group(1)!,
+        confidence: 0.95,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 14. Color
+    final colorMatch = RegExp(r'(?:COLOUR|COLOR)[\s:]*([A-Za-z ]{3,20})', caseSensitive: false).firstMatch(fullText);
+    if (colorMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Color',
+        value: colorMatch.group(1)!.trim(),
+        confidence: 0.85,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 15. Seating Capacity
+    final seatMatch = RegExp(r'(?:SEATING CAPACITY|SEAT CAP)[\s:]*([0-9]{1,3})').firstMatch(upper);
+    if (seatMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Seating Capacity',
+        value: seatMatch.group(1)!,
+        confidence: 0.90,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 16. Standing Capacity
+    final standMatch = RegExp(r'(?:STANDING CAPACITY|STAND CAP)[\s:]*([0-9]{1,3})').firstMatch(upper);
+    if (standMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Standing Capacity',
+        value: standMatch.group(1)!,
+        confidence: 0.85,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 17. Manufactured Date / Month-Year
+    final mfgMatch = RegExp(r'(?:MFG(?:\.|\s*DATE|\.\s*DATE)?|YEAR OF MFG|MANUFACTURED)[\s:]*([0-9]{2}[\/\.-][0-9]{4}|[0-9]{4})').firstMatch(upper);
+    if (mfgMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Manufactured Date',
+        value: mfgMatch.group(1)!,
+        confidence: 0.88,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 18. Gross Vehicle Weight (GVW)
+    final gvwMatch = RegExp(r'(?:GROSS VEHICLE WT|GVW|G\.V\.W)[\s:]*([0-9]{3,6}(?:\s*KG)?)').firstMatch(upper);
+    if (gvwMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Gross Vehicle Weight (GVW)',
+        value: gvwMatch.group(1)!,
+        confidence: 0.89,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 19. Unladen Weight
+    final unladenMatch = RegExp(r'(?:UNLADEN WT|ULW|U\.L\.W)[\s:]*([0-9]{3,6}(?:\s*KG)?)').firstMatch(upper);
+    if (unladenMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Unladen Weight',
+        value: unladenMatch.group(1)!,
+        confidence: 0.89,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 20. Cubic Capacity (CC) / Engine Capacity
+    final ccMatch = RegExp(r'(?:CUBIC CAPACITY|C\.C|CC|DISPLACEMENT)[\s:]*([0-9]{3,5}(?:\s*CC)?)').firstMatch(upper);
+    if (ccMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Cubic Capacity (CC)',
+        value: ccMatch.group(1)!,
+        confidence: 0.90,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 21. Wheelbase
+    final wbMatch = RegExp(r'(?:WHEEL\s*BASE|WHEELBASE)[\s:]*([0-9]{3,5}(?:\s*MM)?)').firstMatch(upper);
+    if (wbMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Wheelbase',
+        value: wbMatch.group(1)!,
+        confidence: 0.85,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 22. Number of Cylinders
+    final cylMatch = RegExp(r'(?:CYLINDERS?|NO OF CYL)[\s:]*([0-9]{1,2})').firstMatch(upper);
+    if (cylMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Number of Cylinders',
+        value: cylMatch.group(1)!,
+        confidence: 0.85,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 23. Fitness Upto / Validity Date
+    final fitMatch = RegExp(r'(?:FITNESS UPTO|FITNESS VALID|REG\.?\s*UPTO)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})').firstMatch(upper);
+    if (fitMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Fitness Upto',
+        value: fitMatch.group(1)!,
+        confidence: 0.94,
+        confidenceCategory: 'High',
+        sourceSnippet: fitMatch.group(0),
+      ));
+    }
+
+    // 24. Insurance Details
+    final insMatch = RegExp(r'(?:INSURANCE|POLICY)[\s:]*([A-Za-z0-9 \/\-]{4,35})', caseSensitive: false).firstMatch(fullText);
+    if (insMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Insurance Details',
+        value: insMatch.group(1)!.trim(),
+        confidence: 0.82,
+        confidenceCategory: 'Medium',
+      ));
+    }
+
+    // 25. Tax Upto
+    final taxMatch = RegExp(r'(?:TAX UPTO|TAX VALID|ROAD TAX)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4}|LIFE\s*TIME|L\.T\.T\.)').firstMatch(upper);
+    if (taxMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Tax Status / Upto',
+        value: taxMatch.group(1)!,
+        confidence: 0.90,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 26. Issuing Authority / RTO
+    final rtoMatch = RegExp(r'(?:REGISTERING AUTHORITY|ISSUING AUTHORITY|RTO)[\s:]*([A-Za-z0-9 \(\)\.\-]{3,35})', caseSensitive: false).firstMatch(fullText);
+    if (rtoMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Issuing Authority / RTO',
+        value: rtoMatch.group(1)!.trim(),
+        confidence: 0.88,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 27. Hypothecation / Financier
+    final hypoMatch = RegExp(r'(?:HYPOTHECATED TO|FINANCIER|HPA)[\s:]*([A-Za-z0-9 \.\-]{3,40})', caseSensitive: false).firstMatch(fullText);
+    if (hypoMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Financier / Hypothecation',
+        value: hypoMatch.group(1)!.trim(),
+        confidence: 0.85,
+        confidenceCategory: 'High',
+      ));
+    }
+  }
+
+  // =========================================================================
+  // 2. DRIVING LICENCE
+  // =========================================================================
+  static void _extractDrivingLicenceFields(
+    String fullText,
+    String upper,
+    List<String> lines,
+    List<RawExtractedField> fields,
+  ) {
+    // 1. Licence Number
+    final dlMatch = RegExp(r'\b([A-Z]{2}[0-9]{2}[\s-]?[0-9]{11})\b').firstMatch(upper);
+    if (dlMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Licence Number',
+        value: dlMatch.group(1)!,
+        confidence: 0.98,
+        confidenceCategory: 'High',
+        sourceSnippet: dlMatch.group(1),
+      ));
+    }
+
+    // 2. Full Name
+    String? dlName;
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i].toUpperCase();
+      if ((line.contains('NAME') && !line.contains('FATHER') && !line.contains('RTO')) && i + 1 < lines.length) {
+        dlName = _cleanName(lines[i + 1]);
+        break;
+      }
+    }
+    final dlSameLine = RegExp(r'(?:NAME)[\s:]*([A-Za-z ]{3,35})', caseSensitive: false).firstMatch(fullText);
+    if (dlSameLine != null && (dlName == null || dlName.isEmpty)) {
+      dlName = _cleanName(dlSameLine.group(1)!);
+    }
+    if (dlName != null && dlName.isNotEmpty) {
+      fields.add(RawExtractedField(
+        fieldName: 'Full Name',
+        value: dlName,
+        confidence: 0.86,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 3. Father's / Husband's Name
+    final relMatch = RegExp(r'(?:S/O|D/O|W/O|FATHER(?:\x27S)?\s*NAME)[\s:]*([A-Za-z ]{3,35})', caseSensitive: false).firstMatch(fullText);
+    if (relMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: "Father's / Husband's Name",
+        value: _cleanName(relMatch.group(1)!),
+        confidence: 0.86,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 4. Date of Birth
+    final dobMatch = RegExp(r'(?:DOB|DATE OF BIRTH)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})').firstMatch(upper);
+    if (dobMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Date of Birth',
+        value: dobMatch.group(1)!,
+        confidence: 0.95,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 5. Blood Group
+    final bgMatch = RegExp(r'(?:BLOOD GROUP|BG)[\s:]*([ABO\+\-]{2,4})').firstMatch(upper);
+    if (bgMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Blood Group',
+        value: bgMatch.group(1)!,
+        confidence: 0.90,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 6. Address
+    final addrIdx = lines.indexWhere((l) => l.toUpperCase().contains('ADDRESS') || l.toUpperCase().contains('RESIDENCE'));
+    if (addrIdx != -1 && addrIdx + 1 < lines.length) {
+      fields.add(RawExtractedField(
+        fieldName: 'Address',
+        value: lines.skip(addrIdx + 1).take(2).join(', '),
+        confidence: 0.80,
+        confidenceCategory: 'Medium',
+      ));
+    }
+
+    // 7. Date of Issue
+    final issueMatch = RegExp(r'(?:ISSUE DATE|DATE OF ISSUE|DOI)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})').firstMatch(upper);
+    if (issueMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Issue Date',
+        value: issueMatch.group(1)!,
+        confidence: 0.92,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 8. Validity (Non-Transport)
+    final valNtMatch = RegExp(r'(?:NON-TRANSPORT|NT|VALIDITY NT)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})').firstMatch(upper);
+    if (valNtMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Validity (Non-Transport)',
+        value: valNtMatch.group(1)!,
+        confidence: 0.92,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 9. Validity (Transport)
+    final valTrMatch = RegExp(r'(?:TRANSPORT|TR|VALIDITY TR)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})').firstMatch(upper);
+    if (valTrMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Validity (Transport)',
+        value: valTrMatch.group(1)!,
+        confidence: 0.90,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 10. Authorised Vehicle Class
+    final classes = <String>[];
+    if (upper.contains('MCWG') || upper.contains('M/CYL')) classes.add('MCWG (Motorcycle with Gear)');
+    if (upper.contains('LMV')) classes.add('LMV (Light Motor Vehicle)');
+    if (upper.contains('TRANS') || upper.contains('HMV')) classes.add('Transport (Commercial)');
+    if (classes.isNotEmpty) {
+      fields.add(RawExtractedField(
+        fieldName: 'Authorised Vehicle Class',
+        value: classes.join(', '),
+        confidence: 0.94,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 11. Issuing Authority
+    final rtoMatch = RegExp(r'(?:LICENSING AUTHORITY|ISSUING AUTHORITY|RTO)[\s:]*([A-Za-z0-9 \(\)\.\-]{3,35})', caseSensitive: false).firstMatch(fullText);
+    fields.add(RawExtractedField(
+      fieldName: 'Issuing Authority',
+      value: rtoMatch != null ? rtoMatch.group(1)!.trim() : 'Licensing Authority / Transport Department',
+      confidence: 0.88,
+      confidenceCategory: 'High',
+    ));
+  }
+
+  // =========================================================================
+  // 3. AADHAAR CARD
+  // =========================================================================
+  static void _extractAadhaarFields(
+    String fullText,
+    String upper,
+    List<String> lines,
+    List<RawExtractedField> fields,
+  ) {
+    // 1. Aadhaar Number (Masked preference)
+    final aadhaarMatch = RegExp(r'\b(\d{4}\s\d{4}\s\d{4})\b').firstMatch(fullText);
+    if (aadhaarMatch != null) {
+      final fullNumber = aadhaarMatch.group(1)!;
+      final parts = fullNumber.split(' ');
+      final masked = 'XXXX XXXX ${parts.last}';
+      fields.add(RawExtractedField(
+        fieldName: 'Aadhaar Number',
+        value: masked,
+        confidence: 0.99,
+        confidenceCategory: 'High',
+        sourceSnippet: fullNumber,
+      ));
+    }
+
+    // 2. Full Name
+    String? detectedName;
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      if (line.contains('GOVERNMENT OF INDIA') || line.contains('UIDAI') || line.contains('भारत सरकार')) {
+        if (i + 1 < lines.length && _isValidName(lines[i + 1])) {
+          detectedName = lines[i + 1];
+          break;
+        }
+      }
+    }
+    if (detectedName != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Full Name',
+        value: detectedName,
+        confidence: 0.88,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 3. Date of Birth or Year of Birth
+    final dobMatch = RegExp(r'(?:DOB|DATE OF BIRTH|BIRTH)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})').firstMatch(upper);
+    if (dobMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Date of Birth',
+        value: dobMatch.group(1)!,
+        confidence: 0.96,
+        confidenceCategory: 'High',
+      ));
+    } else {
+      final yobMatch = RegExp(r'(?:YEAR OF BIRTH|YOB)[\s:]*(\d{4})').firstMatch(upper);
+      if (yobMatch != null) {
+        fields.add(RawExtractedField(
+          fieldName: 'Year of Birth',
+          value: yobMatch.group(1)!,
+          confidence: 0.92,
+          confidenceCategory: 'High',
+        ));
+      }
+    }
+
+    // 4. Gender
+    final genderMatch = RegExp(r'\b(MALE|FEMALE|TRANSGENDER|पुरुष|महिला)\b').firstMatch(upper);
+    if (genderMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Gender',
+        value: genderMatch.group(1)!,
+        confidence: 0.95,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 5. Father's / Husband's Name (C/O, S/O, W/O, D/O)
+    final coMatch = RegExp(r'(?:C/O|S/O|W/O|D/O)[\s:]*([A-Za-z ]{3,35})', caseSensitive: false).firstMatch(fullText);
+    if (coMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: "Father's / Husband's Name (C/O)",
+        value: _cleanName(coMatch.group(1)!),
+        confidence: 0.88,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 6. Address
+    final addrIdx = lines.indexWhere((l) => l.toUpperCase().contains('ADDRESS') || l.toUpperCase().contains('पता'));
+    if (addrIdx != -1 && addrIdx + 1 < lines.length) {
+      final addrText = lines.skip(addrIdx).take(3).join(', ').replaceFirst(RegExp(r'^(Address|पता)[\s:]*', caseSensitive: false), '');
+      fields.add(RawExtractedField(
+        fieldName: 'Address',
+        value: addrText,
+        confidence: 0.84,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 7. PIN Code
+    final pinMatch = RegExp(r'\b([1-9][0-9]{5})\b').firstMatch(fullText);
+    if (pinMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'PIN Code',
+        value: pinMatch.group(1)!,
+        confidence: 0.92,
+        confidenceCategory: 'High',
+      ));
+    }
+  }
+
+  // =========================================================================
+  // 4. PAN CARD
+  // =========================================================================
+  static void _extractPanFields(
+    String fullText,
+    String upper,
+    List<String> lines,
+    List<RawExtractedField> fields,
+  ) {
     // 1. PAN Number
-    final panMatch = RegExp(r'\b[A-Z]{5}[0-9]{4}[A-Z]\b').firstMatch(upper);
+    final panMatch = RegExp(r'\b([A-Z]{5}[0-9]{4}[A-Z])\b').firstMatch(upper);
     if (panMatch != null) {
       fields.add(RawExtractedField(
         fieldName: 'PAN Number',
-        value: panMatch.group(0)!,
-        confidence: 0.98,
+        value: panMatch.group(1)!,
+        confidence: 0.99,
         confidenceCategory: 'High',
-        sourceSnippet: panMatch.group(0),
+        sourceSnippet: panMatch.group(1),
       ));
     }
 
@@ -82,21 +725,41 @@ class DocumentFieldExtractor {
         value: dobMatch.group(1)!,
         confidence: 0.95,
         confidenceCategory: 'High',
-        sourceSnippet: dobMatch.group(1),
       ));
     }
 
     // 3. Name & Father's Name
-    // Usually lines after "INCOME TAX DEPARTMENT" or before Father's Name
     String? detectedName;
     String? fatherName;
 
-    for (int i = 0; i < lines.length; i++) {
-      final line = lines[i].toUpperCase();
-      if (line.contains("FATHER") && i + 1 < lines.length) {
-        fatherName = lines[i + 1];
-        if (i > 0 && !lines[i - 1].contains("INCOME TAX") && !lines[i - 1].contains("GOVT")) {
-          detectedName = lines[i - 1];
+    // Check same-line FATHER NAME: ...
+    final fnMatch = RegExp(r'(?:FATHER(?:\x27S)?\s*NAME)[\s:]*([A-Za-z ]{3,35})', caseSensitive: false).firstMatch(fullText);
+    if (fnMatch != null) {
+      fatherName = _cleanName(fnMatch.group(1)!);
+    } else {
+      for (int i = 0; i < lines.length; i++) {
+        final line = lines[i].toUpperCase();
+        if (line.contains("FATHER") && i + 1 < lines.length) {
+          fatherName = _cleanName(lines[i + 1]);
+          if (i > 0 && !lines[i - 1].contains("INCOME TAX") && !lines[i - 1].contains("GOVT")) {
+            detectedName = _cleanName(lines[i - 1]);
+          }
+          break;
+        }
+      }
+    }
+
+    if (detectedName == null || detectedName.isEmpty) {
+      // Find candidate name from uppercase lines
+      for (final line in lines) {
+        if (RegExp(r'^[A-Za-z ]{4,30}$').hasMatch(line) &&
+            !line.toUpperCase().contains('INCOME') &&
+            !line.toUpperCase().contains('TAX') &&
+            !line.toUpperCase().contains('INDIA') &&
+            !line.toUpperCase().contains('FATHER') &&
+            !line.toUpperCase().contains('PERMANENT')) {
+          detectedName = _cleanName(line);
+          break;
         }
       }
     }
@@ -105,281 +768,37 @@ class DocumentFieldExtractor {
       fields.add(RawExtractedField(
         fieldName: 'Full Name',
         value: detectedName,
-        confidence: 0.85,
-        confidenceCategory: 'Medium',
+        confidence: 0.88,
+        confidenceCategory: 'High',
       ));
-    } else {
-      // Find candidate uppercase name line
-      for (final line in lines) {
-        if (RegExp(r'^[A-Z\s]{4,30}$').hasMatch(line) &&
-            !line.contains('INCOME') &&
-            !line.contains('TAX') &&
-            !line.contains('INDIA') &&
-            !line.contains('PERMANENT')) {
-          fields.add(RawExtractedField(
-            fieldName: 'Full Name',
-            value: line,
-            confidence: 0.70,
-            confidenceCategory: 'Medium',
-          ));
-          break;
-        }
-      }
     }
 
     if (fatherName != null && fatherName.length > 2) {
       fields.add(RawExtractedField(
         fieldName: "Father's Name",
         value: fatherName,
-        confidence: 0.82,
-        confidenceCategory: 'Medium',
-      ));
-    }
-  }
-
-  // =========================================================================
-  // AADHAAR CARD EXTRACTOR
-  // =========================================================================
-  static void _extractAadhaarFields(String rawText, String upper, List<String> lines, List<RawExtractedField> fields) {
-    // 1. Aadhaar Number (Masked preference)
-    final aadhaarMatch = RegExp(r'\b(\d{4}\s\d{4}\s\d{4})\b').firstMatch(rawText);
-    if (aadhaarMatch != null) {
-      final fullNumber = aadhaarMatch.group(1)!;
-      final parts = fullNumber.split(' ');
-      final masked = 'XXXX XXXX ${parts.last}';
-      fields.add(RawExtractedField(
-        fieldName: 'Aadhaar Number',
-        value: masked,
-        confidence: 0.98,
-        confidenceCategory: 'High',
-        sourceSnippet: fullNumber,
-      ));
-    }
-
-    // 2. Date of Birth or Year of Birth
-    final dobMatch = RegExp(r'(?:DOB|DATE OF BIRTH|BIRTH)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4}|\d{4})').firstMatch(upper);
-    if (dobMatch != null) {
-      fields.add(RawExtractedField(
-        fieldName: 'Date of Birth',
-        value: dobMatch.group(1)!,
-        confidence: 0.94,
-        confidenceCategory: 'High',
-        sourceSnippet: dobMatch.group(0),
-      ));
-    } else {
-      final yobMatch = RegExp(r'(?:YEAR OF BIRTH|YOB)[\s:]*(\d{4})').firstMatch(upper);
-      if (yobMatch != null) {
-        fields.add(RawExtractedField(
-          fieldName: 'Year of Birth',
-          value: yobMatch.group(1)!,
-          confidence: 0.90,
-          confidenceCategory: 'High',
-          sourceSnippet: yobMatch.group(0),
-        ));
-      }
-    }
-
-    // 3. Gender
-    final genderMatch = RegExp(r'\b(MALE|FEMALE|TRANSGENDER|पुरुष|महिला)\b').firstMatch(upper);
-    if (genderMatch != null) {
-      fields.add(RawExtractedField(
-        fieldName: 'Gender',
-        value: genderMatch.group(1)!,
-        confidence: 0.92,
-        confidenceCategory: 'High',
-        sourceSnippet: genderMatch.group(1),
-      ));
-    }
-
-    // 4. Address detection
-    final addressIndex = lines.indexWhere((l) => l.toUpperCase().contains('ADDRESS') || l.toUpperCase().contains('पता'));
-    if (addressIndex != -1 && addressIndex + 1 < lines.length) {
-      final addressSnippet = lines.skip(addressIndex).take(3).join(', ');
-      fields.add(RawExtractedField(
-        fieldName: 'Address',
-        value: addressSnippet.replaceFirst(RegExp(r'^(Address|पता)[\s:]*', caseSensitive: false), ''),
-        confidence: 0.80,
-        confidenceCategory: 'Medium',
-      ));
-    }
-  }
-
-  // =========================================================================
-  // DRIVING LICENCE EXTRACTOR
-  // =========================================================================
-  static void _extractDrivingLicenceFields(String upper, List<String> lines, List<RawExtractedField> fields) {
-    // 1. Licence Number
-    final dlMatch = RegExp(r'\b([A-Z]{2}[0-9]{2}[\s-]?[0-9]{11})\b').firstMatch(upper);
-    if (dlMatch != null) {
-      fields.add(RawExtractedField(
-        fieldName: 'Licence Number',
-        value: dlMatch.group(1)!,
-        confidence: 0.96,
-        confidenceCategory: 'High',
-        sourceSnippet: dlMatch.group(1),
-      ));
-    }
-
-    // 2. Dates (DOB, Issue Date, Expiry Date)
-    final dateMatches = RegExp(r'\b(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})\b').allMatches(upper).toList();
-    if (dateMatches.isNotEmpty) {
-      fields.add(RawExtractedField(
-        fieldName: 'Date of Birth',
-        value: dateMatches[0].group(1)!,
-        confidence: 0.85,
-        confidenceCategory: 'Medium',
-      ));
-      if (dateMatches.length >= 2) {
-        fields.add(RawExtractedField(
-          fieldName: 'Issue Date',
-          value: dateMatches[1].group(1)!,
-          confidence: 0.80,
-          confidenceCategory: 'Medium',
-        ));
-      }
-      if (dateMatches.length >= 3) {
-        fields.add(RawExtractedField(
-          fieldName: 'Expiry Date',
-          value: dateMatches.last.group(1)!,
-          confidence: 0.85,
-          confidenceCategory: 'High',
-        ));
-      }
-    }
-
-    // 3. Vehicle Classes
-    final classes = <String>[];
-    if (upper.contains('MCWG') || upper.contains('M/CYL')) classes.add('MCWG (Motorcycle)');
-    if (upper.contains('LMV')) classes.add('LMV (Light Motor Vehicle)');
-    if (upper.contains('TRANS') || upper.contains('HMV')) classes.add('Transport / Commercial');
-    if (classes.isNotEmpty) {
-      fields.add(RawExtractedField(
-        fieldName: 'Authorised Vehicle Class',
-        value: classes.join(', '),
-        confidence: 0.90,
-        confidenceCategory: 'High',
-      ));
-    }
-
-    // 4. Issuing Authority
-    fields.add(const RawExtractedField(
-      fieldName: 'Issuing Authority',
-      value: 'Licensing Authority / Transport Department',
-      confidence: 0.85,
-      confidenceCategory: 'High',
-    ));
-  }
-
-  // =========================================================================
-  // VEHICLE RC BOOK EXTRACTOR
-  // =========================================================================
-  static void _extractVehicleRcFields(String upper, List<String> lines, List<RawExtractedField> fields) {
-    // 1. Registration Number
-    final regMatch = RegExp(r'\b([A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4})\b').firstMatch(upper);
-    if (regMatch != null) {
-      fields.add(RawExtractedField(
-        fieldName: 'Registration Number',
-        value: regMatch.group(1)!,
-        confidence: 0.96,
-        confidenceCategory: 'High',
-        sourceSnippet: regMatch.group(1),
-      ));
-    }
-
-    // 2. Chassis Number
-    final chassisMatch = RegExp(r'(?:CHASSIS|CH\.NO)[\s:]*([A-HJ-NPR-Z0-9]{10,20})').firstMatch(upper);
-    if (chassisMatch != null) {
-      fields.add(RawExtractedField(
-        fieldName: 'Chassis Number',
-        value: chassisMatch.group(1)!,
-        confidence: 0.90,
-        confidenceCategory: 'High',
-      ));
-    }
-
-    // 3. Engine Number
-    final engineMatch = RegExp(r'(?:ENGINE|ENG\.NO)[\s:]*([A-Z0-9]{6,16})').firstMatch(upper);
-    if (engineMatch != null) {
-      fields.add(RawExtractedField(
-        fieldName: 'Engine Number',
-        value: engineMatch.group(1)!,
-        confidence: 0.90,
-        confidenceCategory: 'High',
-      ));
-    }
-
-    // 4. Fuel Type
-    final fuelMatch = RegExp(r'\b(PETROL|DIESEL|CNG|ELECTRIC|HYBRID|LPG)\b').firstMatch(upper);
-    if (fuelMatch != null) {
-      fields.add(RawExtractedField(
-        fieldName: 'Fuel Type',
-        value: fuelMatch.group(1)!,
-        confidence: 0.92,
-        confidenceCategory: 'High',
-      ));
-    }
-
-    // 5. Registration Date
-    final regDateMatch = RegExp(r'(?:REG\.?\s*DATE|DATE OF REG)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})').firstMatch(upper);
-    if (regDateMatch != null) {
-      fields.add(RawExtractedField(
-        fieldName: 'Registration Date',
-        value: regDateMatch.group(1)!,
-        confidence: 0.90,
+        confidence: 0.86,
         confidenceCategory: 'High',
       ));
     }
   }
 
   // =========================================================================
-  // PUC CERTIFICATE EXTRACTOR
+  // 5. PUC CERTIFICATE
   // =========================================================================
-  static void _extractPucFields(String upper, List<String> lines, List<RawExtractedField> fields) {
-    // 1. Vehicle Registration Number
-    final regMatch = RegExp(r'\b([A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4})\b').firstMatch(upper);
-    if (regMatch != null) {
-      fields.add(RawExtractedField(
-        fieldName: 'Vehicle Registration Number',
-        value: regMatch.group(1)!,
-        confidence: 0.95,
-        confidenceCategory: 'High',
-      ));
-    }
-
-    // 2. Certificate Number
-    final certMatch = RegExp(r'(?:CERTIFICATE NO|PUCC NO)[\s:]*([A-Z0-9]+)').firstMatch(upper);
+  static void _extractPucFields(
+    String fullText,
+    String upper,
+    List<String> lines,
+    List<RawExtractedField> fields,
+  ) {
+    // 1. Certificate Number
+    final certMatch = RegExp(r'(?:CERTIFICATE NO|PUCC NO|PUC NO)[\s:]*([A-Z0-9\/-]+)').firstMatch(upper);
     if (certMatch != null) {
       fields.add(RawExtractedField(
         fieldName: 'Certificate Number',
         value: certMatch.group(1)!,
-        confidence: 0.90,
-        confidenceCategory: 'High',
-      ));
-    }
-
-    // 3. Validity / Expiry Date
-    final valMatch = RegExp(r'(?:VALID UPTO|VALID TILL|EXPIRY DATE)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})').firstMatch(upper);
-    if (valMatch != null) {
-      fields.add(RawExtractedField(
-        fieldName: 'Validity Date',
-        value: valMatch.group(1)!,
-        confidence: 0.94,
-        confidenceCategory: 'High',
-      ));
-    }
-  }
-
-  // =========================================================================
-  // VEHICLE INSURANCE EXTRACTOR
-  // =========================================================================
-  static void _extractVehicleInsuranceFields(String upper, List<String> lines, List<RawExtractedField> fields) {
-    // 1. Policy Number
-    final policyMatch = RegExp(r'(?:POLICY NO|POLICY NUMBER)[\s:]*([A-Z0-9\/-]{8,25})').firstMatch(upper);
-    if (policyMatch != null) {
-      fields.add(RawExtractedField(
-        fieldName: 'Policy Number',
-        value: policyMatch.group(1)!,
-        confidence: 0.92,
+        confidence: 0.95,
         confidenceCategory: 'High',
       ));
     }
@@ -390,17 +809,377 @@ class DocumentFieldExtractor {
       fields.add(RawExtractedField(
         fieldName: 'Vehicle Registration Number',
         value: regMatch.group(1)!,
-        confidence: 0.94,
+        confidence: 0.98,
         confidenceCategory: 'High',
       ));
     }
 
-    // 3. Expiry Date
-    final expiryMatch = RegExp(r'(?:EXPIRY DATE|TO MIDNIGHT OF)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})').firstMatch(upper);
-    if (expiryMatch != null) {
+    // 3. Date of Issue
+    final dateMatch = RegExp(r'(?:DATE OF ISSUE|DOI|ISSUED ON)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})').firstMatch(upper);
+    if (dateMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Date of Issue',
+        value: dateMatch.group(1)!,
+        confidence: 0.92,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 4. Validity / Expiry Date
+    final valMatch = RegExp(r'(?:VALID UPTO|VALID TILL|EXPIRY DATE)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})').firstMatch(upper);
+    if (valMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Expiry Date',
+        value: valMatch.group(1)!,
+        confidence: 0.96,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 5. Emission Values (CO, HC)
+    final coMatch = RegExp(r'(?:CO\s*\(?%?\)?|CARBON MONOXIDE(?:\s*\(CO\))?)[\s:]*([0-9]+\.[0-9]+)').firstMatch(upper);
+    if (coMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'CO Emission Value (%)',
+        value: coMatch.group(1)!,
+        confidence: 0.88,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    final hcMatch = RegExp(r'(?:HYDROCARBONS(?:\s*\(HC\))?|HC\s*\(?PPM\)?)[\s:]*([0-9]+)').firstMatch(upper);
+    if (hcMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'HC Emission Value (PPM)',
+        value: hcMatch.group(1)!,
+        confidence: 0.88,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 6. Compliance Status
+    if (upper.contains('PASS') || upper.contains('COMPLIANT') || upper.contains('WITHIN LIMITS')) {
+      fields.add(const RawExtractedField(
+        fieldName: 'Compliance Status',
+        value: 'Pass / Compliant',
+        confidence: 0.94,
+        confidenceCategory: 'High',
+      ));
+    }
+  }
+
+  // =========================================================================
+  // 6. VEHICLE INSURANCE
+  // =========================================================================
+  static void _extractVehicleInsuranceFields(
+    String fullText,
+    String upper,
+    List<String> lines,
+    List<RawExtractedField> fields,
+  ) {
+    // 1. Policy Number
+    final policyMatch = RegExp(r'(?:POLICY NO|POLICY NUMBER)[\s:]*([A-Z0-9\/-]{8,30})').firstMatch(upper);
+    if (policyMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Policy Number',
+        value: policyMatch.group(1)!,
+        confidence: 0.96,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 2. Insurer Name
+    final insurerMatch = RegExp(r'(?:ICICI LOMBARD|HDFC ERGO|BAJAJ ALLIANZ|NEW INDIA ASSURANCE|TATA AIG|GO DIGIT|IFFCO TOKIO|UNITED INDIA|NATIONAL INSURANCE|ORIENTAL INSURANCE|STAR HEALTH|SBI GENERAL)', caseSensitive: false).firstMatch(fullText);
+    if (insurerMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Insurance Company',
+        value: insurerMatch.group(0)!,
+        confidence: 0.95,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 3. Insured Name
+    final nameMatch = RegExp(r'(?:INSURED NAME|NAME OF INSURED|POLICYHOLDER)[\s:]*([A-Za-z ]{3,35})', caseSensitive: false).firstMatch(fullText);
+    if (nameMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Insured Name',
+        value: _cleanName(nameMatch.group(1)!),
+        confidence: 0.88,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 4. Vehicle Registration Number
+    final regMatch = RegExp(r'\b([A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4})\b').firstMatch(upper);
+    if (regMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Vehicle Registration Number',
+        value: regMatch.group(1)!,
+        confidence: 0.96,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 5. Policy Start Date
+    final startMatch = RegExp(r'(?:FROM|POLICY START|COMMENCEMENT DATE)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})').firstMatch(upper);
+    if (startMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Policy Start Date',
+        value: startMatch.group(1)!,
+        confidence: 0.92,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 6. Policy Expiry Date
+    final expMatch = RegExp(r'(?:TO MIDNIGHT OF|EXPIRY DATE|VALID TILL|POLICY END)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})').firstMatch(upper);
+    if (expMatch != null) {
       fields.add(RawExtractedField(
         fieldName: 'Policy Expiry Date',
-        value: expiryMatch.group(1)!,
+        value: expMatch.group(1)!,
+        confidence: 0.96,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 7. IDV (Insured Declared Value)
+    final idvMatch = RegExp(r'(?:IDV|INSURED DECLARED VALUE)[\s:]*(?:RS\.?|INR)?\s*([0-9,]+)').firstMatch(upper);
+    if (idvMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'IDV (Insured Declared Value)',
+        value: '₹${idvMatch.group(1)!}',
+        confidence: 0.88,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 8. Premium Amount
+    final premMatch = RegExp(r'(?:TOTAL PREMIUM|PREMIUM AMOUNT|NET PREMIUM)[\s:]*(?:RS\.?|INR)?\s*([0-9,]+(?:\.[0-9]{2})?)').firstMatch(upper);
+    if (premMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Premium Amount',
+        value: '₹${premMatch.group(1)!}',
+        confidence: 0.88,
+        confidenceCategory: 'High',
+      ));
+    }
+  }
+
+  // =========================================================================
+  // 7. PASSPORT
+  // =========================================================================
+  static void _extractPassportFields(
+    String fullText,
+    String upper,
+    List<String> lines,
+    List<RawExtractedField> fields,
+  ) {
+    // 1. Passport Number
+    final passMatch = RegExp(r'\b([A-Z][0-9]{7,8})\b').firstMatch(upper);
+    if (passMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Passport Number',
+        value: passMatch.group(1)!,
+        confidence: 0.99,
+        confidenceCategory: 'High',
+        sourceSnippet: passMatch.group(1),
+      ));
+    }
+
+    // 2. Type & Country Code
+    fields.add(const RawExtractedField(
+      fieldName: 'Passport Type',
+      value: 'P (Personal)',
+      confidence: 0.95,
+      confidenceCategory: 'High',
+    ));
+
+    fields.add(const RawExtractedField(
+      fieldName: 'Country Code',
+      value: 'IND',
+      confidence: 0.95,
+      confidenceCategory: 'High',
+    ));
+
+    // 3. Surname & Given Names
+    final surnameMatch = RegExp(r'(?:SURNAME|LAST NAME)[\s:]*([A-Za-z ]{2,30})', caseSensitive: false).firstMatch(fullText);
+    if (surnameMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Surname',
+        value: _cleanName(surnameMatch.group(1)!),
+        confidence: 0.88,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    final givenMatch = RegExp(r'(?:GIVEN NAMES?|FIRST NAME)[\s:]*([A-Za-z ]{2,35})', caseSensitive: false).firstMatch(fullText);
+    if (givenMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Given Names',
+        value: _cleanName(givenMatch.group(1)!),
+        confidence: 0.88,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 4. Nationality
+    fields.add(const RawExtractedField(
+      fieldName: 'Nationality',
+      value: 'INDIAN',
+      confidence: 0.98,
+      confidenceCategory: 'High',
+    ));
+
+    // 5. Sex
+    final sexMatch = RegExp(r'\b(SEX|GENDER)[\s:]*([MF])\b').firstMatch(upper);
+    if (sexMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Sex',
+        value: sexMatch.group(2) == 'M' ? 'Male' : 'Female',
+        confidence: 0.92,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 6. Dates
+    final dates = RegExp(r'\b(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})\b').allMatches(upper).toList();
+    if (dates.isNotEmpty) {
+      fields.add(RawExtractedField(
+        fieldName: 'Date of Birth',
+        value: dates[0].group(1)!,
+        confidence: 0.88,
+        confidenceCategory: 'High',
+      ));
+      if (dates.length >= 2) {
+        fields.add(RawExtractedField(
+          fieldName: 'Date of Issue',
+          value: dates[1].group(1)!,
+          confidence: 0.88,
+          confidenceCategory: 'High',
+        ));
+      }
+      if (dates.length >= 3) {
+        fields.add(RawExtractedField(
+          fieldName: 'Date of Expiry',
+          value: dates.last.group(1)!,
+          confidence: 0.94,
+          confidenceCategory: 'High',
+        ));
+      }
+    }
+
+    // 7. Place of Issue / Place of Birth
+    final pobMatch = RegExp(r'(?:PLACE OF BIRTH)[\s:]*([A-Za-z ]{3,30})', caseSensitive: false).firstMatch(fullText);
+    if (pobMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Place of Birth',
+        value: _cleanName(pobMatch.group(1)!),
+        confidence: 0.85,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    final poiMatch = RegExp(r'(?:PLACE OF ISSUE)[\s:]*([A-Za-z ]{3,30})', caseSensitive: false).firstMatch(fullText);
+    if (poiMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Place of Issue',
+        value: _cleanName(poiMatch.group(1)!),
+        confidence: 0.85,
+        confidenceCategory: 'High',
+      ));
+    }
+  }
+
+  // =========================================================================
+  // 8. BANK DOCUMENT (Statement / Passbook / Cheque)
+  // CRITICAL SECURITY: Never extract ATM PIN, CVV, Card Expiry, Net Banking Password, OTP
+  // =========================================================================
+  static void _extractBankDocumentFields(
+    String fullText,
+    String upper,
+    List<String> lines,
+    List<RawExtractedField> fields,
+  ) {
+    // 1. Bank Name
+    final bankMatch = RegExp(r'(?:STATE BANK OF INDIA|HDFC BANK|ICICI BANK|AXIS BANK|PUNJAB NATIONAL BANK|BANK OF BARODA|CANARA BANK|KOTAK MAHINDRA|UNION BANK|INDUSIND BANK|IDFC FIRST BANK|YES BANK)', caseSensitive: false).firstMatch(fullText);
+    if (bankMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Bank Name',
+        value: bankMatch.group(0)!,
+        confidence: 0.96,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 2. Account Holder Name
+    final nameMatch = RegExp(r'(?:ACCOUNT HOLDER|CUSTOMER NAME)[\s:]*([A-Za-z ]{3,35})', caseSensitive: false).firstMatch(fullText);
+    if (nameMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Account Holder Name',
+        value: _cleanName(nameMatch.group(1)!),
+        confidence: 0.88,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 3. Account Number
+    final accMatch = RegExp(r'(?:A/C NO|ACCOUNT NO|ACCOUNT NUMBER)[\s:]*([0-9]{9,18})').firstMatch(upper);
+    if (accMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Account Number',
+        value: accMatch.group(1)!,
+        confidence: 0.95,
+        confidenceCategory: 'High',
+        sourceSnippet: accMatch.group(1),
+      ));
+    }
+
+    // 4. IFSC Code
+    final ifscMatch = RegExp(r'\b([A-Z]{4}0[A-Z0-9]{6})\b').firstMatch(upper);
+    if (ifscMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'IFSC Code',
+        value: ifscMatch.group(1)!,
+        confidence: 0.98,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 5. Branch Name
+    final branchMatch = RegExp(r'(?:BRANCH|BRANCH NAME)[\s:]*([A-Za-z0-9 ]{3,30})', caseSensitive: false).firstMatch(fullText);
+    if (branchMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Branch Name',
+        value: branchMatch.group(1)!.trim(),
+        confidence: 0.86,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 6. MICR Code
+    final micrMatch = RegExp(r'(?:MICR|MICR CODE)[\s:]*([0-9]{9})').firstMatch(upper);
+    if (micrMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'MICR Code',
+        value: micrMatch.group(1)!,
+        confidence: 0.90,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 7. Account Type
+    if (upper.contains('SAVINGS') || upper.contains('SAVING A/C')) {
+      fields.add(const RawExtractedField(
+        fieldName: 'Account Type',
+        value: 'Savings Account',
+        confidence: 0.92,
+        confidenceCategory: 'High',
+      ));
+    } else if (upper.contains('CURRENT') || upper.contains('CURRENT A/C')) {
+      fields.add(const RawExtractedField(
+        fieldName: 'Account Type',
+        value: 'Current Account',
         confidence: 0.92,
         confidenceCategory: 'High',
       ));
@@ -408,83 +1187,173 @@ class DocumentFieldExtractor {
   }
 
   // =========================================================================
-  // PASSPORT EXTRACTOR
+  // 9. EDUCATIONAL CERTIFICATE / MARKSHEET
   // =========================================================================
-  static void _extractPassportFields(String upper, List<String> lines, List<RawExtractedField> fields) {
-    // 1. Passport Number
-    final passMatch = RegExp(r'\b([A-Z][0-9]{7,8})\b').firstMatch(upper);
-    if (passMatch != null) {
+  static void _extractEducationCertificateFields(
+    String fullText,
+    String upper,
+    List<String> lines,
+    List<RawExtractedField> fields,
+  ) {
+    // 1. Candidate Name
+    final nameMatch = RegExp(r'(?:NAME OF CANDIDATE|CANDIDATE NAME|STUDENT NAME)[\s:]*([A-Za-z ]{3,35})', caseSensitive: false).firstMatch(fullText);
+    if (nameMatch != null) {
       fields.add(RawExtractedField(
-        fieldName: 'Passport Number',
-        value: passMatch.group(1)!,
-        confidence: 0.98,
-        confidenceCategory: 'High',
-        sourceSnippet: passMatch.group(1),
-      ));
-    }
-
-    // 2. Nationality
-    if (upper.contains('INDIAN') || upper.contains('REPUBLIC OF INDIA')) {
-      fields.add(const RawExtractedField(
-        fieldName: 'Nationality',
-        value: 'INDIAN',
-        confidence: 0.95,
+        fieldName: 'Candidate Name',
+        value: _cleanName(nameMatch.group(1)!),
+        confidence: 0.88,
         confidenceCategory: 'High',
       ));
     }
 
-    // 3. Dates
-    final dates = RegExp(r'\b(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})\b').allMatches(upper).toList();
-    if (dates.isNotEmpty) {
+    // 2. Roll Number / Reg No
+    final rollMatch = RegExp(r'(?:ROLL NO|REGISTRATION NO|ENROLMENT NO)[\s:]*([A-Z0-9\/-]+)').firstMatch(upper);
+    if (rollMatch != null) {
       fields.add(RawExtractedField(
-        fieldName: 'Date of Birth',
-        value: dates[0].group(1)!,
-        confidence: 0.85,
-        confidenceCategory: 'Medium',
+        fieldName: 'Roll / Registration Number',
+        value: rollMatch.group(1)!,
+        confidence: 0.92,
+        confidenceCategory: 'High',
       ));
-      if (dates.length >= 2) {
-        fields.add(RawExtractedField(
-          fieldName: 'Issue Date',
-          value: dates[1].group(1)!,
-          confidence: 0.85,
-          confidenceCategory: 'Medium',
-        ));
-      }
-      if (dates.length >= 3) {
-        fields.add(RawExtractedField(
-          fieldName: 'Expiry Date',
-          value: dates.last.group(1)!,
-          confidence: 0.90,
-          confidenceCategory: 'High',
-        ));
-      }
+    }
+
+    // 3. Degree / Course Name
+    final courseMatch = RegExp(r'(?:BACHELOR OF [A-Za-z ]+|MASTER OF [A-Za-z ]+|DIPLOMA IN [A-Za-z ]+|HIGHER SECONDARY|CLASS XII|CLASS X|B\.TECH|B\.E|B\.SC|B\.COM|M\.TECH)', caseSensitive: false).firstMatch(fullText);
+    if (courseMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Degree / Course',
+        value: courseMatch.group(0)!.trim(),
+        confidence: 0.90,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 4. Institution / University Name
+    final univMatch = RegExp(r'(?:UNIVERSITY OF [A-Za-z ]+|[A-Za-z ]+ UNIVERSITY|CENTRAL BOARD OF SECONDARY EDUCATION|[A-Za-z ]+ COLLEGE)', caseSensitive: false).firstMatch(fullText);
+    if (univMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Institution / University',
+        value: univMatch.group(0)!.trim(),
+        confidence: 0.88,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 5. Passing Year
+    final yearMatch = RegExp(r'(?:YEAR OF PASSING|PASSING YEAR|HELD IN)[\s:]*([0-9]{4})').firstMatch(upper);
+    if (yearMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Passing Year',
+        value: yearMatch.group(1)!,
+        confidence: 0.90,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 6. Grade / CGPA / Percentage
+    final gradeMatch = RegExp(r'(?:CGPA|PERCENTAGE|GRADE|MARKS OBTAINED)[\s:]*([0-9\.]+(?:%|\s*CGPA|\s*\/\s*10)?)').firstMatch(upper);
+    if (gradeMatch != null) {
+      fields.add(RawExtractedField(
+        fieldName: 'Grade / CGPA / Percentage',
+        value: gradeMatch.group(1)!,
+        confidence: 0.88,
+        confidenceCategory: 'High',
+      ));
     }
   }
 
   // =========================================================================
-  // GENERIC EXTRACTOR
+  // 10. GENERIC / OTHER DOCUMENTS + DYNAMIC DISCOVERY
   // =========================================================================
-  static void _extractGenericFields(String upper, List<String> lines, List<RawExtractedField> fields) {
-    final dates = RegExp(r'\b(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})\b').allMatches(upper).toList();
-    for (int i = 0; i < dates.length && i < 3; i++) {
+  static void _extractGenericFields(
+    String fullText,
+    String upper,
+    List<String> lines,
+    List<RawExtractedField> fields,
+  ) {
+    // 1. Document Title
+    if (lines.isNotEmpty) {
       fields.add(RawExtractedField(
-        fieldName: i == 0 ? 'Document Date' : 'Reference Date $i',
-        value: dates[i].group(1)!,
-        confidence: 0.70,
-        confidenceCategory: 'Medium',
+        fieldName: 'Document Title',
+        value: lines.first,
+        confidence: 0.80,
+        confidenceCategory: 'High',
       ));
     }
 
-    // Check for alphanumeric reference numbers
-    final refMatch = RegExp(r'(?:NO|NUMBER|REF|ID)[\s.:#]*([A-Z0-9-]{6,20})').firstMatch(upper);
+    // 2. Dates
+    final dates = RegExp(r'\b(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})\b').allMatches(upper).toList();
+    if (dates.isNotEmpty) {
+      fields.add(RawExtractedField(
+        fieldName: 'Document Date',
+        value: dates.first.group(1)!,
+        confidence: 0.85,
+        confidenceCategory: 'High',
+      ));
+    }
+
+    // 3. Reference Number
+    final refMatch = RegExp(r'(?:NO|NUMBER|REF|ID)[\s.:#]*([A-Z0-9-]{6,25})').firstMatch(upper);
     if (refMatch != null) {
       fields.add(RawExtractedField(
         fieldName: 'Reference Number',
         value: refMatch.group(1)!,
-        confidence: 0.75,
+        confidence: 0.82,
         confidenceCategory: 'Medium',
       ));
     }
+
+    // 4. Dynamic Key-Value Field Discovery (Line patterns like "Key : Value")
+    final kvRegex = RegExp(r'^([A-Za-z ]{3,22})\s*[:=]\s*([^\n\r]{2,60})$');
+    for (final line in lines) {
+      final match = kvRegex.firstMatch(line);
+      if (match != null) {
+        final key = match.group(1)!.trim();
+        final val = match.group(2)!.trim();
+        // Ignore overly short or sensitive tokens
+        if (key.length >= 3 && val.isNotEmpty && !_isSensitiveExcludedKey(key)) {
+          if (!fields.any((f) => f.fieldName.toLowerCase() == key.toLowerCase())) {
+            fields.add(RawExtractedField(
+              fieldName: _toTitleCase(key),
+              value: val,
+              confidence: 0.80,
+              confidenceCategory: 'Medium',
+              isSelected: true,
+            ));
+          }
+        }
+      }
+    }
+  }
+
+  // =========================================================================
+  // HELPER METHODS
+  // =========================================================================
+  static String _cleanName(String raw) {
+    return raw
+        .replaceAll(RegExp(r'^(MR\.?|MRS\.?|MS\.?|DR\.?|SHRI|SMT\.?)\s+', caseSensitive: false), '')
+        .replaceAll(RegExp(r'[^A-Za-z \.]'), '')
+        .trim();
+  }
+
+  static bool _isValidName(String s) {
+    final clean = s.trim();
+    return clean.length >= 3 && clean.length <= 40 && RegExp(r'^[A-Za-z \.]+$').hasMatch(clean);
+  }
+
+  static bool _isSensitiveExcludedKey(String key) {
+    final lower = key.toLowerCase();
+    return lower.contains('pin') ||
+        lower.contains('cvv') ||
+        lower.contains('otp') ||
+        lower.contains('password') ||
+        lower.contains('card exp');
+  }
+
+  static String _toTitleCase(String str) {
+    return str
+        .split(' ')
+        .map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}' : '')
+        .join(' ');
   }
 }
-

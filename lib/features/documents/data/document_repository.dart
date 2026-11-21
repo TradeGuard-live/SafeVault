@@ -611,6 +611,7 @@ class DocumentRepository {
   /// Saves a complete document extraction and its structured fields encrypted.
   Future<DocumentExtractionModel> saveExtraction({
     required String documentId,
+    String? documentType,
     required String extractedText,
     required List<RawExtractedField> fields,
     required String engine,
@@ -639,6 +640,7 @@ class DocumentRepository {
     final extractionModel = DocumentExtractionModel(
       id: extractionId,
       documentId: documentId,
+      documentType: documentType,
       extractedTextEncrypted: encText,
       encryptedTxtFilePath: encryptedTxtFilePath,
       extractionEngine: engine,
@@ -659,12 +661,15 @@ class DocumentRepository {
         await txn.insert('extracted_fields', {
           'id': fieldId,
           'extraction_id': extractionId,
+          'document_id': documentId,
           'field_name': field.fieldName,
           'encrypted_value': encValue,
           'confidence': field.confidence,
           'confidence_category': field.confidenceCategory,
           'source_page': field.sourcePage,
           'verification_status': 'unverified',
+          'is_selected': field.isSelected ? 1 : 0,
+          'is_verified': 0,
           'created_at': now.toIso8601String(),
           'updated_at': now.toIso8601String(),
         });
@@ -690,6 +695,90 @@ class DocumentRepository {
     );
 
     return await getExtractionForDocument(documentId, masterKey) ?? extractionModel;
+  }
+
+  /// Updates selection flag of a single extracted field.
+  Future<void> updateFieldSelection({
+    required String fieldId,
+    required bool isSelected,
+  }) async {
+    final db = await _dbHelper.database;
+    await db.update(
+      'extracted_fields',
+      {
+        'is_selected': isSelected ? 1 : 0,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [fieldId],
+    );
+  }
+
+  /// Updates selection flag for all fields belonging to an extraction.
+  Future<void> updateAllFieldsSelection({
+    required String extractionId,
+    required bool isSelected,
+  }) async {
+    final db = await _dbHelper.database;
+    await db.update(
+      'extracted_fields',
+      {
+        'is_selected': isSelected ? 1 : 0,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'extraction_id = ?',
+      whereArgs: [extractionId],
+    );
+  }
+
+  /// Saves updated or newly added extracted fields for an extraction.
+  Future<void> saveExtractedFieldsList({
+    required String extractionId,
+    required String documentId,
+    required List<ExtractedFieldModel> fields,
+    required SecretKey masterKey,
+  }) async {
+    final db = await _dbHelper.database;
+    final now = DateTime.now().toIso8601String();
+
+    await db.transaction((txn) async {
+      // Clear existing fields for this extraction
+      await txn.delete(
+        'extracted_fields',
+        where: 'extraction_id = ?',
+        whereArgs: [extractionId],
+      );
+
+      for (final field in fields) {
+        String encValue = field.encryptedValue;
+        if (field.plainValue != null && field.plainValue!.isNotEmpty) {
+          encValue = await _encryptionService.encryptString(field.plainValue!, masterKey);
+        }
+
+        await txn.insert('extracted_fields', {
+          'id': field.id,
+          'extraction_id': extractionId,
+          'document_id': documentId,
+          'field_name': field.fieldName,
+          'encrypted_value': encValue,
+          'confidence': field.confidence,
+          'confidence_category': field.confidenceCategory,
+          'source_page': field.sourcePage,
+          'verification_status': field.verificationStatus,
+          'is_selected': field.isSelected ? 1 : 0,
+          'is_verified': field.isVerified ? 1 : 0,
+          'created_at': field.createdAt.toIso8601String(),
+          'updated_at': now,
+        });
+      }
+    });
+
+    await _activities.logActivity(
+      documentId: documentId,
+      documentName: 'Document',
+      activityType: 'FIELDS_UPDATED',
+      details: 'Updated field selections: ${fields.where((f) => f.isSelected).length} selected of ${fields.length} total fields',
+    );
   }
 
   /// Retrieves the latest decrypted extraction record for a document.

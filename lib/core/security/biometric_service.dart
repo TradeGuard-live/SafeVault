@@ -1,12 +1,22 @@
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import '../errors/exceptions.dart';
+import 'vault_session.dart';
 
 class BiometricService {
   final LocalAuthentication _localAuth;
+  VaultSession? _vaultSession;
 
-  BiometricService({LocalAuthentication? localAuth})
-      : _localAuth = localAuth ?? LocalAuthentication();
+  BiometricService({LocalAuthentication? localAuth, VaultSession? vaultSession})
+      : _localAuth = localAuth ?? LocalAuthentication() {
+    _vaultSession = vaultSession;
+  }
+
+  /// Attaches the active VaultSession so system biometric prompts
+  /// coordinate with session lifecycle and do not cause premature lockouts.
+  void attachVaultSession(VaultSession session) {
+    _vaultSession = session;
+  }
 
   /// Checks if hardware is available and supported.
   Future<bool> isBiometricsAvailable() async {
@@ -30,6 +40,7 @@ class BiometricService {
 
   /// Performs biometric authentication using Android BiometricPrompt.
   Future<bool> authenticate({String reason = 'Authenticate to unlock your Vault'}) async {
+    _vaultSession?.beginSystemActivity('BIOMETRIC_AUTH');
     try {
       final available = await isBiometricsAvailable();
       if (!available) {
@@ -59,6 +70,10 @@ class BiometricService {
         throw const BiometricException('Biometric sensor is locked due to too many attempts. Please wait for sensor timeout.');
       }
       throw BiometricException(e.message ?? 'Biometric authentication failed.');
+    } finally {
+      Future.microtask(() {
+        _vaultSession?.endSystemActivity();
+      });
     }
   }
 

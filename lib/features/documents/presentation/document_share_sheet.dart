@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/security/authentication_gate.dart';
 import '../../../core/security/clipboard_security_service.dart';
 import '../../../core/security/two_factor_auth_coordinator.dart';
 import '../../../core/services/native_saf_and_share_service.dart';
@@ -50,8 +51,16 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
   final Uuid _uuid = const Uuid();
 
   Future<bool> _authenticateForExport(String actionTitle) async {
-    return await TwoFactorVerificationDialog.verify(
+    final gate = ref.read(authenticationGateProvider);
+    return await gate.authenticateForAction(
       context,
+      action: PendingVaultAction(
+        type: VaultActionType.shareDocument,
+        targetId: widget.document.id,
+        targetName: widget.document.name,
+        returnRoute: '/document/${widget.document.id}',
+        params: {'action': actionTitle},
+      ),
       title: 'Authorize Export',
       reason: 'Biometric + PIN verification required before decrypting files for export: $actionTitle',
     );

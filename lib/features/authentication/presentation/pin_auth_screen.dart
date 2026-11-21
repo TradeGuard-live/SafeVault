@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/errors/exceptions.dart';
+import '../../../core/routes/app_router.dart';
+import '../../../core/security/authentication_gate.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/pin_pad.dart';
 import 'auth_providers.dart';
@@ -84,7 +86,20 @@ class _PinAuthScreenState extends ConsumerState<PinAuthScreen> {
       await session.unlock(masterKey);
 
       if (mounted) {
-        context.go('/dashboard');
+        final gate = ref.read(authenticationGateProvider);
+        if (gate.pendingAction != null &&
+            gate.pendingAction!.returnRoute != null &&
+            !gate.pendingAction!.isExpired) {
+          final target = gate.pendingAction!.returnRoute!;
+          context.go(target);
+        } else {
+          final pendingShares = ref.read(pendingIncomingShareProvider);
+          if (pendingShares.isNotEmpty) {
+            context.go('/incoming-share-preview');
+          } else {
+            context.go('/dashboard');
+          }
+        }
       }
     } on InvalidPinException {
       HapticFeedback.heavyImpact();

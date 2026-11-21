@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/security/authentication_gate.dart';
 import '../../../core/security/clipboard_security_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
@@ -54,6 +55,17 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
       if (entry != null) {
         repo.updateLastAccessed(entry.id);
       }
+
+      // Resume any pending action targeting this password entry
+      final gate = ref.read(authenticationGateProvider);
+      final pending = gate.consumePendingAction(widget.passwordId);
+      if (pending != null && mounted) {
+        if (pending.type == VaultActionType.revealPassword) {
+          setState(() => _isPasswordRevealed = true);
+        } else if (pending.type == VaultActionType.copyPassword && entry?.decryptedPassword != null) {
+          _copyPassword();
+        }
+      }
     }
   }
 
@@ -63,11 +75,16 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
       return;
     }
 
-    // Mandatory Two-Factor Verification (Biometric + 6-digit PIN)
-    final verified = await TwoFactorVerificationDialog.verify(
+    // Mandatory Two-Factor Verification via central AuthenticationGate
+    final gate = ref.read(authenticationGateProvider);
+    final verified = await gate.authenticateForAction(
       context,
-      title: 'Reveal Password',
-      reason: 'Factor 1: Authenticate with biometrics to reveal your password',
+      action: PendingVaultAction(
+        type: VaultActionType.revealPassword,
+        targetId: widget.passwordId,
+        targetName: _entry?.title ?? 'Password',
+        returnRoute: '/password/${widget.passwordId}',
+      ),
     );
 
     if (verified && mounted) {
@@ -78,10 +95,15 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
   Future<void> _copyPassword() async {
     if (_entry?.decryptedPassword == null) return;
     if (!_isPasswordRevealed) {
-      final verified = await TwoFactorVerificationDialog.verify(
+      final gate = ref.read(authenticationGateProvider);
+      final verified = await gate.authenticateForAction(
         context,
-        title: 'Authorize Password Copy',
-        reason: 'Factor 1: Authenticate with biometrics to copy password to clipboard',
+        action: PendingVaultAction(
+          type: VaultActionType.copyPassword,
+          targetId: widget.passwordId,
+          targetName: _entry?.title ?? 'Password',
+          returnRoute: '/password/${widget.passwordId}',
+        ),
       );
       if (!mounted || !verified) return;
     }

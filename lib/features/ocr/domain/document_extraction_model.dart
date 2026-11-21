@@ -1,6 +1,7 @@
 class DocumentExtractionModel {
   final String id;
   final String documentId;
+  final String? documentType;
   final String? extractedTextEncrypted;
   final String? encryptedTxtFilePath;
   final String extractionEngine;
@@ -15,6 +16,7 @@ class DocumentExtractionModel {
   const DocumentExtractionModel({
     required this.id,
     required this.documentId,
+    this.documentType,
     this.extractedTextEncrypted,
     this.encryptedTxtFilePath,
     required this.extractionEngine,
@@ -30,6 +32,7 @@ class DocumentExtractionModel {
   DocumentExtractionModel copyWith({
     String? id,
     String? documentId,
+    String? documentType,
     String? extractedTextEncrypted,
     String? encryptedTxtFilePath,
     String? extractionEngine,
@@ -44,6 +47,7 @@ class DocumentExtractionModel {
     return DocumentExtractionModel(
       id: id ?? this.id,
       documentId: documentId ?? this.documentId,
+      documentType: documentType ?? this.documentType,
       extractedTextEncrypted: extractedTextEncrypted ?? this.extractedTextEncrypted,
       encryptedTxtFilePath: encryptedTxtFilePath ?? this.encryptedTxtFilePath,
       extractionEngine: extractionEngine ?? this.extractionEngine,
@@ -61,6 +65,7 @@ class DocumentExtractionModel {
     return {
       'id': id,
       'document_id': documentId,
+      'document_type': documentType,
       'extracted_text_encrypted': extractedTextEncrypted,
       'encrypted_txt_file_path': encryptedTxtFilePath,
       'extraction_engine': extractionEngine,
@@ -77,6 +82,7 @@ class DocumentExtractionModel {
     return DocumentExtractionModel(
       id: map['id'] as String,
       documentId: map['document_id'] as String,
+      documentType: map['document_type'] as String?,
       extractedTextEncrypted: map['extracted_text_encrypted'] as String?,
       encryptedTxtFilePath: map['encrypted_txt_file_path'] as String?,
       extractionEngine: map['extraction_engine'] as String? ?? 'Tesseract OCR',
@@ -94,12 +100,15 @@ class DocumentExtractionModel {
 class ExtractedFieldModel {
   final String id;
   final String extractionId;
+  final String? documentId;
   final String fieldName;
   final String encryptedValue; // Encrypted with AES-256-GCM or in-memory decrypted
   final double confidence;
   final String confidenceCategory; // 'High', 'Medium', 'Low'
   final int sourcePage;
   final String verificationStatus; // 'verified', 'unverified', 'edited'
+  final bool isSelected;
+  final bool isVerified;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? plainValue; // In-memory decrypted value
@@ -107,26 +116,34 @@ class ExtractedFieldModel {
   const ExtractedFieldModel({
     required this.id,
     required this.extractionId,
+    this.documentId,
     required this.fieldName,
     required this.encryptedValue,
     required this.confidence,
     required this.confidenceCategory,
     this.sourcePage = 1,
     this.verificationStatus = 'unverified',
+    this.isSelected = true,
+    this.isVerified = false,
     required this.createdAt,
     required this.updatedAt,
     this.plainValue,
   });
 
+  bool get isRecommended => confidence >= 0.8;
+
   ExtractedFieldModel copyWith({
     String? id,
     String? extractionId,
+    String? documentId,
     String? fieldName,
     String? encryptedValue,
     double? confidence,
     String? confidenceCategory,
     int? sourcePage,
     String? verificationStatus,
+    bool? isSelected,
+    bool? isVerified,
     DateTime? createdAt,
     DateTime? updatedAt,
     String? plainValue,
@@ -134,12 +151,15 @@ class ExtractedFieldModel {
     return ExtractedFieldModel(
       id: id ?? this.id,
       extractionId: extractionId ?? this.extractionId,
+      documentId: documentId ?? this.documentId,
       fieldName: fieldName ?? this.fieldName,
       encryptedValue: encryptedValue ?? this.encryptedValue,
       confidence: confidence ?? this.confidence,
       confidenceCategory: confidenceCategory ?? this.confidenceCategory,
       sourcePage: sourcePage ?? this.sourcePage,
       verificationStatus: verificationStatus ?? this.verificationStatus,
+      isSelected: isSelected ?? this.isSelected,
+      isVerified: isVerified ?? this.isVerified,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       plainValue: plainValue ?? this.plainValue,
@@ -150,12 +170,15 @@ class ExtractedFieldModel {
     return {
       'id': id,
       'extraction_id': extractionId,
+      'document_id': documentId,
       'field_name': fieldName,
       'encrypted_value': encryptedValue,
       'confidence': confidence,
       'confidence_category': confidenceCategory,
       'source_page': sourcePage,
       'verification_status': verificationStatus,
+      'is_selected': isSelected ? 1 : 0,
+      'is_verified': isVerified ? 1 : 0,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -165,16 +188,18 @@ class ExtractedFieldModel {
     return ExtractedFieldModel(
       id: map['id'] as String,
       extractionId: map['extraction_id'] as String,
+      documentId: map['document_id'] as String?,
       fieldName: map['field_name'] as String,
       encryptedValue: map['encrypted_value'] as String,
       confidence: (map['confidence'] as num?)?.toDouble() ?? 0.8,
       confidenceCategory: map['confidence_category'] as String? ?? 'Medium',
       sourcePage: (map['source_page'] as num?)?.toInt() ?? 1,
       verificationStatus: map['verification_status'] as String? ?? 'unverified',
+      isSelected: (map['is_selected'] as num?)?.toInt() != 0,
+      isVerified: (map['is_verified'] as num?)?.toInt() == 1,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
       plainValue: decryptedPlainValue,
     );
   }
 }
-

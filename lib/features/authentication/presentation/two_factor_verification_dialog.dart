@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/errors/exceptions.dart';
+import '../../../core/security/vault_session.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/pin_pad.dart';
@@ -24,16 +25,22 @@ class TwoFactorVerificationDialog extends ConsumerStatefulWidget {
     BuildContext context, {
     required String title,
     required String reason,
+    VaultSession? session,
   }) async {
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => TwoFactorVerificationDialog(
-        title: title,
-        reason: reason,
-      ),
-    );
-    return result ?? false;
+    session?.beginSystemActivity('TWO_FACTOR_VERIFICATION');
+    try {
+      final result = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => TwoFactorVerificationDialog(
+          title: title,
+          reason: reason,
+        ),
+      );
+      return result ?? false;
+    } finally {
+      Future.microtask(() => session?.endSystemActivity());
+    }
   }
 
   @override
@@ -72,6 +79,7 @@ class _TwoFactorVerificationDialogState
 
   Future<void> _startBiometric() async {
     if (_isAuthenticatingBio) return;
+    ref.read(vaultSessionProvider).beginSystemActivity('TWO_FACTOR_VERIFICATION');
     setState(() {
       _isAuthenticatingBio = true;
       _errorMessage = null;
@@ -139,6 +147,7 @@ class _TwoFactorVerificationDialogState
       // Both passed!
       await pinService.resetFailedAttempts();
       _cleanupBioShare();
+      ref.read(vaultSessionProvider).recordUserActivity();
 
       if (mounted) {
         Navigator.of(context).pop(true);

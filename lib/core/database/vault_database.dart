@@ -26,7 +26,7 @@ class VaultDatabase {
 
       return await openDatabase(
         dbPath,
-        version: 4, // Upgraded to v4 for Persistent Encrypted Document Drafts
+        version: 5, // Upgraded to v5 for Complete Document Extraction & Field Selection
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON;');
         },
@@ -49,6 +49,9 @@ class VaultDatabase {
           }
           if (oldVersion < 4) {
             await _migrateToV4(db);
+          }
+          if (oldVersion < 5) {
+            await _migrateToV5(db);
           }
         },
       );
@@ -282,6 +285,7 @@ class VaultDatabase {
       CREATE TABLE IF NOT EXISTS document_extractions (
         id TEXT PRIMARY KEY,
         document_id TEXT NOT NULL,
+        document_type TEXT,
         extracted_text_encrypted TEXT,
         encrypted_txt_file_path TEXT,
         extraction_engine TEXT NOT NULL,
@@ -301,18 +305,23 @@ class VaultDatabase {
       CREATE TABLE IF NOT EXISTS extracted_fields (
         id TEXT PRIMARY KEY,
         extraction_id TEXT NOT NULL,
+        document_id TEXT,
         field_name TEXT NOT NULL,
         encrypted_value TEXT NOT NULL,
         confidence REAL NOT NULL,
         confidence_category TEXT NOT NULL,
         source_page INTEGER NOT NULL DEFAULT 1,
         verification_status TEXT NOT NULL DEFAULT 'unverified',
+        is_selected INTEGER NOT NULL DEFAULT 1,
+        is_verified INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY (extraction_id) REFERENCES document_extractions (id) ON DELETE CASCADE
       );
     ''');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_fields_extraction ON extracted_fields(extraction_id);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_fields_doc ON extracted_fields(document_id);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_fields_selected ON extracted_fields(is_selected);');
   }
 
   Future<void> _migrateToV3(Database db) async {
@@ -334,6 +343,27 @@ class VaultDatabase {
 
   Future<void> _migrateToV4(Database db) async {
     await _createDraftTables(db);
+  }
+
+  Future<void> _migrateToV5(Database db) async {
+    try {
+      await db.execute('ALTER TABLE extracted_fields ADD COLUMN document_id TEXT;');
+    } catch (_) {}
+    try {
+      await db.execute('ALTER TABLE extracted_fields ADD COLUMN is_selected INTEGER NOT NULL DEFAULT 1;');
+    } catch (_) {}
+    try {
+      await db.execute('ALTER TABLE extracted_fields ADD COLUMN is_verified INTEGER NOT NULL DEFAULT 0;');
+    } catch (_) {}
+    try {
+      await db.execute('ALTER TABLE document_extractions ADD COLUMN document_type TEXT;');
+    } catch (_) {}
+    try {
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_fields_doc ON extracted_fields(document_id);');
+    } catch (_) {}
+    try {
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_fields_selected ON extracted_fields(is_selected);');
+    } catch (_) {}
   }
 
   Future<void> _createDraftTables(Database db) async {
