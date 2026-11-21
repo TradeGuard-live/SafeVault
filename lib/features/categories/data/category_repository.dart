@@ -43,22 +43,38 @@ class CategoryRepository {
       createdAt: now,
     );
 
-    await db.insert('categories', newCategory.toMap());
+    // Passwords retain their own built-in categories, but custom categories
+    // made in the shared Manage Categories screen must also be selectable when
+    // saving a password. Keep the two records in one transaction so no custom
+    // category can appear in only one of those screens.
+    await db.transaction((txn) async {
+      await txn.insert('categories', newCategory.toMap());
+      await txn.insert('password_categories', newCategory.toMap());
+    });
     return newCategory;
   }
 
   Future<void> renameCategory(String id, String newName) async {
     final db = await _dbHelper.database;
-    await db.update(
-      'categories',
-      {'name': newName.trim()},
-      where: 'id = ? AND is_default = 0',
-      whereArgs: [id],
-    );
+    await db.transaction((txn) async {
+      await txn.update(
+        'categories',
+        {'name': newName.trim()},
+        where: 'id = ? AND is_default = 0',
+        whereArgs: [id],
+      );
+      await txn.update(
+        'password_categories',
+        {'name': newName.trim()},
+        where: 'id = ? AND is_default = 0',
+        whereArgs: [id],
+      );
+    });
   }
 
   /// Deletes a custom category safely.
-  /// Reassigns any documents belonging to this category to the 'other' category first.
+  /// Reassigns documents and passwords belonging to this category to 'other'
+  /// before removing the corresponding custom category records.
   Future<void> deleteCustomCategory(String id) async {
     final db = await _dbHelper.database;
     final category = await getCategoryById(id);
@@ -78,8 +94,17 @@ class CategoryRepository {
         whereArgs: [id],
       );
 
-      // 2. Delete custom category
+      // 2. Preserve any password entries that used the mirrored category.
+      await txn.update(
+        'password_entries',
+        {'category_id': 'other'},
+        where: 'category_id = ?',
+        whereArgs: [id],
+      );
+
+      // 3. Delete the matching custom category records.
       await txn.delete('categories', where: 'id = ?', whereArgs: [id]);
+      await txn.delete('password_categories', where: 'id = ?', whereArgs: [id]);
     });
   }
 }

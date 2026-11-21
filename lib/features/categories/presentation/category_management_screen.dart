@@ -102,6 +102,7 @@ class CategoryManagementScreen extends ConsumerWidget {
         colorValue: selectedColor,
       );
       ref.invalidate(categoriesProvider);
+      ref.invalidate(passwordCategoriesProvider);
     }
   }
 
@@ -150,6 +151,7 @@ class CategoryManagementScreen extends ConsumerWidget {
       final repo = ref.read(categoryRepositoryProvider);
       await repo.renameCategory(cat.id, nameController.text.trim());
       ref.invalidate(categoriesProvider);
+      ref.invalidate(passwordCategoriesProvider);
     }
   }
 
@@ -161,7 +163,7 @@ class CategoryManagementScreen extends ConsumerWidget {
     final confirmed = await ErrorDialog.confirm(
       context,
       title: 'Delete Category "${cat.name}"?',
-      message: 'All documents in this category will be safely preserved and moved to the "Other" category.',
+      message: 'All documents and passwords in this category will be safely preserved and moved to the "Other" category.',
       confirmLabel: 'Delete Category',
       isDestructive: true,
     );
@@ -171,6 +173,10 @@ class CategoryManagementScreen extends ConsumerWidget {
       await repo.deleteCustomCategory(cat.id);
       ref.invalidate(categoriesProvider);
       ref.invalidate(activeDocumentsProvider);
+      ref.invalidate(passwordCategoriesProvider);
+      ref.invalidate(allPasswordsProvider);
+      ref.invalidate(favoritePasswordsProvider);
+      ref.invalidate(passwordSecurityAuditProvider);
     }
   }
 

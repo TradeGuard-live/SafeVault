@@ -27,7 +27,8 @@ class VaultDatabase {
 
       return await openDatabase(
         dbPath,
-        version: 5, // Upgraded to v5 for Complete Document Extraction & Field Selection
+        version:
+            6, // v6 syncs custom managed categories with password categories
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON;');
         },
@@ -53,6 +54,9 @@ class VaultDatabase {
           }
           if (oldVersion < 5) {
             await _migrateToV5(db);
+          }
+          if (oldVersion < 6) {
+            await _migrateToV6(db);
           }
         },
       );
@@ -457,6 +461,22 @@ class VaultDatabase {
         'CREATE INDEX IF NOT EXISTS idx_fields_selected ON extracted_fields(is_selected);',
       );
     } catch (_) {}
+  }
+
+  /// Password entries deliberately use their own category table so their
+  /// defaults (Social, Banking, Developer, etc.) remain focused on accounts.
+  /// Custom categories created in Manage Categories, however, are user-owned
+  /// and should be usable everywhere. Mirror existing custom categories when
+  /// upgrading an installed vault.
+  Future<void> _migrateToV6(Database db) async {
+    await _createPasswordAndBankTables(db);
+    await db.execute('''
+      INSERT OR IGNORE INTO password_categories
+        (id, name, icon, color_value, is_default, created_at)
+      SELECT id, name, icon, color_value, 0, created_at
+      FROM categories
+      WHERE is_default = 0
+    ''');
   }
 
   Future<void> _createDraftTables(Database db) async {
