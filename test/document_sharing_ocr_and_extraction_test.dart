@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vault/core/security/clipboard_security_service.dart';
@@ -15,29 +16,32 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Part 1 & 2: Native Android SAF & Share Item Models', () {
-    test('SafFileItem parses from map and identifies PDF and Image MIME types', () {
-      final pdfItem = SafFileItem.fromMap({
-        'path': '/data/user/0/com.vault.vault/cache/staging/saf_import_1.pdf',
-        'name': 'passport_copy.pdf',
-        'size': 1048576,
-        'mimeType': 'application/pdf',
-      });
+    test(
+      'SafFileItem parses from map and identifies PDF and Image MIME types',
+      () {
+        final pdfItem = SafFileItem.fromMap({
+          'path': '/data/user/0/com.vault.vault/cache/staging/saf_import_1.pdf',
+          'name': 'passport_copy.pdf',
+          'size': 1048576,
+          'mimeType': 'application/pdf',
+        });
 
-      expect(pdfItem.name, 'passport_copy.pdf');
-      expect(pdfItem.size, 1048576);
-      expect(pdfItem.isPdf, isTrue);
-      expect(pdfItem.isImage, isFalse);
+        expect(pdfItem.name, 'passport_copy.pdf');
+        expect(pdfItem.size, 1048576);
+        expect(pdfItem.isPdf, isTrue);
+        expect(pdfItem.isImage, isFalse);
 
-      final imgItem = SafFileItem.fromMap({
-        'path': '/data/user/0/com.vault.vault/cache/staging/saf_import_2.jpg',
-        'name': 'aadhaar_front.jpg',
-        'size': 524288,
-        'mimeType': 'image/jpeg',
-      });
+        final imgItem = SafFileItem.fromMap({
+          'path': '/data/user/0/com.vault.vault/cache/staging/saf_import_2.jpg',
+          'name': 'aadhaar_front.jpg',
+          'size': 524288,
+          'mimeType': 'image/jpeg',
+        });
 
-      expect(imgItem.isPdf, isFalse);
-      expect(imgItem.isImage, isTrue);
-    });
+        expect(imgItem.isPdf, isFalse);
+        expect(imgItem.isImage, isTrue);
+      },
+    );
 
     test('SafFileItem handles missing or null fields gracefully', () {
       final item = SafFileItem.fromMap({});
@@ -49,13 +53,16 @@ void main() {
   });
 
   group('Part 3 & 4: Offline OCR & Smart Document Classification Engine', () {
-    test('OfflineOcrService verifies supported offline scripts (eng, hin, guj)', () {
-      expect(OfflineOcrService.isLanguageSupported('eng'), isTrue);
-      expect(OfflineOcrService.isLanguageSupported('hin'), isTrue);
-      expect(OfflineOcrService.isLanguageSupported('guj'), isTrue);
-      expect(OfflineOcrService.isLanguageSupported('fra'), isFalse);
-      expect(OfflineOcrService.supportedLanguages.contains('guj'), isTrue);
-    });
+    test(
+      'OfflineOcrService verifies supported offline scripts (eng, hin, guj)',
+      () {
+        expect(OfflineOcrService.isLanguageSupported('eng'), isTrue);
+        expect(OfflineOcrService.isLanguageSupported('hin'), isTrue);
+        expect(OfflineOcrService.isLanguageSupported('guj'), isTrue);
+        expect(OfflineOcrService.isLanguageSupported('fra'), isFalse);
+        expect(OfflineOcrService.supportedLanguages.contains('guj'), isTrue);
+      },
+    );
 
     test('SmartDocumentClassifier classifies PAN Card correctly', () {
       const panSample = '''
@@ -187,7 +194,9 @@ void main() {
         documentType: 'Aadhaar Card',
       );
 
-      final aadhaarField = fields.firstWhere((f) => f.fieldName == 'Aadhaar Number');
+      final aadhaarField = fields.firstWhere(
+        (f) => f.fieldName == 'Aadhaar Number',
+      );
       expect(aadhaarField.value, 'XXXX XXXX 9012');
       expect(aadhaarField.confidenceCategory, 'High');
 
@@ -214,7 +223,9 @@ void main() {
       expect(dlNum.value.replaceAll(' ', ''), 'DL0420110012345');
       expect(dlNum.confidenceCategory, 'High');
 
-      final classes = fields.firstWhere((f) => f.fieldName == 'Authorised Vehicle Class');
+      final classes = fields.firstWhere(
+        (f) => f.fieldName == 'Authorised Vehicle Class',
+      );
       expect(classes.value.contains('LMV'), isTrue);
       expect(classes.value.contains('MCWG'), isTrue);
     });
@@ -232,41 +243,47 @@ void main() {
   });
 
   group('Part 5: Formatted Text Record Generation & Encrypted Storage', () {
-    test('generateFormattedTextRecord formats human-readable TXT companion file', () {
-      final rawFields = [
-        const RawExtractedField(
-          fieldName: 'PAN Number',
-          value: 'ABCDE1234F',
-          confidence: 0.98,
-          confidenceCategory: 'High',
-        ),
-        const RawExtractedField(
-          fieldName: 'Date of Birth',
-          value: '15/08/1990',
-          confidence: 0.95,
-          confidenceCategory: 'High',
-        ),
-      ];
+    test(
+      'generateFormattedTextRecord formats human-readable TXT companion file',
+      () {
+        final rawFields = [
+          const RawExtractedField(
+            fieldName: 'PAN Number',
+            value: 'ABCDE1234F',
+            confidence: 0.98,
+            confidenceCategory: 'High',
+          ),
+          const RawExtractedField(
+            fieldName: 'Date of Birth',
+            value: '15/08/1990',
+            confidence: 0.95,
+            confidenceCategory: 'High',
+          ),
+        ];
 
-      final txt = DocumentTextExtractor.generateFormattedTextRecord(
-        documentType: 'PAN Card',
-        categoryName: 'Personal Identity',
-        sourceFileName: 'pan_scan.jpg',
-        fullText: 'INCOME TAX DEPARTMENT ABCDE1234F 15/08/1990',
-        fields: rawFields,
-        engine: 'Tesseract OCR (Offline)',
-        language: 'eng',
-        pageCount: 1,
-      );
+        final txt = DocumentTextExtractor.generateFormattedTextRecord(
+          documentType: 'PAN Card',
+          categoryName: 'Personal Identity',
+          sourceFileName: 'pan_scan.jpg',
+          fullText: 'INCOME TAX DEPARTMENT ABCDE1234F 15/08/1990',
+          fields: rawFields,
+          engine: 'Tesseract OCR (Offline)',
+          language: 'eng',
+          pageCount: 1,
+        );
 
-      expect(txt.contains('DOCUMENT: PAN Card'), isTrue);
-      expect(txt.contains('DOCUMENT CATEGORY: Personal Identity'), isTrue);
-      expect(txt.contains('SOURCE FILE: pan_scan.jpg'), isTrue);
-      expect(txt.contains('PAN Number: ABCDE1234F (Confidence: High)'), isTrue);
-      expect(txt.contains('FULL EXTRACTED TEXT'), isTrue);
-      expect(txt.contains('EXTRACTION STATUS'), isTrue);
-      expect(txt.contains('Language: eng'), isTrue);
-    });
+        expect(txt.contains('DOCUMENT: PAN Card'), isTrue);
+        expect(txt.contains('DOCUMENT CATEGORY: Personal Identity'), isTrue);
+        expect(txt.contains('SOURCE FILE: pan_scan.jpg'), isTrue);
+        expect(
+          txt.contains('PAN Number: ABCDE1234F (Confidence: High)'),
+          isTrue,
+        );
+        expect(txt.contains('FULL EXTRACTED TEXT'), isTrue);
+        expect(txt.contains('EXTRACTION STATUS'), isTrue);
+        expect(txt.contains('Language: eng'), isTrue);
+      },
+    );
 
     test('Encrypted TXT file roundtrip matches original plaintext and protects against tampering', () async {
       final encryptionService = EncryptionService();
@@ -285,7 +302,10 @@ void main() {
       );
 
       // Decrypt with correct key
-      final decryptedBytes = await encryptionService.decryptBytes(encryptedPayload, masterKey);
+      final decryptedBytes = await encryptionService.decryptBytes(
+        encryptedPayload,
+        masterKey,
+      );
       final decryptedString = utf8.decode(decryptedBytes);
       expect(decryptedString, originalText);
 
@@ -300,16 +320,19 @@ void main() {
   });
 
   group('Part 8 & Native Manifest: FileProvider & Offline Security', () {
-    test('AndroidManifest.xml declares FileProvider for secure outgoing shares', () {
-      final manifest = File('android/app/src/main/AndroidManifest.xml');
-      expect(manifest.existsSync(), isTrue);
-      final content = manifest.readAsStringSync();
+    test(
+      'AndroidManifest.xml declares FileProvider for secure outgoing shares',
+      () {
+        final manifest = File('android/app/src/main/AndroidManifest.xml');
+        expect(manifest.existsSync(), isTrue);
+        final content = manifest.readAsStringSync();
 
-      expect(content.contains('androidx.core.content.FileProvider'), isTrue);
-      expect(content.contains('com.vault.vault.fileprovider'), isTrue);
-      expect(content.contains('android:grantUriPermissions="true"'), isTrue);
-      expect(content.contains('@xml/provider_paths'), isTrue);
-    });
+        expect(content.contains('androidx.core.content.FileProvider'), isTrue);
+        expect(content.contains('com.vault.vault.fileprovider'), isTrue);
+        expect(content.contains('android:grantUriPermissions="true"'), isTrue);
+        expect(content.contains('@xml/provider_paths'), isTrue);
+      },
+    );
 
     test('AndroidManifest.xml declares incoming SEND and SEND_MULTIPLE intent filters', () {
       final manifest = File('android/app/src/main/AndroidManifest.xml');
@@ -322,23 +345,49 @@ void main() {
       expect(content.contains('android:mimeType="image/png"'), isTrue);
     });
 
-    test('provider_paths.xml exposes only ephemeral shared_exports directory', () {
-      final pathsFile = File('android/app/src/main/res/xml/provider_paths.xml');
-      expect(pathsFile.existsSync(), isTrue);
-      final content = pathsFile.readAsStringSync();
+    test(
+      'provider_paths.xml exposes only ephemeral shared_exports directory',
+      () {
+        final pathsFile = File(
+          'android/app/src/main/res/xml/provider_paths.xml',
+        );
+        expect(pathsFile.existsSync(), isTrue);
+        final content = pathsFile.readAsStringSync();
 
-      expect(content.contains('<cache-path name="shared_exports" path="shared_exports/" />'), isTrue);
-      // Does not expose root database or full app data
-      expect(content.contains('<root-path'), isFalse);
-    });
+        expect(
+          content.contains(
+            '<cache-path name="shared_exports" path="shared_exports/" />',
+          ),
+          isTrue,
+        );
+        // Does not expose root database or full app data
+        expect(content.contains('<root-path'), isFalse);
+      },
+    );
 
-    test('100% Offline Integrity: Zero network permissions in AndroidManifest.xml', () {
-      final manifest = File('android/app/src/main/AndroidManifest.xml');
-      final content = manifest.readAsStringSync();
+    test(
+      '100% Offline Integrity: Zero network permissions in AndroidManifest.xml',
+      () {
+        final manifest = File('android/app/src/main/AndroidManifest.xml');
+        final content = manifest.readAsStringSync();
 
-      expect(content.contains('android.permission.INTERNET" tools:node="remove"'), isTrue);
-      expect(content.contains('android.permission.ACCESS_NETWORK_STATE" tools:node="remove"'), isTrue);
-      expect(content.contains('android.permission.RECORD_AUDIO" tools:node="remove"'), isTrue);
-    });
+        expect(
+          content.contains('android.permission.INTERNET" tools:node="remove"'),
+          isTrue,
+        );
+        expect(
+          content.contains(
+            'android.permission.ACCESS_NETWORK_STATE" tools:node="remove"',
+          ),
+          isTrue,
+        );
+        expect(
+          content.contains(
+            'android.permission.RECORD_AUDIO" tools:node="remove"',
+          ),
+          isTrue,
+        );
+      },
+    );
   });
 }

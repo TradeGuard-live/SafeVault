@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/errors/exceptions.dart';
 import '../../../core/theme/app_theme.dart';
 import 'auth_providers.dart';
@@ -12,7 +13,8 @@ class BiometricAuthScreen extends ConsumerStatefulWidget {
   const BiometricAuthScreen({super.key});
 
   @override
-  ConsumerState<BiometricAuthScreen> createState() => _BiometricAuthScreenState();
+  ConsumerState<BiometricAuthScreen> createState() =>
+      _BiometricAuthScreenState();
 }
 
 class _BiometricAuthScreenState extends ConsumerState<BiometricAuthScreen> {
@@ -56,7 +58,8 @@ class _BiometricAuthScreenState extends ConsumerState<BiometricAuthScreen> {
         if (mounted) {
           setState(() {
             _isAuthenticating = false;
-            _errorMessage = 'Biometric verification cancelled. Please tap to try again.';
+            _errorMessage =
+                'Biometric verification cancelled. Please tap to try again.';
           });
         }
         return;
@@ -125,7 +128,10 @@ class _BiometricAuthScreenState extends ConsumerState<BiometricAuthScreen> {
               ),
               const SizedBox(height: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: colors.primaryAccent.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(20),
@@ -196,7 +202,10 @@ class _BiometricAuthScreenState extends ConsumerState<BiometricAuthScreen> {
               if (_errorMessage != null) ...[
                 const SizedBox(height: 20),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: colors.errorContainer,
                     borderRadius: BorderRadius.circular(10),
@@ -205,8 +214,11 @@ class _BiometricAuthScreenState extends ConsumerState<BiometricAuthScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.error_outline_rounded,
-                          size: 16, color: colors.error),
+                      Icon(
+                        Icons.error_outline_rounded,
+                        size: 16,
+                        color: colors.error,
+                      ),
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
@@ -237,7 +249,9 @@ class _BiometricAuthScreenState extends ConsumerState<BiometricAuthScreen> {
                     backgroundColor: colors.primaryAccent,
                     foregroundColor: colors.onPrimaryAccent,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
               ),

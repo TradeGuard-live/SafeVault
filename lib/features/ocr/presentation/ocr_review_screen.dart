@@ -1,6 +1,8 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/date_formatter.dart';
@@ -107,14 +109,21 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('OCR Metadata Review', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          'OCR Metadata Review',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         actions: [
           // Language selector
           DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: _selectedLanguage,
               dropdownColor: colors.cardElevated,
-              icon: Icon(Icons.language_rounded, size: 20, color: colors.primaryAccent),
+              icon: Icon(
+                Icons.language_rounded,
+                size: 20,
+                color: colors.primaryAccent,
+              ),
               items: const [
                 DropdownMenuItem(value: 'eng', child: Text('English (eng)')),
                 DropdownMenuItem(value: 'hin', child: Text('Hindi (hin)')),
@@ -181,11 +190,17 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                   decoration: BoxDecoration(
                     color: colors.primaryAccent.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colors.primaryAccent.withOpacity(0.25)),
+                    border: Border.all(
+                      color: colors.primaryAccent.withOpacity(0.25),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.verified_user_outlined, color: colors.primaryAccent, size: 20),
+                      Icon(
+                        Icons.verified_user_outlined,
+                        color: colors.primaryAccent,
+                        size: 20,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -249,10 +264,15 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                       child: InputDecorator(
                         decoration: const InputDecoration(
                           labelText: 'Detected Issue Date',
-                          prefixIcon: Icon(Icons.calendar_today_outlined, size: 18),
+                          prefixIcon: Icon(
+                            Icons.calendar_today_outlined,
+                            size: 18,
+                          ),
                         ),
                         child: Text(
-                          _issueDate != null ? DateFormatter.formatDisplay(_issueDate) : 'Not detected',
+                          _issueDate != null
+                              ? DateFormatter.formatDisplay(_issueDate)
+                              : 'Not detected',
                           style: TextStyle(
                             fontSize: 13,
                             color: _issueDate != null
@@ -270,7 +290,9 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                           prefixIcon: Icon(Icons.event_busy_outlined, size: 18),
                         ),
                         child: Text(
-                          _expiryDate != null ? DateFormatter.formatDisplay(_expiryDate) : 'Not detected',
+                          _expiryDate != null
+                              ? DateFormatter.formatDisplay(_expiryDate)
+                              : 'Not detected',
                           style: TextStyle(
                             fontSize: 13,
                             color: _expiryDate != null
@@ -286,7 +308,10 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
 
                 // Raw Extracted Text Expander
                 ExpansionTile(
-                  title: const Text('View Raw OCR Text Output', style: TextStyle(fontSize: 13.5)),
+                  title: const Text(
+                    'View Raw OCR Text Output',
+                    style: TextStyle(fontSize: 13.5),
+                  ),
                   children: [
                     Container(
                       width: double.infinity,
@@ -296,8 +321,13 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: SelectableText(
-                        _rawExtractedText.isEmpty ? 'No text detected.' : _rawExtractedText,
-                        style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                        _rawExtractedText.isEmpty
+                            ? 'No text detected.'
+                            : _rawExtractedText,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontFamily: 'monospace',
+                        ),
                       ),
                     ),
                   ],
@@ -319,4 +349,3 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
     );
   }
 }
-

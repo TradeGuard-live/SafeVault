@@ -93,10 +93,7 @@ class CategoryConstants {
       name: 'Other',
       icon: 'folder',
       colorValue: 0xFF64748B, // Slate
-      documentTypes: [
-        'Custom Documents',
-      ],
+      documentTypes: ['Custom Documents'],
     ),
   ];
 }
-

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/masked_text_formatter.dart';
@@ -30,7 +31,10 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('All Documents', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          'All Documents',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.search_rounded),
@@ -50,11 +54,15 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
           // Apply category filter
           var filtered = _selectedCategoryFilter == 'all'
               ? allDocs
-              : allDocs.where((d) => d.categoryId == _selectedCategoryFilter).toList();
+              : allDocs
+                    .where((d) => d.categoryId == _selectedCategoryFilter)
+                    .toList();
 
           // Apply sorting
           if (_sortBy == 'name_asc') {
-            filtered.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+            filtered.sort(
+              (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+            );
           } else if (_sortBy == 'expiry_asc') {
             filtered.sort((a, b) {
               if (a.expiryDate == null) return 1;
@@ -77,7 +85,9 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   children: [
                     _buildFilterChip('All', 'all', colors),
-                    ...categories.map((c) => _buildFilterChip(c.name, c.id, colors)),
+                    ...categories.map(
+                      (c) => _buildFilterChip(c.name, c.id, colors),
+                    ),
                   ],
                 ),
               ),
@@ -102,9 +112,13 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
                           ref.invalidate(activeDocumentsProvider);
                         },
                         child: ListView.separated(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                           itemCount: filtered.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 10),
                           itemBuilder: (ctx, i) {
                             return _buildDocCard(filtered[i], colors);
                           },
@@ -114,7 +128,9 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
             ],
           );
         },
-        loading: () => Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
+        loading: () => Center(
+          child: CircularProgressIndicator(color: colors.primaryAccent),
+        ),
         error: (e, _) => Center(child: Text('Error loading documents: $e')),
       ),
       floatingActionButton: FloatingActionButton(
@@ -143,9 +159,7 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
         selectedColor: colors.primaryAccent.withOpacity(0.18),
         checkmarkColor: colors.primaryAccent,
         labelStyle: TextStyle(
-          color: isSelected
-              ? colors.primaryAccent
-              : colors.textSecondary,
+          color: isSelected ? colors.primaryAccent : colors.textSecondary,
           fontSize: 12.5,
           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
         ),
@@ -164,9 +178,7 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
       decoration: BoxDecoration(
         color: colors.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colors.cardBorder,
-        ),
+        border: Border.all(color: colors.cardBorder),
       ),
       child: ListTile(
         onTap: () => context.push('/document/${doc.id}'),
@@ -178,7 +190,11 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
             color: colors.primaryAccent.withOpacity(0.12),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(Icons.description_outlined, color: colors.primaryAccent, size: 22),
+          child: Icon(
+            Icons.description_outlined,
+            color: colors.primaryAccent,
+            size: 22,
+          ),
         ),
         title: Row(
           children: [
@@ -205,10 +221,7 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
               doc.documentNumber != null
                   ? MaskedTextFormatter.maskDocumentNumber(doc.documentNumber)
                   : (doc.documentType ?? 'Document'),
-              style: TextStyle(
-                fontSize: 12.5,
-                color: colors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 12.5, color: colors.textSecondary),
             ),
             const SizedBox(height: 6),
             Row(
@@ -217,10 +230,7 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
                 const SizedBox(width: 8),
                 Text(
                   '${doc.files.length} page${doc.files.length == 1 ? '' : 's'}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: colors.textTertiary,
-                  ),
+                  style: TextStyle(fontSize: 11, color: colors.textTertiary),
                 ),
               ],
             ),
@@ -231,4 +241,3 @@ class _AllDocumentsScreenState extends ConsumerState<AllDocumentsScreen> {
     );
   }
 }
-

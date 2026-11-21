@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:cryptography/cryptography.dart';
+
 import '../constants/app_constants.dart';
 import '../errors/exceptions.dart';
 
@@ -57,13 +59,17 @@ class EncryptionService {
     const minLen = headerLen + versionLen + nonceLen + tagLen;
 
     if (encryptedData.length < minLen) {
-      throw const FileCorruptedException('File size is smaller than minimum encrypted payload.');
+      throw const FileCorruptedException(
+        'File size is smaller than minimum encrypted payload.',
+      );
     }
 
     // Verify magic bytes
     for (int i = 0; i < headerLen; i++) {
       if (encryptedData[i] != AppConstants.fileHeaderMagic[i]) {
-        throw const FileCorruptedException('Invalid file header or untrusted encrypted file.');
+        throw const FileCorruptedException(
+          'Invalid file header or untrusted encrypted file.',
+        );
       }
     }
 
@@ -84,11 +90,7 @@ class EncryptionService {
     final cipherText = encryptedData.sublist(minLen);
 
     try {
-      final secretBox = SecretBox(
-        cipherText,
-        nonce: nonce,
-        mac: Mac(macBytes),
-      );
+      final secretBox = SecretBox(cipherText, nonce: nonce, mac: Mac(macBytes));
 
       final decryptedBytes = await _aesGcm.decrypt(
         secretBox,
@@ -109,7 +111,11 @@ class EncryptionService {
     List<int> aad = const <int>[],
   }) async {
     final bytes = utf8.encode(plainText);
-    final encrypted = await encryptBytes(Uint8List.fromList(bytes), key, aad: aad);
+    final encrypted = await encryptBytes(
+      Uint8List.fromList(bytes),
+      key,
+      aad: aad,
+    );
     return base64Encode(encrypted);
   }
 

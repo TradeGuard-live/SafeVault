@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,7 +21,9 @@ void main() {
       final algorithm = AesGcm.with256bits();
       dummyMasterKey = await algorithm.newSecretKey();
       await session.unlock(dummyMasterKey);
-      session.setAutoLockTimeout(0); // Immediate lock upon regular backgrounding
+      session.setAutoLockTimeout(
+        0,
+      ); // Immediate lock upon regular backgrounding
     });
 
     tearDown(() {
@@ -47,15 +50,27 @@ void main() {
 
       // Android pauses MainActivity to show system file picker dialog
       session.handleLifecycleChange(AppLifecycleState.inactive);
-      expect(session.isUnlocked, isTrue, reason: 'Inactive state during SAF picker must not lock');
+      expect(
+        session.isUnlocked,
+        isTrue,
+        reason: 'Inactive state during SAF picker must not lock',
+      );
 
       session.handleLifecycleChange(AppLifecycleState.paused);
-      expect(session.isUnlocked, isTrue, reason: 'Paused state during SAF picker must not lock');
+      expect(
+        session.isUnlocked,
+        isTrue,
+        reason: 'Paused state during SAF picker must not lock',
+      );
       expect(session.masterKey, isNotNull);
 
       // User selects a file and returns to Vault (resumed)
       session.handleLifecycleChange(AppLifecycleState.resumed);
-      expect(session.isUnlocked, isTrue, reason: 'Returning from SAF picker keeps vault unlocked');
+      expect(
+        session.isUnlocked,
+        isTrue,
+        reason: 'Returning from SAF picker keeps vault unlocked',
+      );
       expect(session.masterKey, isNotNull);
 
       // Picker operation finishes
@@ -64,7 +79,11 @@ void main() {
 
       // Subsequent regular backgrounding without active system activity locks normally
       session.handleLifecycleChange(AppLifecycleState.paused);
-      expect(session.isUnlocked, isFalse, reason: 'Regular backgrounding after picker locks normally');
+      expect(
+        session.isUnlocked,
+        isFalse,
+        reason: 'Regular backgrounding after picker locks normally',
+      );
     });
 
     test('NativeSafAndShareService coordinates system activity lifecycle with VaultSession', () async {
@@ -90,9 +109,7 @@ void main() {
 
   group('Part 2: DocumentDraftModel (Bug 2 Fix)', () {
     test('DocumentDraftModel reports isEmpty accurately for empty drafts', () {
-      final emptyDraft = DocumentDraftModel(
-        updatedAt: DateTime.now(),
-      );
+      final emptyDraft = DocumentDraftModel(updatedAt: DateTime.now());
       expect(emptyDraft.isEmpty, isTrue);
       expect(emptyDraft.isNotEmpty, isFalse);
     });
@@ -106,7 +123,11 @@ void main() {
         notes: 'Verified scan',
         tags: const ['aadhaar', 'id'],
         attachedFiles: const [
-          {'path': '/path/to/scan1.jpg', 'mimeType': 'image/jpeg', 'name': 'scan1.jpg'},
+          {
+            'path': '/path/to/scan1.jpg',
+            'mimeType': 'image/jpeg',
+            'name': 'scan1.jpg',
+          },
         ],
         updatedAt: DateTime.now(),
       );
@@ -117,48 +138,59 @@ void main() {
       expect(draft.attachedFiles.length, 1);
     });
 
-    test('DocumentDraftModel serializes and deserializes to/from Map perfectly', () {
-      final now = DateTime(2026, 11, 21, 14, 30);
-      final issueDate = DateTime(2024, 1, 15);
-      final expiryDate = DateTime(2034, 1, 15);
+    test(
+      'DocumentDraftModel serializes and deserializes to/from Map perfectly',
+      () {
+        final now = DateTime(2026, 11, 21, 14, 30);
+        final issueDate = DateTime(2024, 1, 15);
+        final expiryDate = DateTime(2034, 1, 15);
 
-      final original = DocumentDraftModel(
-        id: 'active_draft',
-        title: 'Passport Renewal',
-        categoryId: 'personal_identity',
-        documentType: 'Passport',
-        documentNumber: 'Z1234567',
-        ownerName: 'Naman Sharma',
-        issuingAuthority: 'Passport Seva Kendra',
-        issueDate: issueDate,
-        expiryDate: expiryDate,
-        notes: 'Original document in locker',
-        tags: const ['passport', 'official', 'travel'],
-        attachedFiles: const [
-          {'path': '/cache/staging/doc1.pdf', 'mimeType': 'application/pdf', 'name': 'doc1.pdf'},
-          {'path': '/cache/staging/doc2.jpg', 'mimeType': 'image/jpeg', 'name': 'doc2.jpg'},
-        ],
-        updatedAt: now,
-      );
+        final original = DocumentDraftModel(
+          id: 'active_draft',
+          title: 'Passport Renewal',
+          categoryId: 'personal_identity',
+          documentType: 'Passport',
+          documentNumber: 'Z1234567',
+          ownerName: 'Naman Sharma',
+          issuingAuthority: 'Passport Seva Kendra',
+          issueDate: issueDate,
+          expiryDate: expiryDate,
+          notes: 'Original document in locker',
+          tags: const ['passport', 'official', 'travel'],
+          attachedFiles: const [
+            {
+              'path': '/cache/staging/doc1.pdf',
+              'mimeType': 'application/pdf',
+              'name': 'doc1.pdf',
+            },
+            {
+              'path': '/cache/staging/doc2.jpg',
+              'mimeType': 'image/jpeg',
+              'name': 'doc2.jpg',
+            },
+          ],
+          updatedAt: now,
+        );
 
-      final map = original.toMap();
-      final restored = DocumentDraftModel.fromMap(map);
+        final map = original.toMap();
+        final restored = DocumentDraftModel.fromMap(map);
 
-      expect(restored.id, original.id);
-      expect(restored.title, original.title);
-      expect(restored.categoryId, original.categoryId);
-      expect(restored.documentType, original.documentType);
-      expect(restored.documentNumber, original.documentNumber);
-      expect(restored.ownerName, original.ownerName);
-      expect(restored.issuingAuthority, original.issuingAuthority);
-      expect(restored.issueDate, original.issueDate);
-      expect(restored.expiryDate, original.expiryDate);
-      expect(restored.notes, original.notes);
-      expect(restored.tags, original.tags);
-      expect(restored.attachedFiles.length, 2);
-      expect(restored.attachedFiles[0]['name'], 'doc1.pdf');
-      expect(restored.attachedFiles[1]['name'], 'doc2.jpg');
-    });
+        expect(restored.id, original.id);
+        expect(restored.title, original.title);
+        expect(restored.categoryId, original.categoryId);
+        expect(restored.documentType, original.documentType);
+        expect(restored.documentNumber, original.documentNumber);
+        expect(restored.ownerName, original.ownerName);
+        expect(restored.issuingAuthority, original.issuingAuthority);
+        expect(restored.issueDate, original.issueDate);
+        expect(restored.expiryDate, original.expiryDate);
+        expect(restored.notes, original.notes);
+        expect(restored.tags, original.tags);
+        expect(restored.attachedFiles.length, 2);
+        expect(restored.attachedFiles[0]['name'], 'doc1.pdf');
+        expect(restored.attachedFiles[1]['name'], 'doc2.jpg');
+      },
+    );
 
     test('DocumentDraftModel copyWith modifies specified fields without mutating others', () {
       final draft = DocumentDraftModel(
@@ -207,8 +239,13 @@ void main() {
       expect(encData.contains('Highly sensitive notes'), isFalse);
 
       // Decrypt and verify full roundtrip
-      final decryptedJson = await encryptionService.decryptString(encData, masterKey);
-      final restoredDraft = DocumentDraftModel.fromMap(jsonDecode(decryptedJson));
+      final decryptedJson = await encryptionService.decryptString(
+        encData,
+        masterKey,
+      );
+      final restoredDraft = DocumentDraftModel.fromMap(
+        jsonDecode(decryptedJson),
+      );
 
       expect(restoredDraft.title, 'Top Secret Aadhaar Number');
       expect(restoredDraft.documentNumber, '9999-8888-7777');
@@ -221,7 +258,10 @@ void main() {
         updatedAt: DateTime.now(),
       );
 
-      final encData = await encryptionService.encryptString(jsonEncode(draft.toMap()), masterKey);
+      final encData = await encryptionService.encryptString(
+        jsonEncode(draft.toMap()),
+        masterKey,
+      );
       final wrongKey = await AesGcm.with256bits().newSecretKey();
 
       expect(
@@ -231,39 +271,42 @@ void main() {
     });
   });
 
-  group('Part 4: Android My Files Incoming Share Integration & Post-Import Actions', () {
-    test('SafFileItem distinguishes PDF and Images correctly', () {
-      final pdfItem = SafFileItem.fromMap({
-        'path': '/storage/emulated/0/Download/pan_card.pdf',
-        'name': 'pan_card.pdf',
-        'size': 204800,
-        'mimeType': 'application/pdf',
+  group(
+    'Part 4: Android My Files Incoming Share Integration & Post-Import Actions',
+    () {
+      test('SafFileItem distinguishes PDF and Images correctly', () {
+        final pdfItem = SafFileItem.fromMap({
+          'path': '/storage/emulated/0/Download/pan_card.pdf',
+          'name': 'pan_card.pdf',
+          'size': 204800,
+          'mimeType': 'application/pdf',
+        });
+        expect(pdfItem.isPdf, isTrue);
+        expect(pdfItem.isImage, isFalse);
+
+        final pngItem = SafFileItem.fromMap({
+          'path': '/storage/emulated/0/Pictures/driving_licence.png',
+          'name': 'driving_licence.png',
+          'size': 512000,
+          'mimeType': 'image/png',
+        });
+        expect(pngItem.isPdf, isFalse);
+        expect(pngItem.isImage, isTrue);
       });
-      expect(pdfItem.isPdf, isTrue);
-      expect(pdfItem.isImage, isFalse);
 
-      final pngItem = SafFileItem.fromMap({
-        'path': '/storage/emulated/0/Pictures/driving_licence.png',
-        'name': 'driving_licence.png',
-        'size': 512000,
-        'mimeType': 'image/png',
+      test('Incoming share queue retains items for 2FA unlocking', () {
+        final items = [
+          const SafFileItem(
+            path: '/cache/staging/doc1.pdf',
+            name: 'doc1.pdf',
+            size: 1024,
+            mimeType: 'application/pdf',
+          ),
+        ];
+
+        expect(items.isNotEmpty, isTrue);
+        expect(items.first.name, 'doc1.pdf');
       });
-      expect(pngItem.isPdf, isFalse);
-      expect(pngItem.isImage, isTrue);
-    });
-
-    test('Incoming share queue retains items for 2FA unlocking', () {
-      final items = [
-        const SafFileItem(
-          path: '/cache/staging/doc1.pdf',
-          name: 'doc1.pdf',
-          size: 1024,
-          mimeType: 'application/pdf',
-        ),
-      ];
-
-      expect(items.isNotEmpty, isTrue);
-      expect(items.first.name, 'doc1.pdf');
-    });
-  });
+    },
+  );
 }

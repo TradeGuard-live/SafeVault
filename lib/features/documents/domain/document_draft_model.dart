@@ -67,11 +67,18 @@ class DocumentDraftModel {
       documentNumber: map['documentNumber'] as String?,
       ownerName: map['ownerName'] as String?,
       issuingAuthority: map['issuingAuthority'] as String?,
-      issueDate: map['issueDate'] != null ? DateTime.tryParse(map['issueDate'] as String) : null,
-      expiryDate: map['expiryDate'] != null ? DateTime.tryParse(map['expiryDate'] as String) : null,
+      issueDate: map['issueDate'] != null
+          ? DateTime.tryParse(map['issueDate'] as String)
+          : null,
+      expiryDate: map['expiryDate'] != null
+          ? DateTime.tryParse(map['expiryDate'] as String)
+          : null,
       notes: map['notes'] as String?,
-      tags: (map['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-      attachedFiles: (map['attachedFiles'] as List<dynamic>?)
+      tags:
+          (map['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+          [],
+      attachedFiles:
+          (map['attachedFiles'] as List<dynamic>?)
               ?.whereType<Map<dynamic, dynamic>>()
               .map((e) => Map<String, dynamic>.from(e))
               .toList() ??
@@ -114,4 +121,3 @@ class DocumentDraftModel {
     );
   }
 }
-

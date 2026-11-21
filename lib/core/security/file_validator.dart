@@ -1,13 +1,10 @@
 import 'dart:io';
 import 'dart:typed_data';
+
 import '../constants/app_constants.dart';
 import '../errors/exceptions.dart';
 
-enum ValidatedFileType {
-  pdf,
-  jpeg,
-  png,
-}
+enum ValidatedFileType { pdf, jpeg, png }
 
 class FileValidationResult {
   final ValidatedFileType fileType;
@@ -27,7 +24,16 @@ class FileValidator {
   // Magic bytes
   static const List<int> _pdfMagic = [0x25, 0x50, 0x44, 0x46]; // %PDF
   static const List<int> _jpegMagic = [0xFF, 0xD8, 0xFF]; // SOI
-  static const List<int> _pngMagic = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]; // \x89PNG\r\n\x1a\n
+  static const List<int> _pngMagic = [
+    0x89,
+    0x50,
+    0x4E,
+    0x47,
+    0x0D,
+    0x0A,
+    0x1A,
+    0x0A,
+  ]; // \x89PNG\r\n\x1a\n
 
   /// Validates a file on disk by reading its magic bytes and checking size.
   static Future<FileValidationResult> validateFile(File file) async {
@@ -40,7 +46,9 @@ class FileValidator {
       throw const FileCorruptedException('File is empty.');
     }
     if (length > AppConstants.maxFileSizeBytes) {
-      throw const StorageException('File exceeds maximum allowed size of 50 MB.');
+      throw const StorageException(
+        'File exceeds maximum allowed size of 50 MB.',
+      );
     }
 
     // Read initial 32 bytes for header inspection
@@ -49,10 +57,15 @@ class FileValidator {
   }
 
   /// Validates magic bytes directly from an in-memory buffer.
-  static FileValidationResult validateBytes(Uint8List bytes, {int? totalLength}) {
+  static FileValidationResult validateBytes(
+    Uint8List bytes, {
+    int? totalLength,
+  }) {
     final length = totalLength ?? bytes.length;
     if (bytes.length < 8) {
-      throw const UnsupportedFormatException('File header too short to verify format.');
+      throw const UnsupportedFormatException(
+        'File header too short to verify format.',
+      );
     }
 
     // Check PDF
@@ -98,4 +111,3 @@ class FileValidator {
     return true;
   }
 }
-

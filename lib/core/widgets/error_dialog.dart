@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 
 class ErrorDialog {
@@ -19,9 +20,7 @@ class ErrorDialog {
           backgroundColor: colors.surfaceElevated,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
-            side: BorderSide(
-              color: colors.cardBorder,
-            ),
+            side: BorderSide(color: colors.cardBorder),
           ),
           icon: Container(
             padding: const EdgeInsets.all(12),
@@ -29,16 +28,16 @@ class ErrorDialog {
               shape: BoxShape.circle,
               color: colors.error.withOpacity(0.12),
             ),
-            child: Icon(
-              Icons.warning_rounded,
-              color: colors.error,
-              size: 32,
-            ),
+            child: Icon(Icons.warning_rounded, color: colors.error, size: 32),
           ),
           title: Text(
             title,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: colors.textPrimary),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: colors.textPrimary,
+            ),
           ),
           content: Text(
             message,
@@ -55,7 +54,9 @@ class ErrorDialog {
               style: ElevatedButton.styleFrom(
                 backgroundColor: colors.primaryAccent,
                 foregroundColor: colors.onPrimaryAccent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: () {
                 Navigator.of(ctx).pop();
@@ -86,13 +87,15 @@ class ErrorDialog {
           backgroundColor: colors.surfaceElevated,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
-            side: BorderSide(
-              color: colors.cardBorder,
-            ),
+            side: BorderSide(color: colors.cardBorder),
           ),
           title: Text(
             title,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: colors.textPrimary),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: colors.textPrimary,
+            ),
           ),
           content: Text(
             message,
@@ -105,14 +108,23 @@ class ErrorDialog {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: Text(cancelLabel, style: TextStyle(color: colors.textSecondary)),
+              child: Text(
+                cancelLabel,
+                style: TextStyle(color: colors.textSecondary),
+              ),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(ctx).pop(true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: isDestructive ? colors.error : colors.primaryAccent,
-                foregroundColor: isDestructive ? colors.onError : colors.onPrimaryAccent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                backgroundColor: isDestructive
+                    ? colors.error
+                    : colors.primaryAccent,
+                foregroundColor: isDestructive
+                    ? colors.onError
+                    : colors.onPrimaryAccent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: Text(confirmLabel),
             ),

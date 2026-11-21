@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/errors/exceptions.dart';
 import '../../../core/routes/app_router.dart';
 import '../../../core/security/authentication_gate.dart';
@@ -109,7 +110,8 @@ class _PinAuthScreenState extends ConsumerState<PinAuthScreen> {
         if (mounted) {
           setState(() {
             _isLoading = false;
-            _errorMessage = 'Incorrect PIN ($count attempts). Biometric factor reset.';
+            _errorMessage =
+                'Incorrect PIN ($count attempts). Biometric factor reset.';
           });
           // Redirect back to biometric screen after brief delay to re-authenticate Factor 1
           Future.delayed(const Duration(milliseconds: 1500), () {
@@ -123,7 +125,8 @@ class _PinAuthScreenState extends ConsumerState<PinAuthScreen> {
           setState(() {
             _isLoading = false;
             _lockoutSeconds = e.lockDurationSeconds;
-            _errorMessage = 'Account locked for ${e.lockDurationSeconds}s due to repeated failures.';
+            _errorMessage =
+                'Account locked for ${e.lockDurationSeconds}s due to repeated failures.';
           });
         }
       }
@@ -164,7 +167,14 @@ class _PinAuthScreenState extends ConsumerState<PinAuthScreen> {
           tooltip: 'Back to Biometrics',
           onPressed: _cancelAuthentication,
         ),
-        title: Text('Factor 2: Vault PIN', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+        title: Text(
+          'Factor 2: Vault PIN',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: colors.textPrimary,
+          ),
+        ),
       ),
       body: SafeArea(
         child: Padding(
@@ -176,7 +186,10 @@ class _PinAuthScreenState extends ConsumerState<PinAuthScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: colors.successContainer,
                       borderRadius: BorderRadius.circular(12),
@@ -184,8 +197,11 @@ class _PinAuthScreenState extends ConsumerState<PinAuthScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.check_circle_rounded,
-                            size: 14, color: colors.success),
+                        Icon(
+                          Icons.check_circle_rounded,
+                          size: 14,
+                          color: colors.success,
+                        ),
                         const SizedBox(width: 5),
                         Text(
                           'Factor 1: Biometrics Verified',
@@ -214,10 +230,7 @@ class _PinAuthScreenState extends ConsumerState<PinAuthScreen> {
               Text(
                 'Enter your 6-digit application password to decrypt the vault.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: colors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 13, color: colors.textSecondary),
               ),
 
               const Spacer(),

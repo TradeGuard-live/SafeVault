@@ -1,4 +1,5 @@
 import 'package:uuid/uuid.dart';
+
 import '../../../core/database/vault_database.dart';
 import '../domain/activity_model.dart';
 
@@ -7,7 +8,7 @@ class ActivityRepository {
   final Uuid _uuid = const Uuid();
 
   ActivityRepository({VaultDatabase? dbHelper})
-      : _dbHelper = dbHelper ?? VaultDatabase.instance;
+    : _dbHelper = dbHelper ?? VaultDatabase.instance;
 
   Future<void> logActivity({
     String? documentId,
@@ -66,4 +67,3 @@ class ActivityRepository {
     await db.delete('activities');
   }
 }
-

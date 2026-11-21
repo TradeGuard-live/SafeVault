@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/date_formatter.dart';
@@ -12,10 +13,12 @@ class ActivityTimelineScreen extends ConsumerStatefulWidget {
   const ActivityTimelineScreen({super.key});
 
   @override
-  ConsumerState<ActivityTimelineScreen> createState() => _ActivityTimelineScreenState();
+  ConsumerState<ActivityTimelineScreen> createState() =>
+      _ActivityTimelineScreenState();
 }
 
-class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen> {
+class _ActivityTimelineScreenState
+    extends ConsumerState<ActivityTimelineScreen> {
   String? _selectedFilter;
 
   IconData _iconForActivity(String type) {
@@ -83,7 +86,10 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('Activity Timeline', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          'Activity Timeline',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_sweep_outlined),
@@ -96,7 +102,9 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
         data: (activities) {
           final filtered = _selectedFilter == null
               ? activities
-              : activities.where((a) => a.activityType == _selectedFilter).toList();
+              : activities
+                    .where((a) => a.activityType == _selectedFilter)
+                    .toList();
 
           if (filtered.isEmpty) {
             return const EmptyStateView(
@@ -135,21 +143,25 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
                     ref.invalidate(activitiesProvider);
                   },
                   child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     itemCount: filtered.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (ctx, i) {
                       final item = filtered[i];
-                      final color = _colorForActivity(item.activityType, colors);
+                      final color = _colorForActivity(
+                        item.activityType,
+                        colors,
+                      );
                       final icon = _iconForActivity(item.activityType);
 
                       return Container(
                         decoration: BoxDecoration(
                           color: colors.cardBackground,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: colors.cardBorder,
-                          ),
+                          border: Border.all(color: colors.cardBorder),
                         ),
                         child: ListTile(
                           leading: Container(
@@ -173,7 +185,8 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
                             children: [
                               const SizedBox(height: 2),
                               Text(
-                                item.details ?? item.activityType.replaceAll('_', ' '),
+                                item.details ??
+                                    item.activityType.replaceAll('_', ' '),
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: colors.textSecondary,
@@ -181,7 +194,9 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                DateFormatter.formatDateTimeDisplay(item.timestamp),
+                                DateFormatter.formatDateTimeDisplay(
+                                  item.timestamp,
+                                ),
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: colors.textTertiary,
@@ -198,7 +213,9 @@ class _ActivityTimelineScreenState extends ConsumerState<ActivityTimelineScreen>
             ],
           );
         },
-        loading: () => Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
+        loading: () => Center(
+          child: CircularProgressIndicator(color: colors.primaryAccent),
+        ),
         error: (e, _) => Center(child: Text('Error: $e')),
       ),
     );

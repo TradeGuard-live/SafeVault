@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import '../../ocr/domain/document_extraction_model.dart';
 import 'document_file_model.dart';
 

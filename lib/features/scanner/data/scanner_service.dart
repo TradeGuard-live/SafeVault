@@ -1,15 +1,11 @@
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:image/image.dart' as img;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-enum ImageFilterType {
-  original,
-  grayscale,
-  highContrast,
-  documentBw,
-}
+enum ImageFilterType { original, grayscale, highContrast, documentBw }
 
 class ScannerPage {
   final String originalPath;
@@ -113,9 +109,7 @@ class ScannerService {
           pageFormat: PdfPageFormat.a4,
           margin: pw.EdgeInsets.zero,
           build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Image(image, fit: pw.BoxFit.contain),
-            );
+            return pw.Center(child: pw.Image(image, fit: pw.BoxFit.contain));
           },
         ),
       );
@@ -136,4 +130,3 @@ class ScannerService {
     }
   }
 }
-

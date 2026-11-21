@@ -2,7 +2,9 @@ import 'package:intl/intl.dart';
 
 class DateFormatter {
   static final DateFormat _displayFormat = DateFormat('dd MMM yyyy');
-  static final DateFormat _displayTimeFormat = DateFormat('dd MMM yyyy, hh:mm a');
+  static final DateFormat _displayTimeFormat = DateFormat(
+    'dd MMM yyyy, hh:mm a',
+  );
   static final DateFormat _isoFormat = DateFormat('yyyy-MM-dd');
 
   static String formatDisplay(DateTime? date) {
@@ -39,4 +41,3 @@ class DateFormatter {
     return target.difference(today).inDays;
   }
 }
-

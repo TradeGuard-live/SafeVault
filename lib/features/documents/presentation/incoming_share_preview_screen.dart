@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pdfx/pdfx.dart' as pfx;
+
 import '../../../core/constants/category_constants.dart';
 import '../../../core/routes/app_router.dart';
 import '../../../core/services/native_saf_and_share_service.dart';
@@ -45,10 +47,12 @@ class IncomingSharePreviewScreen extends ConsumerStatefulWidget {
   const IncomingSharePreviewScreen({super.key, required this.incomingFiles});
 
   @override
-  ConsumerState<IncomingSharePreviewScreen> createState() => _IncomingSharePreviewScreenState();
+  ConsumerState<IncomingSharePreviewScreen> createState() =>
+      _IncomingSharePreviewScreenState();
 }
 
-class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePreviewScreen> {
+class _IncomingSharePreviewScreenState
+    extends ConsumerState<IncomingSharePreviewScreen> {
   final List<IncomingShareItemState> _items = [];
   final List<DocumentModel> _importedDocuments = [];
   bool _isProcessingAll = false;
@@ -153,7 +157,9 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
 
       // 2. Create document record
       final newDoc = await repo.addDocument(
-        name: itemState.customName.trim().isEmpty ? itemState.item.name : itemState.customName.trim(),
+        name: itemState.customName.trim().isEmpty
+            ? itemState.item.name
+            : itemState.customName.trim(),
         categoryId: itemState.selectedCategoryId,
         files: [docFile],
         masterKey: session.masterKey!,
@@ -210,11 +216,20 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
           categoryId: itemState.selectedCategoryId,
           documentType: extractionResult.classification.documentType,
           documentNumber: extractionResult.fields
-              .where((f) => f.fieldName.contains('Number') || f.fieldName.contains('Licence') || f.fieldName.contains('Aadhaar'))
+              .where(
+                (f) =>
+                    f.fieldName.contains('Number') ||
+                    f.fieldName.contains('Licence') ||
+                    f.fieldName.contains('Aadhaar'),
+              )
               .map((f) => f.value)
               .firstOrNull,
           ownerName: extractionResult.fields
-              .where((f) => f.fieldName.contains('Name') && !f.fieldName.contains('Father'))
+              .where(
+                (f) =>
+                    f.fieldName.contains('Name') &&
+                    !f.fieldName.contains('Father'),
+              )
               .map((f) => f.value)
               .firstOrNull,
           masterKey: session.masterKey!,
@@ -321,7 +336,11 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
                       color: theme.primaryAccent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.download_for_offline_rounded, color: theme.primaryAccent, size: 22),
+                    child: Icon(
+                      Icons.download_for_offline_rounded,
+                      color: theme.primaryAccent,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -339,7 +358,10 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
                         const SizedBox(height: 2),
                         Text(
                           'Files will be encrypted with AES-256-GCM and processed offline.',
-                          style: TextStyle(color: theme.textSecondary, fontSize: 11),
+                          style: TextStyle(
+                            color: theme.textSecondary,
+                            fontSize: 11,
+                          ),
                         ),
                       ],
                     ),
@@ -367,12 +389,15 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
                       onPressed: _isProcessingAll
                           ? null
                           : () {
-                              NativeSafAndShareService.instance.clearPendingIncomingShares();
+                              NativeSafAndShareService.instance
+                                  .clearPendingIncomingShares();
                               context.go('/documents');
                             },
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       child: const Text('Cancel All'),
                     ),
@@ -386,15 +411,24 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
                           ? const SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : const Icon(Icons.lock_rounded, size: 18),
-                      label: Text(_isProcessingAll ? 'Importing...' : 'Import All (${_items.length})'),
+                      label: Text(
+                        _isProcessingAll
+                            ? 'Importing...'
+                            : 'Import All (${_items.length})',
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.primaryAccent,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
@@ -407,7 +441,11 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
     );
   }
 
-  Widget _buildItemCard(AppThemeColors theme, IncomingShareItemState itemState, int index) {
+  Widget _buildItemCard(
+    AppThemeColors theme,
+    IncomingShareItemState itemState,
+    int index,
+  ) {
     final sizeKb = (itemState.item.size / 1024).toStringAsFixed(1);
 
     return Container(
@@ -431,10 +469,17 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
                   height: 60,
                   color: theme.surfaceElevated,
                   child: itemState.thumbnailBytes != null
-                      ? Image.memory(itemState.thumbnailBytes!, fit: BoxFit.cover)
+                      ? Image.memory(
+                          itemState.thumbnailBytes!,
+                          fit: BoxFit.cover,
+                        )
                       : Icon(
-                          itemState.item.isPdf ? Icons.picture_as_pdf_rounded : Icons.image_rounded,
-                          color: itemState.item.isPdf ? Colors.redAccent : theme.primaryAccent,
+                          itemState.item.isPdf
+                              ? Icons.picture_as_pdf_rounded
+                              : Icons.image_rounded,
+                          color: itemState.item.isPdf
+                              ? Colors.redAccent
+                              : theme.primaryAccent,
                           size: 32,
                         ),
                 ),
@@ -462,7 +507,10 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
                     const SizedBox(height: 2),
                     Text(
                       '${itemState.item.isPdf ? "PDF • ${itemState.pageCount} page(s)" : "Image"} • ${sizeKb} KB',
-                      style: TextStyle(color: theme.textSecondary, fontSize: 11),
+                      style: TextStyle(
+                        color: theme.textSecondary,
+                        fontSize: 11,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     _buildStatusBadge(itemState),
@@ -470,7 +518,11 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.close_rounded, color: theme.textSecondary, size: 20),
+                icon: Icon(
+                  Icons.close_rounded,
+                  color: theme.textSecondary,
+                  size: 20,
+                ),
                 onPressed: () => _removeItem(index),
               ),
             ],
@@ -485,18 +537,36 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
                   style: TextStyle(color: theme.textPrimary, fontSize: 12),
                   decoration: InputDecoration(
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: BorderSide(color: theme.cardBorder),
                     ),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'personal_identity', child: Text('Personal Identity')),
-                    DropdownMenuItem(value: 'vehicle_documents', child: Text('Vehicle Documents')),
-                    DropdownMenuItem(value: 'financial', child: Text('Financial')),
-                    DropdownMenuItem(value: 'education', child: Text('Education')),
-                    DropdownMenuItem(value: 'property', child: Text('Property')),
+                    DropdownMenuItem(
+                      value: 'personal_identity',
+                      child: Text('Personal Identity'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'vehicle_documents',
+                      child: Text('Vehicle Documents'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'financial',
+                      child: Text('Financial'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'education',
+                      child: Text('Education'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'property',
+                      child: Text('Property'),
+                    ),
                     DropdownMenuItem(value: 'medical', child: Text('Medical')),
                     DropdownMenuItem(value: 'other', child: Text('Other')),
                   ],
@@ -509,16 +579,26 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
               ),
               const SizedBox(width: 10),
               ElevatedButton(
-                onPressed: itemState.status == 'completed' || itemState.status == 'importing' || itemState.status == 'extracting'
+                onPressed:
+                    itemState.status == 'completed' ||
+                        itemState.status == 'importing' ||
+                        itemState.status == 'extracting'
                     ? null
                     : () => _importItem(itemState),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.primaryAccent,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
-                child: Text(itemState.status == 'completed' ? 'Imported' : 'Import'),
+                child: Text(
+                  itemState.status == 'completed' ? 'Imported' : 'Import',
+                ),
               ),
             ],
           ),
@@ -539,17 +619,31 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
       case 'importing':
         return const Row(
           children: [
-            SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
             SizedBox(width: 6),
-            Text('Encrypting...', style: TextStyle(fontSize: 11, color: Colors.amber)),
+            Text(
+              'Encrypting...',
+              style: TextStyle(fontSize: 11, color: Colors.amber),
+            ),
           ],
         );
       case 'extracting':
         return const Row(
           children: [
-            SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
             SizedBox(width: 6),
-            Text('Extracting Text...', style: TextStyle(fontSize: 11, color: Colors.blueAccent)),
+            Text(
+              'Extracting Text...',
+              style: TextStyle(fontSize: 11, color: Colors.blueAccent),
+            ),
           ],
         );
       case 'completed':
@@ -557,24 +651,39 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
           children: [
             Icon(Icons.check_circle_rounded, size: 14, color: Colors.green),
             SizedBox(width: 4),
-            Text('Saved & Extracted', style: TextStyle(fontSize: 11, color: Colors.green)),
+            Text(
+              'Saved & Extracted',
+              style: TextStyle(fontSize: 11, color: Colors.green),
+            ),
           ],
         );
       case 'failed':
         return const Row(
           children: [
-            Icon(Icons.error_outline_rounded, size: 14, color: Colors.redAccent),
+            Icon(
+              Icons.error_outline_rounded,
+              size: 14,
+              color: Colors.redAccent,
+            ),
             SizedBox(width: 4),
-            Text('Failed', style: TextStyle(fontSize: 11, color: Colors.redAccent)),
+            Text(
+              'Failed',
+              style: TextStyle(fontSize: 11, color: Colors.redAccent),
+            ),
           ],
         );
       default:
-        return const Text('Ready to import', style: TextStyle(fontSize: 11, color: Colors.grey));
+        return const Text(
+          'Ready to import',
+          style: TextStyle(fontSize: 11, color: Colors.grey),
+        );
     }
   }
 
   Widget _buildPostImportSuccessView(AppThemeColors theme) {
-    final firstDoc = _importedDocuments.isNotEmpty ? _importedDocuments.first : null;
+    final firstDoc = _importedDocuments.isNotEmpty
+        ? _importedDocuments.first
+        : null;
     final count = _importedDocuments.length;
 
     return Center(
@@ -618,10 +727,7 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
             Text(
               'Encrypted with AES-256-GCM and stored completely offline on this device.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: theme.textSecondary,
-              ),
+              style: TextStyle(fontSize: 13, color: theme.textSecondary),
             ),
             const SizedBox(height: 24),
 
@@ -640,7 +746,11 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Row(
                         children: [
-                          Icon(Icons.description_rounded, color: theme.primaryAccent, size: 20),
+                          Icon(
+                            Icons.description_rounded,
+                            color: theme.primaryAccent,
+                            size: 20,
+                          ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
@@ -655,14 +765,21 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.green.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Text(
                               'Saved',
-                              style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
@@ -674,23 +791,53 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.lock_outline_rounded, size: 16, color: Colors.green),
+                          const Icon(
+                            Icons.lock_outline_rounded,
+                            size: 16,
+                            color: Colors.green,
+                          ),
                           const SizedBox(width: 4),
-                          Text('AES-256-GCM', style: TextStyle(fontSize: 11, color: theme.textSecondary)),
+                          Text(
+                            'AES-256-GCM',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: theme.textSecondary,
+                            ),
+                          ),
                         ],
                       ),
                       Row(
                         children: [
-                          const Icon(Icons.auto_awesome_rounded, size: 16, color: Colors.teal),
+                          const Icon(
+                            Icons.auto_awesome_rounded,
+                            size: 16,
+                            color: Colors.teal,
+                          ),
                           const SizedBox(width: 4),
-                          Text('Smart OCR', style: TextStyle(fontSize: 11, color: theme.textSecondary)),
+                          Text(
+                            'Smart OCR',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: theme.textSecondary,
+                            ),
+                          ),
                         ],
                       ),
                       Row(
                         children: [
-                          const Icon(Icons.wifi_off_rounded, size: 16, color: Colors.blueAccent),
+                          const Icon(
+                            Icons.wifi_off_rounded,
+                            size: 16,
+                            color: Colors.blueAccent,
+                          ),
                           const SizedBox(width: 4),
-                          Text('100% Offline', style: TextStyle(fontSize: 11, color: theme.textSecondary)),
+                          Text(
+                            '100% Offline',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: theme.textSecondary,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -713,7 +860,9 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
                 backgroundColor: theme.primaryAccent,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -731,7 +880,9 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
                 foregroundColor: theme.primaryAccent,
                 side: BorderSide(color: theme.primaryAccent),
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -745,7 +896,9 @@ class _IncomingSharePreviewScreenState extends ConsumerState<IncomingSharePrevie
               label: const Text('Return to Dashboard'),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/widgets/error_dialog.dart';
@@ -9,7 +10,10 @@ import '../domain/category_model.dart';
 class CategoryManagementScreen extends ConsumerWidget {
   const CategoryManagementScreen({super.key});
 
-  Future<void> _showAddCategoryDialog(BuildContext context, WidgetRef ref) async {
+  Future<void> _showAddCategoryDialog(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final colors = context.themeColors;
     final nameController = TextEditingController();
     int selectedColor = colors.primaryAccent.value;
@@ -22,8 +26,13 @@ class CategoryManagementScreen extends ConsumerWidget {
           builder: (ctx, setDialogState) {
             return AlertDialog(
               backgroundColor: colors.cardElevated,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Text('New Custom Category', style: TextStyle(fontWeight: FontWeight.w700)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text(
+                'New Custom Category',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -37,28 +46,32 @@ class CategoryManagementScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      colors.primaryAccent.value,
-                      0xFF2563EB,
-                      0xFF7C3AED,
-                      0xFFD97706,
-                      0xFFE11D48,
-                      0xFF059669,
-                    ].map((col) {
-                      final isSel = selectedColor == col;
-                      return GestureDetector(
-                        onTap: () => setDialogState(() => selectedColor = col),
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: Color(col),
-                            shape: BoxShape.circle,
-                            border: isSel ? Border.all(color: Colors.white, width: 3) : null,
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                    children:
+                        [
+                          colors.primaryAccent.value,
+                          0xFF2563EB,
+                          0xFF7C3AED,
+                          0xFFD97706,
+                          0xFFE11D48,
+                          0xFF059669,
+                        ].map((col) {
+                          final isSel = selectedColor == col;
+                          return GestureDetector(
+                            onTap: () =>
+                                setDialogState(() => selectedColor = col),
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: Color(col),
+                                shape: BoxShape.circle,
+                                border: isSel
+                                    ? Border.all(color: Colors.white, width: 3)
+                                    : null,
+                              ),
+                            ),
+                          );
+                        }).toList(),
                   ),
                 ],
               ),
@@ -92,7 +105,11 @@ class CategoryManagementScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _showRenameDialog(BuildContext context, WidgetRef ref, CategoryModel cat) async {
+  Future<void> _showRenameDialog(
+    BuildContext context,
+    WidgetRef ref,
+    CategoryModel cat,
+  ) async {
     final colors = context.themeColors;
     final nameController = TextEditingController(text: cat.name);
 
@@ -101,8 +118,13 @@ class CategoryManagementScreen extends ConsumerWidget {
       builder: (ctx) {
         return AlertDialog(
           backgroundColor: colors.cardElevated,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Rename Category', style: TextStyle(fontWeight: FontWeight.w700)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Rename Category',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
           content: TextField(
             controller: nameController,
             decoration: const InputDecoration(labelText: 'Category Name'),
@@ -131,7 +153,11 @@ class CategoryManagementScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _deleteCategory(BuildContext context, WidgetRef ref, CategoryModel cat) async {
+  Future<void> _deleteCategory(
+    BuildContext context,
+    WidgetRef ref,
+    CategoryModel cat,
+  ) async {
     final confirmed = await ErrorDialog.confirm(
       context,
       title: 'Delete Category "${cat.name}"?',
@@ -156,7 +182,10 @@ class CategoryManagementScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('Manage Categories', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          'Manage Categories',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.add_rounded),
@@ -202,9 +231,14 @@ class CategoryManagementScreen extends ConsumerWidget {
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: cat.isDefault ? Colors.grey.withOpacity(0.15) : colors.primaryAccent.withOpacity(0.15),
+                          color: cat.isDefault
+                              ? Colors.grey.withOpacity(0.15)
+                              : colors.primaryAccent.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -212,7 +246,9 @@ class CategoryManagementScreen extends ConsumerWidget {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
-                            color: cat.isDefault ? colors.textSecondary : colors.primaryAccent,
+                            color: cat.isDefault
+                                ? colors.textSecondary
+                                : colors.primaryAccent,
                           ),
                         ),
                       ),
@@ -225,11 +261,17 @@ class CategoryManagementScreen extends ConsumerWidget {
                           children: [
                             IconButton(
                               icon: const Icon(Icons.edit_outlined, size: 18),
-                              onPressed: () => _showRenameDialog(context, ref, cat),
+                              onPressed: () =>
+                                  _showRenameDialog(context, ref, cat),
                             ),
                             IconButton(
-                              icon: Icon(Icons.delete_outline, size: 18, color: colors.error),
-                              onPressed: () => _deleteCategory(context, ref, cat),
+                              icon: Icon(
+                                Icons.delete_outline,
+                                size: 18,
+                                color: colors.error,
+                              ),
+                              onPressed: () =>
+                                  _deleteCategory(context, ref, cat),
                             ),
                           ],
                         ),
@@ -238,10 +280,11 @@ class CategoryManagementScreen extends ConsumerWidget {
             },
           );
         },
-        loading: () => Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
+        loading: () => Center(
+          child: CircularProgressIndicator(color: colors.primaryAccent),
+        ),
         error: (e, _) => Center(child: Text('Error: $e')),
       ),
     );
   }
 }
-

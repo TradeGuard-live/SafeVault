@@ -1,6 +1,7 @@
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+
 import '../constants/app_constants.dart';
 import '../constants/category_constants.dart';
 import '../errors/exceptions.dart';
@@ -56,7 +57,10 @@ class VaultDatabase {
         },
       );
     } catch (e) {
-      throw DatabaseOperationException('Failed to initialize database: ${e.toString()}', e);
+      throw DatabaseOperationException(
+        'Failed to initialize database: ${e.toString()}',
+        e,
+      );
     }
   }
 
@@ -96,9 +100,13 @@ class VaultDatabase {
       );
     ''');
 
-    await db.execute('CREATE INDEX idx_docs_category ON documents(category_id);');
+    await db.execute(
+      'CREATE INDEX idx_docs_category ON documents(category_id);',
+    );
     await db.execute('CREATE INDEX idx_docs_deleted ON documents(deleted_at);');
-    await db.execute('CREATE INDEX idx_docs_favorite ON documents(is_favorite);');
+    await db.execute(
+      'CREATE INDEX idx_docs_favorite ON documents(is_favorite);',
+    );
     await db.execute('CREATE INDEX idx_docs_expiry ON documents(expiry_date);');
 
     // 3. Document Files Table
@@ -117,7 +125,9 @@ class VaultDatabase {
       );
     ''');
 
-    await db.execute('CREATE INDEX idx_files_doc ON document_files(document_id);');
+    await db.execute(
+      'CREATE INDEX idx_files_doc ON document_files(document_id);',
+    );
 
     // 4. Activities / Timeline Table
     await db.execute('''
@@ -131,7 +141,9 @@ class VaultDatabase {
       );
     ''');
 
-    await db.execute('CREATE INDEX idx_activities_time ON activities(timestamp DESC);');
+    await db.execute(
+      'CREATE INDEX idx_activities_time ON activities(timestamp DESC);',
+    );
 
     // 5. Expiry Reminders Table
     await db.execute('''
@@ -193,8 +205,12 @@ class VaultDatabase {
       );
     ''');
 
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_passwords_cat ON password_entries(category_id);');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_passwords_fav ON password_entries(is_favorite);');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_passwords_cat ON password_entries(category_id);',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_passwords_fav ON password_entries(is_favorite);',
+    );
 
     // 9. Bank Accounts Table
     // Strictly NO ATM PINs, CVVs, UPI PINs, OTPs, or Netbanking passwords.
@@ -215,8 +231,12 @@ class VaultDatabase {
       );
     ''');
 
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_bank_fav ON bank_accounts(is_favorite);');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_bank_type ON bank_accounts(account_type);');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_bank_fav ON bank_accounts(is_favorite);',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_bank_type ON bank_accounts(account_type);',
+    );
   }
 
   Future<void> _seedDefaultCategories(Database db) async {
@@ -242,15 +262,60 @@ class VaultDatabase {
     final batch = db.batch();
 
     final defaultPasswordCategories = [
-      {'id': 'social', 'name': 'Social Media', 'icon': 'people_rounded', 'color_value': 0xFF3B82F6},
-      {'id': 'email', 'name': 'Email', 'icon': 'email_rounded', 'color_value': 0xFFEF4444},
-      {'id': 'banking', 'name': 'Banking Services', 'icon': 'account_balance_rounded', 'color_value': 0xFF10B981},
-      {'id': 'shopping', 'name': 'Shopping', 'icon': 'shopping_bag_rounded', 'color_value': 0xFFF59E0B},
-      {'id': 'developer', 'name': 'Developer Accounts', 'icon': 'code_rounded', 'color_value': 0xFF8B5CF6},
-      {'id': 'work', 'name': 'Work Accounts', 'icon': 'business_center_rounded', 'color_value': 0xFF06B6D4},
-      {'id': 'entertainment', 'name': 'Entertainment', 'icon': 'movie_rounded', 'color_value': 0xFFEC4899},
-      {'id': 'government', 'name': 'Government Services', 'icon': 'account_balance_wallet_rounded', 'color_value': 0xFF6366F1},
-      {'id': 'other', 'name': 'Other', 'icon': 'vpn_key_rounded', 'color_value': 0xFF64748B},
+      {
+        'id': 'social',
+        'name': 'Social Media',
+        'icon': 'people_rounded',
+        'color_value': 0xFF3B82F6,
+      },
+      {
+        'id': 'email',
+        'name': 'Email',
+        'icon': 'email_rounded',
+        'color_value': 0xFFEF4444,
+      },
+      {
+        'id': 'banking',
+        'name': 'Banking Services',
+        'icon': 'account_balance_rounded',
+        'color_value': 0xFF10B981,
+      },
+      {
+        'id': 'shopping',
+        'name': 'Shopping',
+        'icon': 'shopping_bag_rounded',
+        'color_value': 0xFFF59E0B,
+      },
+      {
+        'id': 'developer',
+        'name': 'Developer Accounts',
+        'icon': 'code_rounded',
+        'color_value': 0xFF8B5CF6,
+      },
+      {
+        'id': 'work',
+        'name': 'Work Accounts',
+        'icon': 'business_center_rounded',
+        'color_value': 0xFF06B6D4,
+      },
+      {
+        'id': 'entertainment',
+        'name': 'Entertainment',
+        'icon': 'movie_rounded',
+        'color_value': 0xFFEC4899,
+      },
+      {
+        'id': 'government',
+        'name': 'Government Services',
+        'icon': 'account_balance_wallet_rounded',
+        'color_value': 0xFF6366F1,
+      },
+      {
+        'id': 'other',
+        'name': 'Other',
+        'icon': 'vpn_key_rounded',
+        'color_value': 0xFF64748B,
+      },
     ];
 
     for (final cat in defaultPasswordCategories) {
@@ -298,7 +363,9 @@ class VaultDatabase {
         FOREIGN KEY (document_id) REFERENCES documents (id) ON DELETE CASCADE
       );
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_extractions_doc ON document_extractions(document_id);');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_extractions_doc ON document_extractions(document_id);',
+    );
 
     // 2. Extracted Fields Table
     await db.execute('''
@@ -319,25 +386,39 @@ class VaultDatabase {
         FOREIGN KEY (extraction_id) REFERENCES document_extractions (id) ON DELETE CASCADE
       );
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_fields_extraction ON extracted_fields(extraction_id);');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_fields_doc ON extracted_fields(document_id);');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_fields_selected ON extracted_fields(is_selected);');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_fields_extraction ON extracted_fields(extraction_id);',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_fields_doc ON extracted_fields(document_id);',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_fields_selected ON extracted_fields(is_selected);',
+    );
   }
 
   Future<void> _migrateToV3(Database db) async {
     await _createExtractionTables(db);
     // Add columns to existing documents table safely if not present
     try {
-      await db.execute('ALTER TABLE documents ADD COLUMN extraction_status TEXT DEFAULT "completed";');
+      await db.execute(
+        'ALTER TABLE documents ADD COLUMN extraction_status TEXT DEFAULT "completed";',
+      );
     } catch (_) {}
     try {
-      await db.execute('ALTER TABLE documents ADD COLUMN extracted_txt_enc_path TEXT;');
+      await db.execute(
+        'ALTER TABLE documents ADD COLUMN extracted_txt_enc_path TEXT;',
+      );
     } catch (_) {}
     try {
-      await db.execute('ALTER TABLE document_files ADD COLUMN encrypted_txt_path TEXT;');
+      await db.execute(
+        'ALTER TABLE document_files ADD COLUMN encrypted_txt_path TEXT;',
+      );
     } catch (_) {}
     try {
-      await db.execute('ALTER TABLE document_files ADD COLUMN extraction_version INTEGER DEFAULT 1;');
+      await db.execute(
+        'ALTER TABLE document_files ADD COLUMN extraction_version INTEGER DEFAULT 1;',
+      );
     } catch (_) {}
   }
 
@@ -347,22 +428,34 @@ class VaultDatabase {
 
   Future<void> _migrateToV5(Database db) async {
     try {
-      await db.execute('ALTER TABLE extracted_fields ADD COLUMN document_id TEXT;');
+      await db.execute(
+        'ALTER TABLE extracted_fields ADD COLUMN document_id TEXT;',
+      );
     } catch (_) {}
     try {
-      await db.execute('ALTER TABLE extracted_fields ADD COLUMN is_selected INTEGER NOT NULL DEFAULT 1;');
+      await db.execute(
+        'ALTER TABLE extracted_fields ADD COLUMN is_selected INTEGER NOT NULL DEFAULT 1;',
+      );
     } catch (_) {}
     try {
-      await db.execute('ALTER TABLE extracted_fields ADD COLUMN is_verified INTEGER NOT NULL DEFAULT 0;');
+      await db.execute(
+        'ALTER TABLE extracted_fields ADD COLUMN is_verified INTEGER NOT NULL DEFAULT 0;',
+      );
     } catch (_) {}
     try {
-      await db.execute('ALTER TABLE document_extractions ADD COLUMN document_type TEXT;');
+      await db.execute(
+        'ALTER TABLE document_extractions ADD COLUMN document_type TEXT;',
+      );
     } catch (_) {}
     try {
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_fields_doc ON extracted_fields(document_id);');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_fields_doc ON extracted_fields(document_id);',
+      );
     } catch (_) {}
     try {
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_fields_selected ON extracted_fields(is_selected);');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_fields_selected ON extracted_fields(is_selected);',
+      );
     } catch (_) {}
   }
 

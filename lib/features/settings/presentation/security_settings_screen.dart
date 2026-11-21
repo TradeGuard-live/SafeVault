@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/security/authentication_gate.dart';
 import '../../../core/security/privacy_service.dart';
 import '../../../core/theme/app_colors.dart';
@@ -13,10 +14,12 @@ class SecuritySettingsScreen extends ConsumerStatefulWidget {
   const SecuritySettingsScreen({super.key});
 
   @override
-  ConsumerState<SecuritySettingsScreen> createState() => _SecuritySettingsScreenState();
+  ConsumerState<SecuritySettingsScreen> createState() =>
+      _SecuritySettingsScreenState();
 }
 
-class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen> {
+class _SecuritySettingsScreenState
+    extends ConsumerState<SecuritySettingsScreen> {
   Future<void> _showChangePinDialog() async {
     // 1. Mandatory 2FA Verification before sensitive PIN change via AuthenticationGate
     final gate = ref.read(authenticationGateProvider);
@@ -28,7 +31,8 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
         returnRoute: '/settings',
       ),
       title: 'Authorize PIN Change',
-      reason: 'Factor 1: Verify your identity with biometrics before changing PIN',
+      reason:
+          'Factor 1: Verify your identity with biometrics before changing PIN',
     );
 
     if (!verified || !mounted) return;
@@ -50,7 +54,10 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
           ),
           title: Text(
             'Change 6-Digit App PIN',
-            style: TextStyle(fontWeight: FontWeight.w700, color: colors.textPrimary),
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: colors.textPrimary,
+            ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -92,7 +99,10 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: Text('Cancel', style: TextStyle(color: colors.textSecondary)),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: colors.textSecondary),
+              ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -102,7 +112,9 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
               onPressed: () {
                 if (newPinController.text.length != 6) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('PIN must be exactly 6 numeric digits.')),
+                    const SnackBar(
+                      content: Text('PIN must be exactly 6 numeric digits.'),
+                    ),
                   );
                   return;
                 }
@@ -139,7 +151,11 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
         }
       } catch (e) {
         if (mounted) {
-          ErrorDialog.show(context, title: 'PIN Change Failed', message: e.toString());
+          ErrorDialog.show(
+            context,
+            title: 'PIN Change Failed',
+            message: e.toString(),
+          );
         }
       }
     }
@@ -184,7 +200,10 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('Security & Privacy', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          'Security & Privacy',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -202,11 +221,19 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
               children: [
                 Row(
                   children: [
-                    Icon(Icons.verified_user_rounded, color: colors.primaryAccent, size: 20),
+                    Icon(
+                      Icons.verified_user_rounded,
+                      color: colors.primaryAccent,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Mandatory Two-Factor Architecture',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: colors.textPrimary),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: colors.textPrimary,
+                      ),
                     ),
                   ],
                 ),
@@ -238,24 +265,58 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
           _buildSectionHeader('Authentication Controls'),
           _buildCard([
             ListTile(
-              leading: Icon(Icons.password_rounded, color: colors.primaryAccent),
-              title: Text('Change 6-Digit App PIN', style: TextStyle(fontWeight: FontWeight.w600, color: colors.textPrimary)),
-              subtitle: Text('Requires 2FA verification before updating', style: TextStyle(fontSize: 12, color: colors.textSecondary)),
-              trailing: Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+              leading: Icon(
+                Icons.password_rounded,
+                color: colors.primaryAccent,
+              ),
+              title: Text(
+                'Change 6-Digit App PIN',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+              subtitle: Text(
+                'Requires 2FA verification before updating',
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
+              ),
+              trailing: Icon(
+                Icons.chevron_right_rounded,
+                color: colors.textSecondary,
+              ),
               onTap: _showChangePinDialog,
             ),
             Divider(height: 1, color: colors.cardBorder),
             ListTile(
-              leading: Icon(Icons.fingerprint_rounded, color: colors.primaryAccent),
-              title: Text('Factor 1: Biometric Authentication', style: TextStyle(fontWeight: FontWeight.w600, color: colors.textPrimary)),
-              subtitle: Text('Enforced for all unlocks • Protected by Android Keystore', style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+              leading: Icon(
+                Icons.fingerprint_rounded,
+                color: colors.primaryAccent,
+              ),
+              title: Text(
+                'Factor 1: Biometric Authentication',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+              subtitle: Text(
+                'Enforced for all unlocks • Protected by Android Keystore',
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
+              ),
               trailing: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: colors.primaryAccent.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text('MANDATORY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: colors.primaryAccent)),
+                child: Text(
+                  'MANDATORY',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: colors.primaryAccent,
+                  ),
+                ),
               ),
             ),
           ]),
@@ -264,13 +325,29 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
           // Auto-Lock Section
           _buildSectionHeader('Auto-Lock Timeout'),
           _buildCard([
-            _buildTimeoutOption('Immediately when backgrounded (Recommended)', 0, settings.autoLockDuration),
+            _buildTimeoutOption(
+              'Immediately when backgrounded (Recommended)',
+              0,
+              settings.autoLockDuration,
+            ),
             Divider(height: 1, color: colors.cardBorder),
-            _buildTimeoutOption('30 seconds of inactivity', 30, settings.autoLockDuration),
+            _buildTimeoutOption(
+              '30 seconds of inactivity',
+              30,
+              settings.autoLockDuration,
+            ),
             Divider(height: 1, color: colors.cardBorder),
-            _buildTimeoutOption('1 minute of inactivity', 60, settings.autoLockDuration),
+            _buildTimeoutOption(
+              '1 minute of inactivity',
+              60,
+              settings.autoLockDuration,
+            ),
             Divider(height: 1, color: colors.cardBorder),
-            _buildTimeoutOption('5 minutes of inactivity', 300, settings.autoLockDuration),
+            _buildTimeoutOption(
+              '5 minutes of inactivity',
+              300,
+              settings.autoLockDuration,
+            ),
           ]),
           const SizedBox(height: 20),
 
@@ -278,9 +355,21 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
           _buildSectionHeader('Screen Privacy'),
           _buildCard([
             SwitchListTile(
-              secondary: Icon(Icons.visibility_off_outlined, color: colors.primaryAccent),
-              title: Text('Block Screenshots & Recordings', style: TextStyle(fontWeight: FontWeight.w600, color: colors.textPrimary)),
-              subtitle: Text('Hides preview in recent-apps list (FLAG_SECURE)', style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+              secondary: Icon(
+                Icons.visibility_off_outlined,
+                color: colors.primaryAccent,
+              ),
+              title: Text(
+                'Block Screenshots & Recordings',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+              subtitle: Text(
+                'Hides preview in recent-apps list (FLAG_SECURE)',
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
+              ),
               value: settings.screenshotProtection,
               activeColor: colors.primaryAccent,
               onChanged: _toggleScreenshotProtection,
@@ -293,8 +382,17 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
           _buildCard([
             ListTile(
               leading: Icon(Icons.dangerous_outlined, color: colors.error),
-              title: Text('Destroy & Reset Vault', style: TextStyle(fontWeight: FontWeight.w700, color: colors.error)),
-              subtitle: Text('Permanently wipes all encryption keys, documents, passwords, and bank accounts', style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+              title: Text(
+                'Destroy & Reset Vault',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: colors.error,
+                ),
+              ),
+              subtitle: Text(
+                'Permanently wipes all encryption keys, documents, passwords, and bank accounts',
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
+              ),
               onTap: _resetVault,
             ),
           ]),
@@ -336,7 +434,14 @@ class _SecuritySettingsScreenState extends ConsumerState<SecuritySettingsScreen>
   Widget _buildTimeoutOption(String label, int seconds, int currentVal) {
     final colors = context.themeColors;
     return RadioListTile<int>(
-      title: Text(label, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: colors.textPrimary)),
+      title: Text(
+        label,
+        style: TextStyle(
+          fontSize: 13.5,
+          fontWeight: FontWeight.w500,
+          color: colors.textPrimary,
+        ),
+      ),
       value: seconds,
       groupValue: currentVal,
       activeColor: colors.primaryAccent,

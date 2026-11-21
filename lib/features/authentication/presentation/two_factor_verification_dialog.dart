@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/errors/exceptions.dart';
 import '../../../core/security/vault_session.dart';
 import '../../../core/theme/app_colors.dart';
@@ -32,10 +33,8 @@ class TwoFactorVerificationDialog extends ConsumerStatefulWidget {
       final result = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
-        builder: (ctx) => TwoFactorVerificationDialog(
-          title: title,
-          reason: reason,
-        ),
+        builder: (ctx) =>
+            TwoFactorVerificationDialog(title: title, reason: reason),
       );
       return result ?? false;
     } finally {
@@ -79,7 +78,9 @@ class _TwoFactorVerificationDialogState
 
   Future<void> _startBiometric() async {
     if (_isAuthenticatingBio) return;
-    ref.read(vaultSessionProvider).beginSystemActivity('TWO_FACTOR_VERIFICATION');
+    ref
+        .read(vaultSessionProvider)
+        .beginSystemActivity('TWO_FACTOR_VERIFICATION');
     setState(() {
       _isAuthenticatingBio = true;
       _errorMessage = null;
@@ -160,7 +161,8 @@ class _TwoFactorVerificationDialogState
         if (mounted) {
           setState(() {
             _biometricPassed = false; // Reset to factor 1
-            _errorMessage = 'Incorrect PIN ($count failed attempts). Please retry from Factor 1.';
+            _errorMessage =
+                'Incorrect PIN ($count failed attempts). Please retry from Factor 1.';
           });
         }
       } on PinLockedOutException catch (e) {
@@ -168,7 +170,8 @@ class _TwoFactorVerificationDialogState
           setState(() {
             _biometricPassed = false;
             _lockoutSeconds = e.lockDurationSeconds;
-            _errorMessage = 'Too many failed attempts. Locked for ${e.lockDurationSeconds}s.';
+            _errorMessage =
+                'Too many failed attempts. Locked for ${e.lockDurationSeconds}s.';
           });
         }
       }
@@ -210,8 +213,11 @@ class _TwoFactorVerificationDialogState
                       color: colors.primaryAccent.withOpacity(0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.security_rounded,
-                        color: colors.primaryAccent, size: 22),
+                    child: Icon(
+                      Icons.security_rounded,
+                      color: colors.primaryAccent,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -221,21 +227,29 @@ class _TwoFactorVerificationDialogState
                         Text(
                           widget.title,
                           style: TextStyle(
-                              fontSize: 17, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           'Mandatory Two-Factor Verification',
                           style: TextStyle(
-                              fontSize: 11,
-                              color: colors.primaryAccent,
-                              fontWeight: FontWeight.w600),
+                            fontSize: 11,
+                            color: colors.primaryAccent,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.close_rounded, size: 20, color: colors.textSecondary),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      size: 20,
+                      color: colors.textSecondary,
+                    ),
                     onPressed: () {
                       _cleanupBioShare();
                       Navigator.of(context).pop(false);
@@ -262,23 +276,27 @@ class _TwoFactorVerificationDialogState
                         width: 2,
                       ),
                     ),
-                    child: Icon(Icons.fingerprint_rounded,
-                        size: 48, color: colors.primaryAccent),
+                    child: Icon(
+                      Icons.fingerprint_rounded,
+                      size: 48,
+                      color: colors.primaryAccent,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'Factor 1: Biometric Verification',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: colors.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   widget.reason,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: colors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 13, color: colors.textSecondary),
                 ),
                 if (_errorMessage != null) ...[
                   const SizedBox(height: 12),
@@ -294,7 +312,9 @@ class _TwoFactorVerificationDialogState
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.primaryAccent,
                     foregroundColor: colors.onPrimaryAccent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   icon: const Icon(Icons.fingerprint_rounded, size: 18),
                   label: const Text('Verify Biometrics'),
@@ -304,15 +324,19 @@ class _TwoFactorVerificationDialogState
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.check_circle_rounded,
-                        color: colors.success, size: 16),
+                    Icon(
+                      Icons.check_circle_rounded,
+                      color: colors.success,
+                      size: 16,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'Biometrics Verified • Enter 6-Digit PIN',
                       style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: colors.success),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: colors.success,
+                      ),
                     ),
                   ],
                 ),
@@ -331,4 +355,3 @@ class _TwoFactorVerificationDialogState
     );
   }
 }
-

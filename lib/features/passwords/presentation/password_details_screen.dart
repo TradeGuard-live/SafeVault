@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/security/authentication_gate.dart';
 import '../../../core/security/clipboard_security_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -17,13 +20,15 @@ class PasswordDetailsScreen extends ConsumerStatefulWidget {
   const PasswordDetailsScreen({super.key, required this.passwordId});
 
   @override
-  ConsumerState<PasswordDetailsScreen> createState() => _PasswordDetailsScreenState();
+  ConsumerState<PasswordDetailsScreen> createState() =>
+      _PasswordDetailsScreenState();
 }
 
 class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
   bool _isPasswordRevealed = false;
   PasswordEntryModel? _entry;
   bool _isLoading = true;
+  Timer? _visibilityTimer;
 
   @override
   void initState() {
@@ -34,8 +39,15 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
   @override
   void deactivate() {
     // Re-hide password when navigating away
+    _visibilityTimer?.cancel();
     _isPasswordRevealed = false;
     super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    _visibilityTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadEntry() async {
@@ -46,7 +58,10 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
     }
 
     final repo = ref.read(passwordRepositoryProvider);
-    final entry = await repo.getEntryById(widget.passwordId, session.masterKey!);
+    final entry = await repo.getEntryById(
+      widget.passwordId,
+      session.masterKey!,
+    );
     if (mounted) {
       setState(() {
         _entry = entry;
@@ -62,7 +77,8 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
       if (pending != null && mounted) {
         if (pending.type == VaultActionType.revealPassword) {
           setState(() => _isPasswordRevealed = true);
-        } else if (pending.type == VaultActionType.copyPassword && entry?.decryptedPassword != null) {
+        } else if (pending.type == VaultActionType.copyPassword &&
+            entry?.decryptedPassword != null) {
           _copyPassword();
         }
       }
@@ -89,6 +105,12 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
 
     if (verified && mounted) {
       setState(() => _isPasswordRevealed = true);
+      _visibilityTimer?.cancel();
+      _visibilityTimer = Timer(const Duration(seconds: 60), () {
+        if (mounted) {
+          setState(() => _isPasswordRevealed = false);
+        }
+      });
     }
   }
 
@@ -142,9 +164,14 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Password?'),
-        content: Text('Are you sure you want to permanently delete "${_entry?.title}"?'),
+        content: Text(
+          'Are you sure you want to permanently delete "${_entry?.title}"?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: colors.error),
@@ -155,6 +182,21 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
     );
 
     if (confirm == true && mounted) {
+      final gate = ref.read(authenticationGateProvider);
+      final verified = await gate.authenticateForAction(
+        context,
+        action: PendingVaultAction(
+          type: VaultActionType.deletePassword,
+          targetId: widget.passwordId,
+          targetName: _entry?.title ?? 'Password',
+          returnRoute: '/passwords',
+        ),
+        title: 'Authorize Password Deletion',
+        reason:
+            'Biometric + PIN authorization required to delete password "${_entry?.title}".',
+      );
+      if (!verified || !mounted) return;
+
       final repo = ref.read(passwordRepositoryProvider);
       await repo.deleteEntry(_entry!.id);
       ref.invalidate(allPasswordsProvider);
@@ -171,7 +213,9 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(),
-        body: Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
+        body: Center(
+          child: CircularProgressIndicator(color: colors.primaryAccent),
+        ),
       );
     }
 
@@ -190,8 +234,10 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
         title: Text(entry.title),
         actions: [
           IconButton(
-            icon: Icon(entry.isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
-                color: entry.isFavorite ? Colors.amber : null),
+            icon: Icon(
+              entry.isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+              color: entry.isFavorite ? Colors.amber : null,
+            ),
             tooltip: 'Favorite',
             onPressed: _toggleFavorite,
           ),
@@ -227,9 +273,7 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
             decoration: BoxDecoration(
               color: colors.cardBackground,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: colors.cardBorder,
-              ),
+              border: Border.all(color: colors.cardBorder),
             ),
             child: Row(
               children: [
@@ -241,7 +285,11 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Center(
-                    child: Icon(Icons.key_rounded, color: colors.primaryAccent, size: 28),
+                    child: Icon(
+                      Icons.key_rounded,
+                      color: colors.primaryAccent,
+                      size: 28,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -251,10 +299,14 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
                     children: [
                       Text(
                         entry.title,
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                        ),
                       ),
                       const SizedBox(height: 4),
-                      if (entry.websiteUrl != null && entry.websiteUrl!.isNotEmpty)
+                      if (entry.websiteUrl != null &&
+                          entry.websiteUrl!.isNotEmpty)
                         Text(
                           entry.websiteUrl!,
                           style: TextStyle(
@@ -272,7 +324,8 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
           const SizedBox(height: 16),
 
           // Username / Email Tile
-          if (entry.decryptedUsername != null && entry.decryptedUsername!.isNotEmpty)
+          if (entry.decryptedUsername != null &&
+              entry.decryptedUsername!.isNotEmpty)
             _buildDetailTile(
               context,
               title: 'Username',
@@ -316,11 +369,18 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.lock_outline_rounded, size: 18, color: colors.primaryAccent),
+                        Icon(
+                          Icons.lock_outline_rounded,
+                          size: 18,
+                          color: colors.primaryAccent,
+                        ),
                         const SizedBox(width: 8),
                         const Text(
                           'Password',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -329,10 +389,14 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
                         TextButton.icon(
                           onPressed: _revealPassword,
                           icon: Icon(
-                            _isPasswordRevealed ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                            _isPasswordRevealed
+                                ? Icons.visibility_off_rounded
+                                : Icons.visibility_rounded,
                             size: 16,
                           ),
-                          label: Text(_isPasswordRevealed ? 'Hide' : 'Reveal (2FA)'),
+                          label: Text(
+                            _isPasswordRevealed ? 'Hide' : 'Reveal (2FA)',
+                          ),
                           style: TextButton.styleFrom(
                             foregroundColor: colors.primaryAccent,
                             visualDensity: VisualDensity.compact,
@@ -363,7 +427,11 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.timer_outlined, size: 13, color: colors.warning),
+                      Icon(
+                        Icons.timer_outlined,
+                        size: 13,
+                        color: colors.warning,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Visible for this screen session. Re-hides automatically.',
@@ -384,19 +452,26 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
               decoration: BoxDecoration(
                 color: colors.cardBackground,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: colors.cardBorder,
-                ),
+                border: Border.all(color: colors.cardBorder),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.notes_rounded, size: 18, color: colors.primaryAccent),
+                      Icon(
+                        Icons.notes_rounded,
+                        size: 18,
+                        color: colors.primaryAccent,
+                      ),
                       const SizedBox(width: 8),
-                      const Text('Notes (AES-256-GCM Encrypted)',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      const Text(
+                        'Notes (AES-256-GCM Encrypted)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -421,24 +496,40 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Added',
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: colors.textSecondary)),
-                    Text(DateFormatter.formatDate(entry.createdAt),
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text(
+                      'Added',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      DateFormatter.formatDate(entry.createdAt),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 6),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Last Modified',
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: colors.textSecondary)),
-                    Text(DateFormatter.formatDate(entry.updatedAt),
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text(
+                      'Last Modified',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      DateFormatter.formatDate(entry.updatedAt),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -464,9 +555,7 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
       decoration: BoxDecoration(
         color: colors.cardBackground,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: colors.cardBorder,
-        ),
+        border: Border.all(color: colors.cardBorder),
       ),
       child: Row(
         children: [
@@ -478,15 +567,15 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: colors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 11, color: colors.textSecondary),
                 ),
                 const SizedBox(height: 2),
                 SelectableText(
                   value,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -501,4 +590,3 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
     );
   }
 }
-

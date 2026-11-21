@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../security/authentication_gate.dart';
 import '../services/native_saf_and_share_service.dart';
 import '../../features/authentication/presentation/auth_providers.dart';
@@ -43,7 +44,9 @@ import '../../features/settings/presentation/theme_selection_screen.dart';
 import '../../features/timeline/presentation/activity_timeline_screen.dart';
 import '../../features/trash/presentation/trash_screen.dart';
 
-final pendingIncomingShareProvider = StateProvider<List<SafFileItem>>((ref) => []);
+final pendingIncomingShareProvider = StateProvider<List<SafFileItem>>(
+  (ref) => [],
+);
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final session = ref.watch(vaultSessionProvider);
@@ -52,7 +55,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/splash',
     redirect: (context, state) {
       final loc = state.uri.toString();
-      final isAuthFlow = loc == '/splash' ||
+      final isAuthFlow =
+          loc == '/splash' ||
           loc == '/welcome' ||
           loc == '/setup' ||
           loc == '/pin-unlock' ||
@@ -61,10 +65,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // If locked and trying to access sensitive vault pages, redirect to Factor 1 Biometric unlock
       if (!session.isUnlocked && !isAuthFlow) {
         final gate = ref.read(authenticationGateProvider);
-        if (gate.pendingAction == null && loc.isNotEmpty && loc != '/' && loc != '/dashboard') {
+        if (gate.pendingAction == null &&
+            loc.isNotEmpty &&
+            loc != '/' &&
+            loc != '/dashboard') {
           gate.setPendingAction(
             PendingVaultAction(
               type: VaultActionType.custom,
+              originalRoute: state.uri.path,
+              queryParams: state.uri.queryParameters,
               returnRoute: loc,
             ),
           );
@@ -81,12 +90,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       // If unlocked and still sitting on auth/welcome pages, route to returnRoute, pending incoming share, or dashboard
-      if (session.isUnlocked && (loc == '/pin-unlock' || loc == '/biometric-unlock' || loc == '/welcome')) {
+      if (session.isUnlocked &&
+          (loc == '/pin-unlock' ||
+              loc == '/biometric-unlock' ||
+              loc == '/welcome')) {
         final gate = ref.read(authenticationGateProvider);
         if (gate.pendingAction != null &&
-            gate.pendingAction!.returnRoute != null &&
+            (gate.pendingAction!.originalRoute != null ||
+                gate.pendingAction!.returnRoute != null) &&
             !gate.pendingAction!.isExpired) {
-          return gate.pendingAction!.returnRoute!;
+          final action = gate.pendingAction!;
+          final baseRoute = action.originalRoute ?? action.returnRoute!;
+          if (action.queryParams.isNotEmpty) {
+            final uri = Uri(
+              path: baseRoute,
+              queryParameters: action.queryParams,
+            );
+            return uri.toString();
+          }
+          return baseRoute;
         }
 
         final pendingShares = ref.read(pendingIncomingShareProvider);
@@ -247,7 +269,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final id = state.pathParameters['id'] ?? '';
           final tabParam = state.uri.queryParameters['tab'];
           final initialTab = int.tryParse(tabParam ?? '0') ?? 0;
-          return DocumentDetailsScreen(documentId: id, initialTabIndex: initialTab);
+          return DocumentDetailsScreen(
+            documentId: id,
+            initialTabIndex: initialTab,
+          );
         },
       ),
 
@@ -285,10 +310,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/scanner-preview',
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>;
-          final pagePaths = (extra['pagePaths'] as List<dynamic>?) ?? (extra['scannedPages'] as List<dynamic>);
-          return ScannerPreviewScreen(
-            pagePaths: pagePaths.cast<String>(),
-          );
+          final pagePaths =
+              (extra['pagePaths'] as List<dynamic>?) ??
+              (extra['scannedPages'] as List<dynamic>);
+          return ScannerPreviewScreen(pagePaths: pagePaths.cast<String>());
         },
       ),
 
@@ -307,10 +332,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/document-viewer',
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>;
-          final docName = (extra['documentName'] as String?) ??
+          final docName =
+              (extra['documentName'] as String?) ??
               (extra['document'] as DocumentModel?)?.name ??
               'Document';
-          final encPath = (extra['encryptedFilePath'] as String?) ??
+          final encPath =
+              (extra['encryptedFilePath'] as String?) ??
               (extra['filePath'] as String?) ??
               '';
           final mime = extra['mimeType'] as String? ?? 'application/pdf';
@@ -337,10 +364,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
 
       // Trash & Recovery
-      GoRoute(
-        path: '/trash',
-        builder: (context, state) => const TrashScreen(),
-      ),
+      GoRoute(path: '/trash', builder: (context, state) => const TrashScreen()),
 
       // Search
       GoRoute(

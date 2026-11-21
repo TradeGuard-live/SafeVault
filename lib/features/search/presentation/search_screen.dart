@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/date_formatter.dart';
@@ -48,10 +49,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             enabledBorder: InputBorder.none,
             focusedBorder: InputBorder.none,
             filled: false,
-            hintStyle: TextStyle(
-              color: colors.textTertiary,
-              fontSize: 15,
-            ),
+            hintStyle: TextStyle(color: colors.textTertiary, fontSize: 15),
           ),
           onChanged: (val) {
             setState(() => _query = val.trim().toLowerCase());
@@ -107,7 +105,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         checkmarkColor: colors.primaryAccent,
                         labelStyle: TextStyle(
                           fontSize: 12,
-                          color: isSel ? colors.primaryAccent : colors.textSecondary,
+                          color: isSel
+                              ? colors.primaryAccent
+                              : colors.textSecondary,
                         ),
                       ),
                     );
@@ -128,18 +128,36 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 }
 
                 if (_selectedCategory != null) {
-                  results = results.where((d) => d.categoryId == _selectedCategory).toList();
+                  results = results
+                      .where((d) => d.categoryId == _selectedCategory)
+                      .toList();
                 }
 
                 if (_query.isNotEmpty) {
                   results = results.where((doc) {
                     if (doc.name.toLowerCase().contains(_query)) return true;
-                    if (doc.documentType?.toLowerCase().contains(_query) ?? false) return true;
-                    if (doc.documentNumber?.toLowerCase().contains(_query) ?? false) return true;
-                    if (doc.ownerName?.toLowerCase().contains(_query) ?? false) return true;
-                    if (doc.issuingAuthority?.toLowerCase().contains(_query) ?? false) return true;
-                    if (doc.notes?.toLowerCase().contains(_query) ?? false) return true;
-                    if (doc.tags.any((t) => t.toLowerCase().contains(_query))) return true;
+                    if (doc.documentType?.toLowerCase().contains(_query) ??
+                        false) {
+                      return true;
+                    }
+                    if (doc.documentNumber?.toLowerCase().contains(_query) ??
+                        false) {
+                      return true;
+                    }
+                    if (doc.ownerName?.toLowerCase().contains(_query) ??
+                        false) {
+                      return true;
+                    }
+                    if (doc.issuingAuthority?.toLowerCase().contains(_query) ??
+                        false) {
+                      return true;
+                    }
+                    if (doc.notes?.toLowerCase().contains(_query) ?? false) {
+                      return true;
+                    }
+                    if (doc.tags.any((t) => t.toLowerCase().contains(_query))) {
+                      return true;
+                    }
                     return false;
                   }).toList();
                 }
@@ -154,7 +172,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 }
 
                 return ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   itemCount: results.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (ctx, i) {
@@ -164,13 +185,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       decoration: BoxDecoration(
                         color: colors.cardBackground,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: colors.cardBorder,
-                        ),
+                        border: Border.all(color: colors.cardBorder),
                       ),
                       child: ListTile(
                         onTap: () => context.push('/document/${doc.id}'),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 6,
+                        ),
                         leading: Container(
                           width: 44,
                           height: 44,
@@ -178,7 +200,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             color: colors.primaryAccent.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Icon(Icons.description_outlined, color: colors.primaryAccent, size: 22),
+                          child: Icon(
+                            Icons.description_outlined,
+                            color: colors.primaryAccent,
+                            size: 22,
+                          ),
                         ),
                         title: Text(
                           doc.name,
@@ -190,7 +216,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         ),
                         subtitle: Text(
                           doc.documentNumber != null
-                              ? MaskedTextFormatter.maskDocumentNumber(doc.documentNumber)
+                              ? MaskedTextFormatter.maskDocumentNumber(
+                                  doc.documentNumber,
+                                )
                               : (doc.documentType ?? 'Document'),
                           style: TextStyle(
                             fontSize: 12.5,
@@ -203,7 +231,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   },
                 );
               },
-              loading: () => Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
+              loading: () => Center(
+                child: CircularProgressIndicator(color: colors.primaryAccent),
+              ),
               error: (e, _) => Center(child: Text('Error searching: $e')),
             ),
           ),
@@ -212,4 +242,3 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     );
   }
 }
-

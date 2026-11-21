@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/rupee_bunny_mascot.dart';
 
@@ -20,10 +21,7 @@ class WelcomeScreen extends StatelessWidget {
             children: [
               const Spacer(),
               const Center(
-                child: RupeeBunnyMascot(
-                  pose: MascotPose.friendly,
-                  size: 88,
-                ),
+                child: RupeeBunnyMascot(pose: MascotPose.friendly, size: 88),
               ),
               const SizedBox(height: 20),
               Text(
@@ -72,11 +70,17 @@ class WelcomeScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: colors.primaryAccent.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: colors.primaryAccent.withOpacity(0.2)),
+                  border: Border.all(
+                    color: colors.primaryAccent.withOpacity(0.2),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, size: 20, color: colors.primaryAccent),
+                    Icon(
+                      Icons.info_outline,
+                      size: 20,
+                      color: colors.primaryAccent,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -98,7 +102,9 @@ class WelcomeScreen extends StatelessWidget {
                   backgroundColor: colors.primaryAccent,
                   foregroundColor: colors.onPrimaryAccent,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                   elevation: 0,
                 ),
                 child: const Row(
@@ -106,7 +112,10 @@ class WelcomeScreen extends StatelessWidget {
                   children: [
                     Text(
                       'Initialize Secure Vault',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     SizedBox(width: 8),
                     Icon(Icons.arrow_forward_rounded, size: 18),
@@ -136,9 +145,7 @@ class WelcomeScreen extends StatelessWidget {
           decoration: BoxDecoration(
             color: colors.surfaceSecondary,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: colors.cardBorder,
-            ),
+            border: Border.all(color: colors.cardBorder),
           ),
           child: Icon(icon, color: colors.primaryAccent, size: 22),
         ),

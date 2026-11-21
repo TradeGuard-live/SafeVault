@@ -41,7 +41,9 @@ class OcrExtractor {
     DateTime? expiryDate;
 
     // 1. Identify Document Type & Category
-    if (upper.contains('INCOME TAX') || upper.contains('PERMANENT ACCOUNT NUMBER') || upper.contains('PAN')) {
+    if (upper.contains('INCOME TAX') ||
+        upper.contains('PERMANENT ACCOUNT NUMBER') ||
+        upper.contains('PAN')) {
       name = 'PAN Card';
       categoryId = 'personal_identity';
       docType = 'PAN Card';
@@ -51,37 +53,48 @@ class OcrExtractor {
       if (panMatch != null) {
         docNumber = panMatch.group(0);
       }
-    } else if (upper.contains('UNIQUE IDENTIFICATION') || upper.contains('AADHAAR') || upper.contains('UIDAI')) {
+    } else if (upper.contains('UNIQUE IDENTIFICATION') ||
+        upper.contains('AADHAAR') ||
+        upper.contains('UIDAI')) {
       name = 'Aadhaar Card';
       categoryId = 'personal_identity';
       docType = 'Aadhaar Card';
       authority = 'UIDAI';
 
-      final aadharMatch = RegExp(r'\b\d{4}\s\d{4}\s\d{4}\b').firstMatch(rawText);
+      final aadharMatch = RegExp(r'\b\d{4}\s\d{4}\s\d{4}\b')
+          .firstMatch(rawText);
       if (aadharMatch != null) {
         docNumber = aadharMatch.group(0);
       }
-    } else if (upper.contains('DRIVING LICENCE') || upper.contains('DRIVING LICENSE') || upper.contains('UNION OF INDIA DRIVING')) {
+    } else if (upper.contains('DRIVING LICENCE') ||
+        upper.contains('DRIVING LICENSE') ||
+        upper.contains('UNION OF INDIA DRIVING')) {
       name = 'Driving Licence';
       categoryId = 'vehicle_documents';
       docType = 'Driving Licence';
       authority = 'Transport Department';
 
-      final dlMatch = RegExp(r'\b[A-Z]{2}[0-9]{2}\s?[0-9]{11}\b').firstMatch(upper);
+      final dlMatch = RegExp(r'\b[A-Z]{2}[0-9]{2}\s?[0-9]{11}\b')
+          .firstMatch(upper);
       if (dlMatch != null) {
         docNumber = dlMatch.group(0);
       }
-    } else if (upper.contains('POLLUTION UNDER CONTROL') || upper.contains('PUC CERTIFICATE') || upper.contains('PUCC')) {
+    } else if (upper.contains('POLLUTION UNDER CONTROL') ||
+        upper.contains('PUC CERTIFICATE') ||
+        upper.contains('PUCC')) {
       name = 'PUC Certificate';
       categoryId = 'vehicle_documents';
       docType = 'PUC Certificate';
       authority = 'Transport Department';
-    } else if (upper.contains('CERTIFICATE OF REGISTRATION') || upper.contains('REGISTRATION CERTIFICATE') || upper.contains('FORM 23')) {
+    } else if (upper.contains('CERTIFICATE OF REGISTRATION') ||
+        upper.contains('REGISTRATION CERTIFICATE') ||
+        upper.contains('FORM 23')) {
       name = 'Vehicle RC Book';
       categoryId = 'vehicle_documents';
       docType = 'Vehicle RC Book';
       authority = 'Transport Department';
-    } else if (upper.contains('PASSPORT') || upper.contains('REPUBLIC OF INDIA')) {
+    } else if (upper.contains('PASSPORT') ||
+        upper.contains('REPUBLIC OF INDIA')) {
       name = 'Passport';
       categoryId = 'personal_identity';
       docType = 'Passport';
@@ -91,7 +104,9 @@ class OcrExtractor {
       if (passMatch != null) {
         docNumber = passMatch.group(0);
       }
-    } else if (upper.contains('ELECTION COMMISSION') || upper.contains('ELECTOR PHOTO') || upper.contains('VOTER')) {
+    } else if (upper.contains('ELECTION COMMISSION') ||
+        upper.contains('ELECTOR PHOTO') ||
+        upper.contains('VOTER')) {
       name = 'Voter ID';
       categoryId = 'personal_identity';
       docType = 'Voter ID';
@@ -105,7 +120,10 @@ class OcrExtractor {
       name = 'Insurance Policy';
       categoryId = 'financial_documents';
       docType = 'Insurance Policies';
-    } else if (upper.contains('UNIVERSITY') || upper.contains('MARKSHEET') || upper.contains('DEGREE') || upper.contains('EXAMINATION')) {
+    } else if (upper.contains('UNIVERSITY') ||
+        upper.contains('MARKSHEET') ||
+        upper.contains('DEGREE') ||
+        upper.contains('EXAMINATION')) {
       name = 'Degree Certificate';
       categoryId = 'education';
       docType = 'Degree Certificates';
@@ -117,20 +135,31 @@ class OcrExtractor {
 
     // 2. Generic Vehicle Number matching if doc is vehicle related
     if (categoryId == 'vehicle_documents' && docNumber == null) {
-      final regMatch = RegExp(r'\b[A-Z]{2}[-\s]?[0-9]{1,2}[-\s]?[A-Z]{1,3}[-\s]?[0-9]{4}\b').firstMatch(upper);
+      final regMatch = RegExp(
+        r'\b[A-Z]{2}[-\s]?[0-9]{1,2}[-\s]?[A-Z]{1,3}[-\s]?[0-9]{4}\b',
+      ).firstMatch(upper);
       if (regMatch != null) {
         docNumber = regMatch.group(0);
       }
     }
 
     // 3. Extract Dates (DD/MM/YYYY or YYYY-MM-DD)
-    final dateMatches = RegExp(r'\b(\d{1,2})[/\-\.](\d{1,2})[/\-\.](\d{4})\b').allMatches(rawText);
+    final dateMatches = RegExp(r'\b(\d{1,2})[/\-\.](\d{1,2})[/\-\.](\d{4})\b')
+        .allMatches(rawText);
     final List<DateTime> extractedDates = [];
     for (final m in dateMatches) {
       final day = int.tryParse(m.group(1) ?? '');
       final month = int.tryParse(m.group(2) ?? '');
       final year = int.tryParse(m.group(3) ?? '');
-      if (day != null && month != null && year != null && month >= 1 && month <= 12 && day >= 1 && day <= 31 && year >= 1950 && year <= 2060) {
+      if (day != null &&
+          month != null &&
+          year != null &&
+          month >= 1 &&
+          month <= 12 &&
+          day >= 1 &&
+          day <= 31 &&
+          year >= 1950 &&
+          year <= 2060) {
         try {
           extractedDates.add(DateTime(year, month, day));
         } catch (_) {}
@@ -154,8 +183,13 @@ class OcrExtractor {
     final lines = rawText.split('\n');
     for (final line in lines) {
       final lineUpper = line.toUpperCase();
-      if (lineUpper.contains('VALID UPTO') || lineUpper.contains('VALID TILL') || lineUpper.contains('EXPIRY') || lineUpper.contains('EXP DATE')) {
-        final lineDateMatch = RegExp(r'\b(\d{1,2})[/\-\.](\d{1,2})[/\-\.](\d{4})\b').firstMatch(line);
+      if (lineUpper.contains('VALID UPTO') ||
+          lineUpper.contains('VALID TILL') ||
+          lineUpper.contains('EXPIRY') ||
+          lineUpper.contains('EXP DATE')) {
+        final lineDateMatch = RegExp(
+          r'\b(\d{1,2})[/\-\.](\d{1,2})[/\-\.](\d{4})\b',
+        ).firstMatch(line);
         if (lineDateMatch != null) {
           final d = int.tryParse(lineDateMatch.group(1) ?? '');
           final m = int.tryParse(lineDateMatch.group(2) ?? '');
@@ -167,11 +201,15 @@ class OcrExtractor {
           }
         }
       }
-      if (lineUpper.contains('NAME') && !lineUpper.contains('FATHER') && !lineUpper.contains('DEPARTMENT')) {
+      if (lineUpper.contains('NAME') &&
+          !lineUpper.contains('FATHER') &&
+          !lineUpper.contains('DEPARTMENT')) {
         final parts = line.split(RegExp(r'[:\-]'));
         if (parts.length > 1) {
           final candidate = parts[1].trim();
-          if (candidate.length > 2 && candidate.length < 40 && !candidate.contains(RegExp(r'\d'))) {
+          if (candidate.length > 2 &&
+              candidate.length < 40 &&
+              !candidate.contains(RegExp(r'\d'))) {
             owner ??= candidate;
           }
         }
@@ -191,4 +229,3 @@ class OcrExtractor {
     );
   }
 }
-

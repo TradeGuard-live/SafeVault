@@ -4,8 +4,13 @@ import android.app.Activity
 import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyPermanentlyInvalidatedException
+import android.security.keystore.KeyProperties
+import android.security.keystore.UserNotAuthenticatedException
 import android.view.WindowManager
 import androidx.annotation.NonNull
 import androidx.core.content.FileProvider
@@ -16,19 +21,35 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
+import java.security.KeyStore
 import java.util.UUID
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
 
 /**
- * MainActivity for Vault:
+ * MainActivity for SafeVault:
  * - FlutterFragmentActivity for BiometricPrompt compatibility.
- * - FLAG_SECURE window protection.
+ * - FLAG_SECURE window protection against screen recording and recent tasks preview.
+ * - Hardware-backed Android Keystore integration (AES-256-GCM) with mandatory user authentication.
  * - Native Storage Access Framework (SAF) integration (ACTION_OPEN_DOCUMENT, ACTION_CREATE_DOCUMENT).
- * - Android Sharesheet incoming receiver (ACTION_SEND, ACTION_SEND_MULTIPLE).
- * - Outgoing share handler using FileProvider and Intent.createChooser().
+ * - Android Sharesheet incoming receiver with strict magic-byte signature validation and size limits.
+ * - Outgoing share handler strictly scoped to temporary exports directory with read-only permissions.
  */
 class MainActivity : FlutterFragmentActivity() {
     private val PRIVACY_CHANNEL = "com.vault.security/privacy"
     private val SAF_AND_SHARE_CHANNEL = "com.vault.native/saf_and_sharing"
+    private val KEYSTORE_BIOMETRIC_CHANNEL = "com.vault.security/keystore_biometric"
+
+    private val KEYSTORE_ALIAS = "vault_biometric_hardware_kek"
+    private val KEYSTORE_PROVIDER = "AndroidKeyStore"
+    private val GCM_TAG_LENGTH = 128
+    private val GCM_IV_LENGTH = 12
+
+    private val MAX_FILE_SIZE_BYTES = 50L * 1024 * 1024 // 50 MB
+    private val MAX_TOTAL_SIZE_BYTES = 150L * 1024 * 1024 // 150 MB
+    private val MAX_FILE_COUNT = 10
 
     private val REQUEST_CODE_OPEN_DOC = 2001
     private val REQUEST_CODE_CREATE_DOC = 2002
@@ -42,7 +63,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Privacy first: Hide preview in recent tasks and block screenshots by default
+        // Privacy first: Hide preview in recent tasks and block screenshots
         window.setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
@@ -64,8 +85,10 @@ class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
+        val messenger = flutterEngine.dartExecutor.binaryMessenger
+
         // 1. Privacy Channel
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PRIVACY_CHANNEL).setMethodCallHandler { call, result ->
+        MethodChannel(messenger, PRIVACY_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "setSecureFlag" -> {
                     val enabled = call.argument<Boolean>("enabled") ?: true
@@ -91,7 +114,7 @@ class MainActivity : FlutterFragmentActivity() {
         }
 
         // 2. Native SAF & Sharing Channel
-        safChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SAF_AND_SHARE_CHANNEL)
+        safChannel = MethodChannel(messenger, SAF_AND_SHARE_CHANNEL)
         safChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
                 "openDocument" -> handleOpenDocument(call, result)
@@ -109,6 +132,160 @@ class MainActivity : FlutterFragmentActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        // 3. Android Keystore Biometric Protection Channel
+        MethodChannel(messenger, KEYSTORE_BIOMETRIC_CHANNEL).setMethodCallHandler { call, result ->
+            handleKeystoreBiometric(call, result)
+        }
+    }
+
+    // =========================================================================
+    // HARDWARE-BACKED ANDROID KEYSTORE BIOMETRIC ENCRYPTION
+    // =========================================================================
+
+    private fun handleKeystoreBiometric(call: MethodCall, result: MethodChannel.Result) {
+        when (call.method) {
+            "generateBiometricKey" -> {
+                try {
+                    val success = generateKeystoreBiometricKey()
+                    result.success(success)
+                } catch (e: Exception) {
+                    result.error("KEYSTORE_GEN_FAILED", "Failed to generate biometric Keystore key: ${e.message}", null)
+                }
+            }
+            "wrapBiometricShare" -> {
+                val shareBytes = call.argument<ByteArray>("shareBytes")
+                if (shareBytes == null || shareBytes.isEmpty()) {
+                    result.error("INVALID_ARGS", "shareBytes cannot be null or empty", null)
+                    return
+                }
+                try {
+                    val wrapped = wrapBiometricShare(shareBytes)
+                    result.success(wrapped)
+                } catch (e: Exception) {
+                    result.error("KEYSTORE_WRAP_FAILED", "Failed to wrap biometric share: ${e.message}", null)
+                }
+            }
+            "unwrapBiometricShare" -> {
+                val wrappedBytes = call.argument<ByteArray>("wrappedBytes")
+                if (wrappedBytes == null || wrappedBytes.isEmpty()) {
+                    result.error("INVALID_ARGS", "wrappedBytes cannot be null or empty", null)
+                    return
+                }
+                try {
+                    val unwrapped = unwrapBiometricShare(wrappedBytes)
+                    result.success(unwrapped)
+                } catch (e: KeyPermanentlyInvalidatedException) {
+                    result.error(
+                        "KEY_PERMANENTLY_INVALIDATED",
+                        "Android Keystore invalidated the biometric key because device biometrics were modified in system settings.",
+                        null
+                    )
+                } catch (e: UserNotAuthenticatedException) {
+                    result.error(
+                        "USER_NOT_AUTHENTICATED",
+                        "User must authenticate with hardware biometrics before accessing key.",
+                        null
+                    )
+                } catch (e: Exception) {
+                    result.error("KEYSTORE_UNWRAP_FAILED", "Failed to unwrap biometric share: ${e.message}", null)
+                }
+            }
+            "isKeystoreKeyAvailable" -> {
+                try {
+                    val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
+                    val available = keyStore.containsAlias(KEYSTORE_ALIAS)
+                    result.success(available)
+                } catch (e: Exception) {
+                    result.success(false)
+                }
+            }
+            "deleteBiometricKey" -> {
+                try {
+                    val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
+                    if (keyStore.containsAlias(KEYSTORE_ALIAS)) {
+                        keyStore.deleteEntry(KEYSTORE_ALIAS)
+                        result.success(true)
+                    } else {
+                        result.success(false)
+                    }
+                } catch (e: Exception) {
+                    result.error("KEYSTORE_DELETE_FAILED", "Failed to delete Keystore key: ${e.message}", null)
+                }
+            }
+            else -> result.notImplemented()
+        }
+    }
+
+    private fun generateKeystoreBiometricKey(): Boolean {
+        val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
+        if (keyStore.containsAlias(KEYSTORE_ALIAS)) {
+            keyStore.deleteEntry(KEYSTORE_ALIAS)
+        }
+
+        val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE_PROVIDER)
+        val builder = KeyGenParameterSpec.Builder(
+            KEYSTORE_ALIAS,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+        )
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(256)
+            .setUserAuthenticationRequired(true)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            builder.setUserAuthenticationParameters(
+                30, // 30-second validity window after successful biometric authentication
+                KeyProperties.AUTH_BIOMETRIC_STRONG
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            builder.setUserAuthenticationValidityDurationSeconds(30)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            builder.setInvalidatedByBiometricEnrollment(true)
+        }
+
+        keyGenerator.init(builder.build())
+        keyGenerator.generateKey()
+        return true
+    }
+
+    private fun wrapBiometricShare(shareBytes: ByteArray): ByteArray {
+        val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
+        val secretKey = keyStore.getKey(KEYSTORE_ALIAS, null) as? SecretKey
+            ?: throw IllegalStateException("Keystore biometric key '$KEYSTORE_ALIAS' not found.")
+
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+        val iv = cipher.iv
+        val ciphertext = cipher.doFinal(shareBytes)
+
+        val combined = ByteArray(iv.size + ciphertext.size)
+        System.arraycopy(iv, 0, combined, 0, iv.size)
+        System.arraycopy(ciphertext, 0, combined, iv.size, ciphertext.size)
+        return combined
+    }
+
+    private fun unwrapBiometricShare(wrappedBytes: ByteArray): ByteArray {
+        if (wrappedBytes.size < (GCM_IV_LENGTH + 16)) {
+            throw IllegalArgumentException("Invalid wrapped share payload length.")
+        }
+
+        val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
+        val secretKey = keyStore.getKey(KEYSTORE_ALIAS, null) as? SecretKey
+            ?: throw IllegalStateException("Keystore biometric key '$KEYSTORE_ALIAS' not found.")
+
+        val iv = ByteArray(GCM_IV_LENGTH)
+        System.arraycopy(wrappedBytes, 0, iv, 0, GCM_IV_LENGTH)
+        val ciphertext = ByteArray(wrappedBytes.size - GCM_IV_LENGTH)
+        System.arraycopy(wrappedBytes, GCM_IV_LENGTH, ciphertext, 0, ciphertext.size)
+
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, spec)
+        return cipher.doFinal(ciphertext)
     }
 
     // =========================================================================
@@ -175,13 +352,13 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     // =========================================================================
-    // OUTGOING SHARING
+    // OUTGOING SHARING (STRICTLY SCOPED TO SHARED_EXPORTS)
     // =========================================================================
 
     private fun handleShareFiles(call: MethodCall, result: MethodChannel.Result) {
         val filePaths = call.argument<List<String>>("filePaths") ?: emptyList()
         val mimeTypes = call.argument<List<String>>("mimeTypes") ?: emptyList()
-        val title = call.argument<String>("title") ?: "Share via Vault"
+        val title = call.argument<String>("title") ?: "Share via SafeVault"
 
         if (filePaths.isEmpty()) {
             result.error("INVALID_ARGS", "filePaths must not be empty", null)
@@ -189,11 +366,23 @@ class MainActivity : FlutterFragmentActivity() {
         }
 
         try {
+            val exportDirCanonical = File(cacheDir, "shared_exports").canonicalPath
             val uris = ArrayList<Uri>()
+
             for (path in filePaths) {
-                val file = File(path)
+                val file = File(path).canonicalFile
+                // Enforce that only files inside shared_exports directory can be shared
+                if (!file.canonicalPath.startsWith(exportDirCanonical)) {
+                    result.error(
+                        "ACCESS_DENIED",
+                        "Security violation: Only files inside shared_exports directory may be shared.",
+                        null
+                    )
+                    return
+                }
+
                 if (!file.exists()) {
-                    result.error("FILE_NOT_FOUND", "Shared file does not exist: $path", null)
+                    result.error("FILE_NOT_FOUND", "Shared file does not exist: ${file.name}", null)
                     return
                 }
                 val uri = FileProvider.getUriForFile(this, "com.vault.vault.fileprovider", file)
@@ -242,7 +431,7 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     // =========================================================================
-    // INCOMING SHARE HANDLING
+    // INCOMING SHARE HANDLING (HARDENED VALIDATION & SIZE LIMITS)
     // =========================================================================
 
     private fun processIncomingIntent(intent: Intent, isNew: Boolean) {
@@ -255,7 +444,7 @@ class MainActivity : FlutterFragmentActivity() {
         val incomingUris = mutableListOf<Uri>()
 
         if (Intent.ACTION_SEND == action) {
-            val uri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
             } else {
                 @Suppress("DEPRECATION")
@@ -275,7 +464,7 @@ class MainActivity : FlutterFragmentActivity() {
                 }
             }
         } else if (Intent.ACTION_SEND_MULTIPLE == action) {
-            val uris = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            val uris = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
             } else {
                 @Suppress("DEPRECATION")
@@ -302,7 +491,6 @@ class MainActivity : FlutterFragmentActivity() {
         if (staged.isNotEmpty()) {
             pendingIncomingShares.addAll(staged)
             if (isNew) {
-                // Notify Flutter that a new incoming share has arrived
                 safChannel?.invokeMethod("onIncomingShareReceived", staged)
             }
         }
@@ -311,8 +499,19 @@ class MainActivity : FlutterFragmentActivity() {
     private fun stageUrisToCache(uris: List<Uri>, prefix: String): List<Map<String, Any>> {
         val result = mutableListOf<Map<String, Any>>()
         val stagingDir = File(cacheDir, "staging").apply { if (!exists()) mkdirs() }
+        var totalBytesAccumulated = 0L
 
-        for (uri in uris) {
+        // Limit file count to prevent resource exhaustion attacks
+        val safeUris = uris.take(MAX_FILE_COUNT)
+
+        for (uri in safeUris) {
+            // Validate URI scheme
+            val scheme = uri.scheme?.lowercase()
+            if (scheme != "content" && scheme != "file") {
+                continue
+            }
+
+            var targetFile: File? = null
             try {
                 var displayName = "shared_document_${UUID.randomUUID().toString().take(8)}"
                 var fileSize = -1L
@@ -332,66 +531,78 @@ class MainActivity : FlutterFragmentActivity() {
                     }
                 }
 
-                // If MIME type is generic, infer from file extension
-                if (mimeType == "application/octet-stream" || mimeType == "*/*") {
-                    val ext = displayName.substringAfterLast('.', "").lowercase()
-                    mimeType = when (ext) {
-                        "pdf" -> "application/pdf"
-                        "jpg", "jpeg" -> "image/jpeg"
-                        "png" -> "image/png"
-                        else -> mimeType
-                    }
+                // Check size upfront if available
+                if (fileSize > MAX_FILE_SIZE_BYTES || (totalBytesAccumulated + fileSize) > MAX_TOTAL_SIZE_BYTES) {
+                    continue
                 }
 
-                // Supported document formats check
-                val isSupported = mimeType.contains("pdf") ||
-                        mimeType.startsWith("image/") ||
-                        displayName.endsWith(".pdf", ignoreCase = true) ||
-                        displayName.endsWith(".jpg", ignoreCase = true) ||
-                        displayName.endsWith(".jpeg", ignoreCase = true) ||
-                        displayName.endsWith(".png", ignoreCase = true)
-
-                if (!isSupported) continue
-
-                // Determine file extension
-                val extension = if (displayName.contains('.')) {
-                    displayName.substringAfterLast('.')
-                } else if (mimeType.contains("pdf")) {
-                    "pdf"
-                } else if (mimeType.contains("png")) {
-                    "png"
-                } else {
-                    "jpg"
+                // Sanitize display name (strip path traversal attempts)
+                val sanitizedName = File(displayName).name.replace(Regex("[^a-zA-Z0-9._-]"), "_")
+                val extension = when {
+                    sanitizedName.contains('.') -> sanitizedName.substringAfterLast('.').lowercase()
+                    mimeType.contains("pdf") -> "pdf"
+                    mimeType.contains("png") -> "png"
+                    else -> "jpg"
                 }
 
                 val safeFileName = "${prefix}_${UUID.randomUUID()}.$extension"
-                val targetFile = File(stagingDir, safeFileName)
+                targetFile = File(stagingDir, safeFileName)
 
-                // Stream content safely with 8KB buffer
+                // Inspect stream: validate magic byte signatures
                 contentResolver.openInputStream(uri)?.use { inputStream ->
+                    val header = ByteArray(8)
+                    val headerBytesRead = inputStream.read(header)
+                    if (headerBytesRead < 4) {
+                        return@use
+                    }
+
+                    // Magic byte signatures:
+                    // PDF: %PDF- (0x25, 0x50, 0x44, 0x46)
+                    // JPEG: 0xFF, 0xD8, 0xFF
+                    // PNG: 0x89, 0x50, 0x4E, 0x47
+                    val isPdf = header[0] == 0x25.toByte() && header[1] == 0x50.toByte() && header[2] == 0x44.toByte() && header[3] == 0x46.toByte()
+                    val isJpeg = header[0] == 0xFF.toByte() && header[1] == 0xD8.toByte() && header[2] == 0xFF.toByte()
+                    val isPng = header[0] == 0x89.toByte() && header[1] == 0x50.toByte() && header[2] == 0x4E.toByte() && header[3] == 0x47.toByte()
+
+                    if (!isPdf && !isJpeg && !isPng) {
+                        // File signature does not match allowed types
+                        return@use
+                    }
+
                     FileOutputStream(targetFile).use { outputStream ->
+                        outputStream.write(header, 0, headerBytesRead)
+                        var bytesWritten = headerBytesRead.toLong()
+
                         val buffer = ByteArray(8192)
                         var read: Int
                         while (inputStream.read(buffer).also { read = it } != -1) {
+                            bytesWritten += read
+                            if (bytesWritten > MAX_FILE_SIZE_BYTES || (totalBytesAccumulated + bytesWritten) > MAX_TOTAL_SIZE_BYTES) {
+                                throw IllegalStateException("File size limit exceeded.")
+                            }
                             outputStream.write(buffer, 0, read)
                         }
                         outputStream.flush()
+                        totalBytesAccumulated += bytesWritten
                     }
                 }
 
                 if (targetFile.exists() && targetFile.length() > 0) {
-                    val finalSize = if (fileSize > 0) fileSize else targetFile.length()
+                    val finalSize = targetFile.length()
                     result.add(
                         mapOf(
                             "path" to targetFile.absolutePath,
-                            "name" to displayName,
+                            "name" to sanitizedName,
                             "size" to finalSize,
                             "mimeType" to mimeType
                         )
                     )
+                } else {
+                    targetFile.delete()
                 }
             } catch (e: Exception) {
-                // Skip unreadable URI, continue with others
+                // Clean up partial file on failure
+                targetFile?.delete()
             }
         }
         return result
@@ -409,12 +620,10 @@ class MainActivity : FlutterFragmentActivity() {
 
     private fun cleanupStaleCache() {
         try {
-            // Clean up temporary shared export files from previous app runs
             val exportDir = File(cacheDir, "shared_exports")
             if (exportDir.exists()) {
                 exportDir.listFiles()?.forEach { it.delete() }
             }
-            // Clean up staging directory
             val stagingDir = File(cacheDir, "staging")
             if (stagingDir.exists()) {
                 stagingDir.listFiles()?.forEach { it.delete() }
@@ -437,7 +646,6 @@ class MainActivity : FlutterFragmentActivity() {
                 if (currentResult == null) return
 
                 if (resultCode != Activity.RESULT_OK || data == null) {
-                    // User cancelled or back was pressed
                     currentResult.success(emptyList<Map<String, Any>>())
                     return
                 }

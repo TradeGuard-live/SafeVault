@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/security/authentication_gate.dart';
 import '../../../core/security/clipboard_security_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -16,13 +19,16 @@ class BankAccountDetailsScreen extends ConsumerStatefulWidget {
   const BankAccountDetailsScreen({super.key, required this.accountId});
 
   @override
-  ConsumerState<BankAccountDetailsScreen> createState() => _BankAccountDetailsScreenState();
+  ConsumerState<BankAccountDetailsScreen> createState() =>
+      _BankAccountDetailsScreenState();
 }
 
-class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScreen> {
+class _BankAccountDetailsScreenState
+    extends ConsumerState<BankAccountDetailsScreen> {
   bool _isDetailsRevealed = false;
   BankAccountModel? _account;
   bool _isLoading = true;
+  Timer? _visibilityTimer;
 
   @override
   void initState() {
@@ -33,8 +39,15 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
   @override
   void deactivate() {
     // Re-hide account number when navigating away
+    _visibilityTimer?.cancel();
     _isDetailsRevealed = false;
     super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    _visibilityTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadAccount() async {
@@ -45,7 +58,10 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
     }
 
     final repo = ref.read(bankVaultRepositoryProvider);
-    final account = await repo.getAccountById(widget.accountId, session.masterKey!);
+    final account = await repo.getAccountById(
+      widget.accountId,
+      session.masterKey!,
+    );
     if (mounted) {
       setState(() {
         _account = account;
@@ -58,7 +74,8 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
       if (pending != null && mounted) {
         if (pending.type == VaultActionType.revealBankDetails) {
           setState(() => _isDetailsRevealed = true);
-        } else if (pending.type == VaultActionType.copyBankDetails && account?.decryptedAccountNumber != null) {
+        } else if (pending.type == VaultActionType.copyBankDetails &&
+            account?.decryptedAccountNumber != null) {
           _copyAccountNumber();
         }
       }
@@ -84,6 +101,12 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
 
     if (verified && mounted) {
       setState(() => _isDetailsRevealed = true);
+      _visibilityTimer?.cancel();
+      _visibilityTimer = Timer(const Duration(seconds: 60), () {
+        if (mounted) {
+          setState(() => _isDetailsRevealed = false);
+        }
+      });
     }
   }
 
@@ -136,9 +159,14 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Bank Account?'),
-        content: Text('Are you sure you want to permanently delete "${_account?.bankName}"?'),
+        content: Text(
+          'Are you sure you want to permanently delete "${_account?.bankName}"?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: colors.error),
@@ -149,6 +177,21 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
     );
 
     if (confirm == true && mounted) {
+      final gate = ref.read(authenticationGateProvider);
+      final verified = await gate.authenticateForAction(
+        context,
+        action: PendingVaultAction(
+          type: VaultActionType.deleteBankAccount,
+          targetId: widget.accountId,
+          targetName: _account?.bankName ?? 'Bank Account',
+          returnRoute: '/bank-vault',
+        ),
+        title: 'Authorize Account Deletion',
+        reason:
+            'Biometric + PIN authorization required to delete bank account "${_account?.bankName}".',
+      );
+      if (!verified || !mounted) return;
+
       final repo = ref.read(bankVaultRepositoryProvider);
       await repo.deleteAccount(_account!.id);
       ref.invalidate(allBankAccountsProvider);
@@ -164,7 +207,9 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(),
-        body: Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
+        body: Center(
+          child: CircularProgressIndicator(color: colors.primaryAccent),
+        ),
       );
     }
 
@@ -183,8 +228,12 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
         title: Text(account.bankName),
         actions: [
           IconButton(
-            icon: Icon(account.isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
-                color: account.isFavorite ? Colors.amber : null),
+            icon: Icon(
+              account.isFavorite
+                  ? Icons.star_rounded
+                  : Icons.star_border_rounded,
+              color: account.isFavorite ? Colors.amber : null,
+            ),
             tooltip: 'Favorite',
             onPressed: _toggleFavorite,
           ),
@@ -220,9 +269,7 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
             decoration: BoxDecoration(
               color: colors.cardBackground,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: colors.cardBorder,
-              ),
+              border: Border.all(color: colors.cardBorder),
             ),
             child: Row(
               children: [
@@ -234,7 +281,11 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Center(
-                    child: Icon(Icons.account_balance_rounded, color: colors.primaryAccent, size: 28),
+                    child: Icon(
+                      Icons.account_balance_rounded,
+                      color: colors.primaryAccent,
+                      size: 28,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -244,11 +295,15 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
                     children: [
                       Text(
                         account.bankName,
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        account.nickname ?? '${account.accountType.toUpperCase()} ACCOUNT',
+                        account.nickname ??
+                            '${account.accountType.toUpperCase()} ACCOUNT',
                         style: TextStyle(
                           fontSize: 13,
                           color: colors.textSecondary,
@@ -283,11 +338,18 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.numbers_rounded, size: 18, color: colors.primaryAccent),
+                        Icon(
+                          Icons.numbers_rounded,
+                          size: 18,
+                          color: colors.primaryAccent,
+                        ),
                         const SizedBox(width: 8),
                         const Text(
                           'Account Number',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -296,10 +358,14 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
                         TextButton.icon(
                           onPressed: _revealDetails,
                           icon: Icon(
-                            _isDetailsRevealed ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                            _isDetailsRevealed
+                                ? Icons.visibility_off_rounded
+                                : Icons.visibility_rounded,
                             size: 16,
                           ),
-                          label: Text(_isDetailsRevealed ? 'Hide' : 'Reveal (2FA)'),
+                          label: Text(
+                            _isDetailsRevealed ? 'Hide' : 'Reveal (2FA)',
+                          ),
                           style: TextButton.styleFrom(
                             foregroundColor: colors.primaryAccent,
                             visualDensity: VisualDensity.compact,
@@ -330,7 +396,11 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.timer_outlined, size: 13, color: colors.warning),
+                      Icon(
+                        Icons.timer_outlined,
+                        size: 13,
+                        color: colors.warning,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Full number revealed for this screen view. Re-hides automatically.',
@@ -344,7 +414,8 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
           ),
 
           // IFSC / SWIFT Code Tile
-          if (account.decryptedIFSC != null && account.decryptedIFSC!.isNotEmpty)
+          if (account.decryptedIFSC != null &&
+              account.decryptedIFSC!.isNotEmpty)
             _buildDetailTile(
               context,
               title: 'IFSC / Routing / SWIFT Code',
@@ -355,7 +426,8 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
             ),
 
           // Account Holder Name Tile
-          if (account.decryptedAccountHolder != null && account.decryptedAccountHolder!.isNotEmpty)
+          if (account.decryptedAccountHolder != null &&
+              account.decryptedAccountHolder!.isNotEmpty)
             _buildDetailTile(
               context,
               title: 'Account Holder Name',
@@ -370,7 +442,8 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
             ),
 
           // Branch Name Tile
-          if (account.decryptedBranch != null && account.decryptedBranch!.isNotEmpty)
+          if (account.decryptedBranch != null &&
+              account.decryptedBranch!.isNotEmpty)
             _buildDetailTile(
               context,
               title: 'Branch Name',
@@ -385,26 +458,34 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
             ),
 
           // Notes
-          if (account.decryptedNotes != null && account.decryptedNotes!.isNotEmpty)
+          if (account.decryptedNotes != null &&
+              account.decryptedNotes!.isNotEmpty)
             Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: colors.cardBackground,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: colors.cardBorder,
-                ),
+                border: Border.all(color: colors.cardBorder),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.notes_rounded, size: 18, color: colors.primaryAccent),
+                      Icon(
+                        Icons.notes_rounded,
+                        size: 18,
+                        color: colors.primaryAccent,
+                      ),
                       const SizedBox(width: 8),
-                      const Text('Notes (AES-256-GCM Encrypted)',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      const Text(
+                        'Notes (AES-256-GCM Encrypted)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -429,24 +510,40 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Created',
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: colors.textSecondary)),
-                    Text(DateFormatter.formatDate(account.createdAt),
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text(
+                      'Created',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      DateFormatter.formatDate(account.createdAt),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 6),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Updated',
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: colors.textSecondary)),
-                    Text(DateFormatter.formatDate(account.updatedAt),
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text(
+                      'Updated',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      DateFormatter.formatDate(account.updatedAt),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -472,9 +569,7 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
       decoration: BoxDecoration(
         color: colors.cardBackground,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: colors.cardBorder,
-        ),
+        border: Border.all(color: colors.cardBorder),
       ),
       child: Row(
         children: [
@@ -486,15 +581,15 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: colors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 11, color: colors.textSecondary),
                 ),
                 const SizedBox(height: 2),
                 SelectableText(
                   value,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -509,4 +604,3 @@ class _BankAccountDetailsScreenState extends ConsumerState<BankAccountDetailsScr
     );
   }
 }
-

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/widgets/empty_state_view.dart';
@@ -21,9 +22,16 @@ class BankVaultDashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Row(
           children: [
-            Icon(Icons.account_balance_rounded, color: colors.primaryAccent, size: 24),
+            Icon(
+              Icons.account_balance_rounded,
+              color: colors.primaryAccent,
+              size: 24,
+            ),
             const SizedBox(width: 10),
-            const Text('Bank Vault', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
+            const Text(
+              'Bank Vault',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
+            ),
           ],
         ),
         actions: [
@@ -38,7 +46,10 @@ class BankVaultDashboardScreen extends ConsumerWidget {
         backgroundColor: colors.primaryAccent,
         foregroundColor: colors.onPrimaryAccent,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Account', style: TextStyle(fontWeight: FontWeight.w700)),
+        label: const Text(
+          'Add Account',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         onPressed: () => context.push('/add-bank-account'),
       ),
       body: RefreshIndicator(
@@ -55,7 +66,9 @@ class BankVaultDashboardScreen extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: colors.cardBackground,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: colors.primaryAccent.withOpacity(0.3)),
+                border: Border.all(
+                  color: colors.primaryAccent.withOpacity(0.3),
+                ),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,8 +79,11 @@ class BankVaultDashboardScreen extends ConsumerWidget {
                       color: colors.primaryAccent.withOpacity(0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.verified_user_rounded,
-                        color: colors.primaryAccent, size: 20),
+                    child: Icon(
+                      Icons.verified_user_rounded,
+                      color: colors.primaryAccent,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -76,7 +92,10 @@ class BankVaultDashboardScreen extends ConsumerWidget {
                       children: [
                         const Text(
                           'Strict Offline Reference Vault',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -98,9 +117,15 @@ class BankVaultDashboardScreen extends ConsumerWidget {
             // Summary Metrics
             accountsAsync.when(
               data: (accounts) {
-                final favoritesCount = accounts.where((a) => a.isFavorite).length;
-                final savingsCount = accounts.where((a) => a.accountType == 'savings').length;
-                final currentCount = accounts.where((a) => a.accountType == 'current').length;
+                final favoritesCount = accounts
+                    .where((a) => a.isFavorite)
+                    .length;
+                final savingsCount = accounts
+                    .where((a) => a.accountType == 'savings')
+                    .length;
+                final currentCount = accounts
+                    .where((a) => a.accountType == 'current')
+                    .length;
 
                 return Column(
                   children: [
@@ -124,7 +149,9 @@ class BankVaultDashboardScreen extends ConsumerWidget {
                             Icons.star_outline_rounded,
                             Colors.amber,
                             colors,
-                            () => context.push('/bank-accounts-list?filter=favorites'),
+                            () => context.push(
+                              '/bank-accounts-list?filter=favorites',
+                            ),
                           ),
                         ),
                       ],
@@ -139,7 +166,9 @@ class BankVaultDashboardScreen extends ConsumerWidget {
                             Icons.savings_outlined,
                             colors.success,
                             colors,
-                            () => context.push('/bank-accounts-list?type=savings'),
+                            () => context.push(
+                              '/bank-accounts-list?type=savings',
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -150,7 +179,9 @@ class BankVaultDashboardScreen extends ConsumerWidget {
                             Icons.business_center_outlined,
                             colors.info,
                             colors,
-                            () => context.push('/bank-accounts-list?type=current'),
+                            () => context.push(
+                              '/bank-accounts-list?type=current',
+                            ),
                           ),
                         ),
                       ],
@@ -194,7 +225,9 @@ class BankVaultDashboardScreen extends ConsumerWidget {
                 }
 
                 return Column(
-                  children: accounts.map((a) => _buildAccountRow(context, a, colors)).toList(),
+                  children: accounts
+                      .map((a) => _buildAccountRow(context, a, colors))
+                      .toList(),
                 );
               },
               loading: () => Center(
@@ -228,23 +261,21 @@ class BankVaultDashboardScreen extends ConsumerWidget {
         decoration: BoxDecoration(
           color: colors.cardBackground,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: colors.cardBorder,
-          ),
+          border: Border.all(color: colors.cardBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(icon, color: color, size: 22),
             const SizedBox(height: 8),
-            Text(count, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            Text(
+              count,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 2),
             Text(
               title,
-              style: TextStyle(
-                fontSize: 11,
-                color: colors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 11, color: colors.textSecondary),
             ),
           ],
         ),
@@ -252,15 +283,17 @@ class BankVaultDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAccountRow(BuildContext context, BankAccountModel a, AppThemeColors colors) {
+  Widget _buildAccountRow(
+    BuildContext context,
+    BankAccountModel a,
+    AppThemeColors colors,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: colors.cardBackground,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: colors.cardBorder,
-        ),
+        border: Border.all(color: colors.cardBorder),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -272,7 +305,11 @@ class BankVaultDashboardScreen extends ConsumerWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Center(
-            child: Icon(Icons.account_balance_rounded, color: colors.primaryAccent, size: 22),
+            child: Icon(
+              Icons.account_balance_rounded,
+              color: colors.primaryAccent,
+              size: 22,
+            ),
           ),
         ),
         title: Text(
@@ -281,10 +318,7 @@ class BankVaultDashboardScreen extends ConsumerWidget {
         ),
         subtitle: Text(
           '${a.nickname != null ? '${a.nickname} • ' : ''}${a.maskedAccountNumber}',
-          style: TextStyle(
-            fontSize: 12.5,
-            color: colors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 12.5, color: colors.textSecondary),
         ),
         trailing: a.isFavorite
             ? const Icon(Icons.star_rounded, color: Colors.amber, size: 20)
@@ -294,4 +328,3 @@ class BankVaultDashboardScreen extends ConsumerWidget {
     );
   }
 }
-

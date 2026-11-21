@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -16,11 +17,11 @@ void main() {
     mockTempDir = Directory.systemTemp.createTempSync('vault_remediation_test');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('plugins.flutter.io/path_provider'),
-      (MethodCall methodCall) async {
-        return mockTempDir.path;
-      },
-    );
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          (MethodCall methodCall) async {
+            return mockTempDir.path;
+          },
+        );
   });
 
   tearDownAll(() {
@@ -36,11 +37,14 @@ void main() {
       expect(coordinator.consumeBiometricShare(), isNull);
     });
 
-    test('2. TwoFactorAuthCoordinator expires biometric share after timeout', () {
-      final coordinator = TwoFactorAuthCoordinator();
-      // Not verified initially
-      expect(coordinator.hasActiveBiometricVerification, isFalse);
-    });
+    test(
+      '2. TwoFactorAuthCoordinator expires biometric share after timeout',
+      () {
+        final coordinator = TwoFactorAuthCoordinator();
+        // Not verified initially
+        expect(coordinator.hasActiveBiometricVerification, isFalse);
+      },
+    );
 
     test('3. EncryptedFileStorage.wipeEphemeralFiles purges scan_*, ocr_*, and view_* temp files', () async {
       final storage = EncryptedFileStorage();
@@ -76,36 +80,81 @@ void main() {
       }
     });
 
-    test('4. AndroidManifest.xml explicitly blocks all unintended permissions', () {
-      final manifestFile = File('android/app/src/main/AndroidManifest.xml');
-      expect(manifestFile.existsSync(), isTrue);
-      final manifestContent = manifestFile.readAsStringSync();
+    test(
+      '4. AndroidManifest.xml explicitly blocks all unintended permissions',
+      () {
+        final manifestFile = File('android/app/src/main/AndroidManifest.xml');
+        expect(manifestFile.existsSync(), isTrue);
+        final manifestContent = manifestFile.readAsStringSync();
 
-      // Strict offline and least privilege checks
-      expect(manifestContent.contains('android.permission.INTERNET" tools:node="remove"'), isTrue);
-      expect(manifestContent.contains('android.permission.RECORD_AUDIO" tools:node="remove"'), isTrue);
-      expect(manifestContent.contains('android.permission.READ_EXTERNAL_STORAGE" tools:node="remove"'), isTrue);
-      expect(manifestContent.contains('android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove"'), isTrue);
-      expect(manifestContent.contains('android.permission.ACCESS_NETWORK_STATE" tools:node="remove"'), isTrue);
+        // Strict offline and least privilege checks
+        expect(
+          manifestContent.contains(
+            'android.permission.INTERNET" tools:node="remove"',
+          ),
+          isTrue,
+        );
+        expect(
+          manifestContent.contains(
+            'android.permission.RECORD_AUDIO" tools:node="remove"',
+          ),
+          isTrue,
+        );
+        expect(
+          manifestContent.contains(
+            'android.permission.READ_EXTERNAL_STORAGE" tools:node="remove"',
+          ),
+          isTrue,
+        );
+        expect(
+          manifestContent.contains(
+            'android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove"',
+          ),
+          isTrue,
+        );
+        expect(
+          manifestContent.contains(
+            'android.permission.ACCESS_NETWORK_STATE" tools:node="remove"',
+          ),
+          isTrue,
+        );
 
-      // Android 12+ data extraction and network security config checks
-      expect(manifestContent.contains('android:dataExtractionRules="@xml/data_extraction_rules"'), isTrue);
-      expect(manifestContent.contains('android:networkSecurityConfig="@xml/network_security_config"'), isTrue);
-    });
+        // Android 12+ data extraction and network security config checks
+        expect(
+          manifestContent.contains(
+            'android:dataExtractionRules="@xml/data_extraction_rules"',
+          ),
+          isTrue,
+        );
+        expect(
+          manifestContent.contains(
+            'android:networkSecurityConfig="@xml/network_security_config"',
+          ),
+          isTrue,
+        );
+      },
+    );
 
-    test('5. Android data extraction rules disallow all cloud and D2D transfers', () {
-      final rulesFile = File('android/app/src/main/res/xml/data_extraction_rules.xml');
-      expect(rulesFile.existsSync(), isTrue);
-      final content = rulesFile.readAsStringSync();
+    test(
+      '5. Android data extraction rules disallow all cloud and D2D transfers',
+      () {
+        final rulesFile = File(
+          'android/app/src/main/res/xml/data_extraction_rules.xml',
+        );
+        expect(rulesFile.existsSync(), isTrue);
+        final content = rulesFile.readAsStringSync();
 
-      expect(content.contains('<cloud-backup>'), isTrue);
-      expect(content.contains('<device-transfer>'), isTrue);
-      expect(content.contains('domain="root"'), isTrue);
-      expect(content.contains('path="."'), isTrue);
-    });
+        expect(content.contains('<cloud-backup>'), isTrue);
+        expect(content.contains('<device-transfer>'), isTrue);
+        expect(content.contains('domain="root"'), isTrue);
+        expect(content.contains('path="."'), isTrue);
+      },
+    );
 
     test('6. Network security config permits zero cleartext traffic and trusts no anchors', () {
-      final netConfigFile = File('android/app/src/main/res/xml/network_security_config.xml');
+      final netConfigFile = File(
+        'android/app/src/main/res/xml/network_security_config.xml',
+      );
       expect(netConfigFile.existsSync(), isTrue);
       final content = netConfigFile.readAsStringSync();
 
@@ -113,18 +162,21 @@ void main() {
       expect(content.contains('<trust-anchors />'), isTrue);
     });
 
-    test('7. R8 and ProGuard rules exist and configure minification and shrinking', () {
-      final gradleFile = File('android/app/build.gradle.kts');
-      expect(gradleFile.existsSync(), isTrue);
-      final gradleContent = gradleFile.readAsStringSync();
+    test(
+      '7. R8 and ProGuard rules exist and configure minification and shrinking',
+      () {
+        final gradleFile = File('android/app/build.gradle.kts');
+        expect(gradleFile.existsSync(), isTrue);
+        final gradleContent = gradleFile.readAsStringSync();
 
-      expect(gradleContent.contains('isMinifyEnabled = true'), isTrue);
-      expect(gradleContent.contains('isShrinkResources = true'), isTrue);
-      expect(gradleContent.contains('proguard-rules.pro'), isTrue);
+        expect(gradleContent.contains('isMinifyEnabled = true'), isTrue);
+        expect(gradleContent.contains('isShrinkResources = true'), isTrue);
+        expect(gradleContent.contains('proguard-rules.pro'), isTrue);
 
-      final proguardFile = File('android/app/proguard-rules.pro');
-      expect(proguardFile.existsSync(), isTrue);
-    });
+        final proguardFile = File('android/app/proguard-rules.pro');
+        expect(proguardFile.existsSync(), isTrue);
+      },
+    );
 
     test('8. BiometricService does not mislead users with PIN-only bypass messages', () {
       final bioService = BiometricService();

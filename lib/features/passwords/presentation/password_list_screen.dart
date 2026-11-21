@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/widgets/empty_state_view.dart';
@@ -50,7 +51,10 @@ class _PasswordListScreenState extends ConsumerState<PasswordListScreen> {
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('Saved Passwords', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          'Saved Passwords',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         actions: [
           IconButton(
             icon: Icon(
@@ -76,7 +80,8 @@ class _PasswordListScreenState extends ConsumerState<PasswordListScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: TextField(
               controller: _searchCtrl,
-              onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+              onChanged: (val) =>
+                  setState(() => _searchQuery = val.trim().toLowerCase()),
               decoration: InputDecoration(
                 hintText: 'Search by title, username, or website...',
                 prefixIcon: const Icon(Icons.search_rounded),
@@ -89,7 +94,10 @@ class _PasswordListScreenState extends ConsumerState<PasswordListScreen> {
                         },
                       )
                     : null,
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 0,
+                  horizontal: 16,
+                ),
               ),
             ),
           ),
@@ -108,7 +116,8 @@ class _PasswordListScreenState extends ConsumerState<PasswordListScreen> {
                       child: FilterChip(
                         label: const Text('All'),
                         selected: _selectedCategory == null,
-                        onSelected: (_) => setState(() => _selectedCategory = null),
+                        onSelected: (_) =>
+                            setState(() => _selectedCategory = null),
                       ),
                     ),
                     ...cats.map((c) {
@@ -118,7 +127,9 @@ class _PasswordListScreenState extends ConsumerState<PasswordListScreen> {
                           label: Text(c.name),
                           selected: _selectedCategory == c.id,
                           onSelected: (sel) {
-                            setState(() => _selectedCategory = sel ? c.id : null);
+                            setState(
+                              () => _selectedCategory = sel ? c.id : null,
+                            );
                           },
                         ),
                       );
@@ -141,7 +152,9 @@ class _PasswordListScreenState extends ConsumerState<PasswordListScreen> {
                   filtered = filtered.where((p) => p.isFavorite).toList();
                 }
                 if (_selectedCategory != null) {
-                  filtered = filtered.where((p) => p.categoryId == _selectedCategory).toList();
+                  filtered = filtered
+                      .where((p) => p.categoryId == _selectedCategory)
+                      .toList();
                 }
                 if (_searchQuery.isNotEmpty) {
                   filtered = filtered.where((p) {
@@ -166,7 +179,10 @@ class _PasswordListScreenState extends ConsumerState<PasswordListScreen> {
                 }
 
                 return ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   itemCount: filtered.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, i) {
@@ -186,14 +202,16 @@ class _PasswordListScreenState extends ConsumerState<PasswordListScreen> {
     );
   }
 
-  Widget _buildListItem(BuildContext context, PasswordEntryModel item, AppThemeColors colors) {
+  Widget _buildListItem(
+    BuildContext context,
+    PasswordEntryModel item,
+    AppThemeColors colors,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: colors.cardBackground,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: colors.cardBorder,
-        ),
+        border: Border.all(color: colors.cardBorder),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
@@ -205,7 +223,11 @@ class _PasswordListScreenState extends ConsumerState<PasswordListScreen> {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Center(
-            child: Icon(Icons.key_rounded, color: colors.primaryAccent, size: 22),
+            child: Icon(
+              Icons.key_rounded,
+              color: colors.primaryAccent,
+              size: 22,
+            ),
           ),
         ),
         title: Text(
@@ -214,10 +236,7 @@ class _PasswordListScreenState extends ConsumerState<PasswordListScreen> {
         ),
         subtitle: Text(
           item.decryptedUsername ?? item.decryptedEmail ?? 'No username',
-          style: TextStyle(
-            fontSize: 13,
-            color: colors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 13, color: colors.textSecondary),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -233,4 +252,3 @@ class _PasswordListScreenState extends ConsumerState<PasswordListScreen> {
     );
   }
 }
-

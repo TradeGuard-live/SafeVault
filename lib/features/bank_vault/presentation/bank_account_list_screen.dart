@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/widgets/empty_state_view.dart';
@@ -19,7 +20,8 @@ class BankAccountListScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<BankAccountListScreen> createState() => _BankAccountListScreenState();
+  ConsumerState<BankAccountListScreen> createState() =>
+      _BankAccountListScreenState();
 }
 
 class _BankAccountListScreenState extends ConsumerState<BankAccountListScreen> {
@@ -49,7 +51,10 @@ class _BankAccountListScreenState extends ConsumerState<BankAccountListScreen> {
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('Bank Accounts', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          'Bank Accounts',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         actions: [
           IconButton(
             icon: Icon(
@@ -75,7 +80,8 @@ class _BankAccountListScreenState extends ConsumerState<BankAccountListScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: TextField(
               controller: _searchCtrl,
-              onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+              onChanged: (val) =>
+                  setState(() => _searchQuery = val.trim().toLowerCase()),
               decoration: InputDecoration(
                 hintText: 'Search by bank name, nickname, or branch...',
                 prefixIcon: const Icon(Icons.search_rounded),
@@ -88,7 +94,10 @@ class _BankAccountListScreenState extends ConsumerState<BankAccountListScreen> {
                         },
                       )
                     : null,
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 0,
+                  horizontal: 16,
+                ),
               ),
             ),
           ),
@@ -134,14 +143,18 @@ class _BankAccountListScreenState extends ConsumerState<BankAccountListScreen> {
                   filtered = filtered.where((a) => a.isFavorite).toList();
                 }
                 if (_selectedType != null) {
-                  filtered = filtered.where((a) => a.accountType == _selectedType).toList();
+                  filtered = filtered
+                      .where((a) => a.accountType == _selectedType)
+                      .toList();
                 }
                 if (_searchQuery.isNotEmpty) {
                   filtered = filtered.where((a) {
                     final b = a.bankName.toLowerCase();
                     final n = (a.nickname ?? '').toLowerCase();
                     final br = (a.decryptedBranch ?? '').toLowerCase();
-                    return b.contains(_searchQuery) || n.contains(_searchQuery) || br.contains(_searchQuery);
+                    return b.contains(_searchQuery) ||
+                        n.contains(_searchQuery) ||
+                        br.contains(_searchQuery);
                   }).toList();
                 }
 
@@ -155,7 +168,10 @@ class _BankAccountListScreenState extends ConsumerState<BankAccountListScreen> {
                 }
 
                 return ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   itemCount: filtered.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, i) {
@@ -175,14 +191,16 @@ class _BankAccountListScreenState extends ConsumerState<BankAccountListScreen> {
     );
   }
 
-  Widget _buildListItem(BuildContext context, BankAccountModel item, AppThemeColors colors) {
+  Widget _buildListItem(
+    BuildContext context,
+    BankAccountModel item,
+    AppThemeColors colors,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: colors.cardBackground,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: colors.cardBorder,
-        ),
+        border: Border.all(color: colors.cardBorder),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
@@ -194,7 +212,11 @@ class _BankAccountListScreenState extends ConsumerState<BankAccountListScreen> {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Center(
-            child: Icon(Icons.account_balance_rounded, color: colors.primaryAccent, size: 22),
+            child: Icon(
+              Icons.account_balance_rounded,
+              color: colors.primaryAccent,
+              size: 22,
+            ),
           ),
         ),
         title: Text(
@@ -203,10 +225,7 @@ class _BankAccountListScreenState extends ConsumerState<BankAccountListScreen> {
         ),
         subtitle: Text(
           '${item.nickname != null ? '${item.nickname} • ' : ''}${item.maskedAccountNumber}',
-          style: TextStyle(
-            fontSize: 12.5,
-            color: colors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 12.5, color: colors.textSecondary),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -222,4 +241,3 @@ class _BankAccountListScreenState extends ConsumerState<BankAccountListScreen> {
     );
   }
 }
-

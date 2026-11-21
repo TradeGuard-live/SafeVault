@@ -1,5 +1,6 @@
 import 'package:cryptography/cryptography.dart';
 import 'package:sqflite/sqflite.dart';
+
 import '../../../core/database/vault_database.dart';
 import '../../../core/errors/exceptions.dart';
 import '../../../core/security/encryption_service.dart';
@@ -10,11 +11,9 @@ class PasswordRepository {
   final VaultDatabase _db;
   final EncryptionService _encryptionService;
 
-  PasswordRepository({
-    VaultDatabase? db,
-    EncryptionService? encryptionService,
-  })  : _db = db ?? VaultDatabase.instance,
-        _encryptionService = encryptionService ?? EncryptionService();
+  PasswordRepository({VaultDatabase? db, EncryptionService? encryptionService})
+    : _db = db ?? VaultDatabase.instance,
+      _encryptionService = encryptionService ?? EncryptionService();
 
   Future<List<PasswordCategoryModel>> getAllCategories() async {
     try {
@@ -25,7 +24,10 @@ class PasswordRepository {
       );
       return rows.map((r) => PasswordCategoryModel.fromMap(r)).toList();
     } catch (e) {
-      throw DatabaseOperationException('Failed to load password categories.', e);
+      throw DatabaseOperationException(
+        'Failed to load password categories.',
+        e,
+      );
     }
   }
 
@@ -34,7 +36,10 @@ class PasswordRepository {
       final db = await _db.database;
       await db.insert('password_categories', category.toMap());
     } catch (e) {
-      throw DatabaseOperationException('Failed to create password category.', e);
+      throw DatabaseOperationException(
+        'Failed to create password category.',
+        e,
+      );
     }
   }
 
@@ -85,11 +90,16 @@ class PasswordRepository {
       }
       return list;
     } catch (e) {
-      throw DatabaseOperationException('Failed to load category password entries.', e);
+      throw DatabaseOperationException(
+        'Failed to load category password entries.',
+        e,
+      );
     }
   }
 
-  Future<List<PasswordEntryModel>> getFavoriteEntries(SecretKey masterKey) async {
+  Future<List<PasswordEntryModel>> getFavoriteEntries(
+    SecretKey masterKey,
+  ) async {
     try {
       final db = await _db.database;
       final rows = await db.query(
@@ -113,7 +123,10 @@ class PasswordRepository {
     }
   }
 
-  Future<PasswordEntryModel?> getEntryById(String id, SecretKey masterKey) async {
+  Future<PasswordEntryModel?> getEntryById(
+    String id,
+    SecretKey masterKey,
+  ) async {
     try {
       final db = await _db.database;
       final rows = await db.query(
@@ -169,11 +182,7 @@ class PasswordRepository {
     try {
       final db = await _db.database;
       await db.transaction((txn) async {
-        await txn.delete(
-          'password_entries',
-          where: 'id = ?',
-          whereArgs: [id],
-        );
+        await txn.delete('password_entries', where: 'id = ?', whereArgs: [id]);
       });
     } catch (e) {
       throw DatabaseOperationException('Failed to delete password entry.', e);
@@ -193,7 +202,10 @@ class PasswordRepository {
         whereArgs: [id],
       );
     } catch (e) {
-      throw DatabaseOperationException('Failed to toggle password favorite.', e);
+      throw DatabaseOperationException(
+        'Failed to toggle password favorite.',
+        e,
+      );
     }
   }
 
@@ -209,4 +221,3 @@ class PasswordRepository {
     } catch (_) {}
   }
 }
-

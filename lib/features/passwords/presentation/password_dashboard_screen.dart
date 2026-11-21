@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
@@ -27,7 +28,10 @@ class PasswordDashboardScreen extends ConsumerWidget {
           children: [
             Icon(Icons.key_rounded, color: colors.primaryAccent, size: 24),
             const SizedBox(width: 10),
-            const Text('Passwords', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
+            const Text(
+              'Passwords',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
+            ),
           ],
         ),
         actions: [
@@ -47,7 +51,10 @@ class PasswordDashboardScreen extends ConsumerWidget {
         backgroundColor: colors.primaryAccent,
         foregroundColor: colors.onPrimaryAccent,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Password', style: TextStyle(fontWeight: FontWeight.w700)),
+        label: const Text(
+          'Add Password',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         onPressed: () => context.push('/add-password'),
       ),
       body: RefreshIndicator(
@@ -93,7 +100,8 @@ class PasswordDashboardScreen extends ConsumerWidget {
                         icon: Icons.star_outline_rounded,
                         color: Colors.amber,
                         colors: colors,
-                        onTap: () => context.push('/passwords-list?filter=favorites'),
+                        onTap: () =>
+                            context.push('/passwords-list?filter=favorites'),
                       ),
                     ),
                   ],
@@ -158,12 +166,16 @@ class PasswordDashboardScreen extends ConsumerWidget {
                   itemBuilder: (context, i) {
                     final cat = cats[i];
                     return ActionChip(
-                      label: Text(cat.name, style: const TextStyle(fontSize: 12)),
+                      label: Text(
+                        cat.name,
+                        style: const TextStyle(fontSize: 12),
+                      ),
                       avatar: CircleAvatar(
                         radius: 8,
                         backgroundColor: Color(cat.colorValue),
                       ),
-                      onPressed: () => context.push('/passwords-list?category=${cat.id}'),
+                      onPressed: () =>
+                          context.push('/passwords-list?category=${cat.id}'),
                     );
                   },
                 ),
@@ -195,7 +207,10 @@ class PasswordDashboardScreen extends ConsumerWidget {
                 }
 
                 return Column(
-                  children: passwords.take(8).map((p) => _buildPasswordRow(context, p, colors)).toList(),
+                  children: passwords
+                      .take(8)
+                      .map((p) => _buildPasswordRow(context, p, colors))
+                      .toList(),
                 );
               },
               loading: () => Center(
@@ -213,13 +228,17 @@ class PasswordDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSecurityHealthCard(BuildContext context, dynamic audit, AppThemeColors colors) {
+  Widget _buildSecurityHealthCard(
+    BuildContext context,
+    dynamic audit,
+    AppThemeColors colors,
+  ) {
     final score = audit.overallScore as int;
     final color = score >= 80
         ? colors.success
         : score >= 50
-            ? colors.warning
-            : colors.error;
+        ? colors.warning
+        : colors.error;
 
     return InkWell(
       onTap: () => context.push('/password-security'),
@@ -243,7 +262,11 @@ class PasswordDashboardScreen extends ConsumerWidget {
               child: Center(
                 child: Text(
                   '$score',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  ),
                 ),
               ),
             ),
@@ -261,10 +284,7 @@ class PasswordDashboardScreen extends ConsumerWidget {
                     score >= 80
                         ? 'Good Health • Strong and unique credentials'
                         : '${audit.weakCount + audit.shortCount} vulnerable account(s) detected',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: colors.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
                   ),
                 ],
               ),
@@ -293,9 +313,7 @@ class PasswordDashboardScreen extends ConsumerWidget {
         decoration: BoxDecoration(
           color: colors.cardBackground,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: colors.cardBorder,
-          ),
+          border: Border.all(color: colors.cardBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,10 +327,7 @@ class PasswordDashboardScreen extends ConsumerWidget {
             const SizedBox(height: 4),
             Text(
               title,
-              style: TextStyle(
-                fontSize: 12,
-                color: colors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 12, color: colors.textSecondary),
             ),
           ],
         ),
@@ -320,15 +335,17 @@ class PasswordDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPasswordRow(BuildContext context, PasswordEntryModel p, AppThemeColors colors) {
+  Widget _buildPasswordRow(
+    BuildContext context,
+    PasswordEntryModel p,
+    AppThemeColors colors,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: colors.cardBackground,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: colors.cardBorder,
-        ),
+        border: Border.all(color: colors.cardBorder),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -340,7 +357,11 @@ class PasswordDashboardScreen extends ConsumerWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Center(
-            child: Icon(Icons.lock_outline_rounded, color: colors.primaryAccent, size: 22),
+            child: Icon(
+              Icons.lock_outline_rounded,
+              color: colors.primaryAccent,
+              size: 22,
+            ),
           ),
         ),
         title: Text(
@@ -349,10 +370,7 @@ class PasswordDashboardScreen extends ConsumerWidget {
         ),
         subtitle: Text(
           p.decryptedUsername ?? p.decryptedEmail ?? 'No username',
-          style: TextStyle(
-            fontSize: 13,
-            color: colors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 13, color: colors.textSecondary),
         ),
         trailing: p.isFavorite
             ? const Icon(Icons.star_rounded, color: Colors.amber, size: 20)
@@ -362,4 +380,3 @@ class PasswordDashboardScreen extends ConsumerWidget {
     );
   }
 }
-

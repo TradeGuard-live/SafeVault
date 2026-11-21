@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 import 'rupee_bunny_mascot.dart';
 
@@ -20,8 +21,8 @@ class EmptyStateView extends StatelessWidget {
     String? message,
     this.actionLabel,
     this.onAction,
-  })  : message = message ?? description,
-        description = description ?? message ?? '';
+  }) : message = message ?? description,
+       description = description ?? message ?? '';
 
   @override
   Widget build(BuildContext context) {
@@ -36,10 +37,7 @@ class EmptyStateView extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (mascotPose != null)
-              RupeeBunnyMascot(
-                pose: mascotPose!,
-                size: 110,
-              )
+              RupeeBunnyMascot(pose: mascotPose!, size: 110)
             else
               Container(
                 width: 80,
@@ -85,7 +83,10 @@ class EmptyStateView extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colors.primaryAccent,
                   foregroundColor: colors.onPrimaryAccent,
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 22,
+                    vertical: 12,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),

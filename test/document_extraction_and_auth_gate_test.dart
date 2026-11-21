@@ -142,8 +142,10 @@ void main() {
       expect(fields.length, greaterThanOrEqualTo(15));
     });
 
-    test('2. Driving Licence extracts DL number, validity, classes and authority', () {
-      const dlText = '''
+    test(
+      '2. Driving Licence extracts DL number, validity, classes and authority',
+      () {
+        const dlText = '''
         UNION OF INDIA - DRIVING LICENCE
         LICENCE NO: MH1420180012345
         NAME: AMIT VIKRAM VERMA
@@ -156,21 +158,22 @@ void main() {
         LICENSING AUTHORITY: RTO PCMC PUNE
       ''';
 
-      final fields = DocumentFieldExtractor.extractFields(
-        fullText: dlText,
-        documentType: 'Driving Licence',
-      );
+        final fields = DocumentFieldExtractor.extractFields(
+          fullText: dlText,
+          documentType: 'Driving Licence',
+        );
 
-      final fieldMap = {for (var f in fields) f.fieldName: f.value};
+        final fieldMap = {for (var f in fields) f.fieldName: f.value};
 
-      expect(fieldMap['Licence Number'], 'MH1420180012345');
-      expect(fieldMap['Date of Birth'], '15/08/1992');
-      expect(fieldMap['Blood Group'], 'B+');
-      expect(fieldMap['Issue Date'], '10/01/2018');
-      expect(fieldMap['Validity (Non-Transport)'], '14/08/2032');
-      expect(fieldMap['Authorised Vehicle Class'], contains('MCWG'));
-      expect(fieldMap['Authorised Vehicle Class'], contains('LMV'));
-    });
+        expect(fieldMap['Licence Number'], 'MH1420180012345');
+        expect(fieldMap['Date of Birth'], '15/08/1992');
+        expect(fieldMap['Blood Group'], 'B+');
+        expect(fieldMap['Issue Date'], '10/01/2018');
+        expect(fieldMap['Validity (Non-Transport)'], '14/08/2032');
+        expect(fieldMap['Authorised Vehicle Class'], contains('MCWG'));
+        expect(fieldMap['Authorised Vehicle Class'], contains('LMV'));
+      },
+    );
 
     test('3. Aadhaar Card extracts masked number and personal details', () {
       const aadhaarText = '''
@@ -220,8 +223,10 @@ void main() {
       expect(fieldMap['Father\'s Name'], contains('ANAND'));
     });
 
-    test('5. PUC Certificate extracts vehicle reg, dates and emission readings', () {
-      const pucText = '''
+    test(
+      '5. PUC Certificate extracts vehicle reg, dates and emission readings',
+      () {
+        const pucText = '''
         POLLUTION UNDER CONTROL CERTIFICATE
         PUCC NO: MH123456789
         VEHICLE REG NO: DL01AB9999
@@ -232,21 +237,22 @@ void main() {
         RESULT: PASS COMPLIANT
       ''';
 
-      final fields = DocumentFieldExtractor.extractFields(
-        fullText: pucText,
-        documentType: 'PUC Certificate',
-      );
+        final fields = DocumentFieldExtractor.extractFields(
+          fullText: pucText,
+          documentType: 'PUC Certificate',
+        );
 
-      final fieldMap = {for (var f in fields) f.fieldName: f.value};
+        final fieldMap = {for (var f in fields) f.fieldName: f.value};
 
-      expect(fieldMap['Certificate Number'], 'MH123456789');
-      expect(fieldMap['Vehicle Registration Number'], 'DL01AB9999');
-      expect(fieldMap['Date of Issue'], '01/10/2023');
-      expect(fieldMap['Expiry Date'], '30/09/2024');
-      expect(fieldMap['CO Emission Value (%)'], '0.25');
-      expect(fieldMap['HC Emission Value (PPM)'], '120');
-      expect(fieldMap['Compliance Status'], contains('Pass'));
-    });
+        expect(fieldMap['Certificate Number'], 'MH123456789');
+        expect(fieldMap['Vehicle Registration Number'], 'DL01AB9999');
+        expect(fieldMap['Date of Issue'], '01/10/2023');
+        expect(fieldMap['Expiry Date'], '30/09/2024');
+        expect(fieldMap['CO Emission Value (%)'], '0.25');
+        expect(fieldMap['HC Emission Value (PPM)'], '120');
+        expect(fieldMap['Compliance Status'], contains('Pass'));
+      },
+    );
 
     test('6. Vehicle Insurance extracts policy details, IDV and premium', () {
       const insText = '''
@@ -308,8 +314,10 @@ void main() {
       expect(fieldMap['Place of Birth'], 'AHMEDABAD');
     });
 
-    test('8. Bank Document filters sensitive secrets (NO PIN, NO CVV, NO OTP)', () {
-      const bankText = '''
+    test(
+      '8. Bank Document filters sensitive secrets (NO PIN, NO CVV, NO OTP)',
+      () {
+        const bankText = '''
         STATE BANK OF INDIA
         STATEMENT OF ACCOUNT
         ACCOUNT HOLDER: SNEHA KULKARNI
@@ -325,28 +333,31 @@ void main() {
         OTP: 987654
       ''';
 
-      final fields = DocumentFieldExtractor.extractFields(
-        fullText: bankText,
-        documentType: 'Bank Document',
-      );
+        final fields = DocumentFieldExtractor.extractFields(
+          fullText: bankText,
+          documentType: 'Bank Document',
+        );
 
-      final fieldMap = {for (var f in fields) f.fieldName: f.value};
+        final fieldMap = {for (var f in fields) f.fieldName: f.value};
 
-      expect(fieldMap['Bank Name'], 'STATE BANK OF INDIA');
-      expect(fieldMap['Account Number'], '123456789012');
-      expect(fieldMap['IFSC Code'], 'SBIN0001234');
-      expect(fieldMap['Branch Name'], 'MG ROAD PUNE');
-      expect(fieldMap['Account Type'], 'Savings Account');
+        expect(fieldMap['Bank Name'], 'STATE BANK OF INDIA');
+        expect(fieldMap['Account Number'], '123456789012');
+        expect(fieldMap['IFSC Code'], 'SBIN0001234');
+        expect(fieldMap['Branch Name'], 'MG ROAD PUNE');
+        expect(fieldMap['Account Type'], 'Savings Account');
 
-      // Crucial Security Verification: No sensitive secrets extracted!
-      expect(fieldMap.containsKey('ATM PIN'), isFalse);
-      expect(fieldMap.containsKey('CVV'), isFalse);
-      expect(fieldMap.containsKey('OTP'), isFalse);
-      expect(fieldMap.containsKey('Card Expiry'), isFalse);
-    });
+        // Crucial Security Verification: No sensitive secrets extracted!
+        expect(fieldMap.containsKey('ATM PIN'), isFalse);
+        expect(fieldMap.containsKey('CVV'), isFalse);
+        expect(fieldMap.containsKey('OTP'), isFalse);
+        expect(fieldMap.containsKey('Card Expiry'), isFalse);
+      },
+    );
 
-    test('9. Education Certificate extracts student, roll, degree and university', () {
-      const eduText = '''
+    test(
+      '9. Education Certificate extracts student, roll, degree and university',
+      () {
+        const eduText = '''
         CENTRAL BOARD OF SECONDARY EDUCATION
         STATEMENT OF MARKS
         NAME OF CANDIDATE: ARJUN KAPOOR
@@ -356,19 +367,23 @@ void main() {
         CGPA: 8.75 CGPA
       ''';
 
-      final fields = DocumentFieldExtractor.extractFields(
-        fullText: eduText,
-        documentType: 'Education Certificate',
-      );
+        final fields = DocumentFieldExtractor.extractFields(
+          fullText: eduText,
+          documentType: 'Education Certificate',
+        );
 
-      final fieldMap = {for (var f in fields) f.fieldName: f.value};
+        final fieldMap = {for (var f in fields) f.fieldName: f.value};
 
-      expect(fieldMap['Roll / Registration Number'], '12345678');
-      expect(fieldMap['Degree / Course'], 'BACHELOR OF TECHNOLOGY');
-      expect(fieldMap['Institution / University'], 'CENTRAL BOARD OF SECONDARY EDUCATION');
-      expect(fieldMap['Passing Year'], '2020');
-      expect(fieldMap['Grade / CGPA / Percentage'], '8.75 CGPA');
-    });
+        expect(fieldMap['Roll / Registration Number'], '12345678');
+        expect(fieldMap['Degree / Course'], 'BACHELOR OF TECHNOLOGY');
+        expect(
+          fieldMap['Institution / University'],
+          'CENTRAL BOARD OF SECONDARY EDUCATION',
+        );
+        expect(fieldMap['Passing Year'], '2020');
+        expect(fieldMap['Grade / CGPA / Percentage'], '8.75 CGPA');
+      },
+    );
 
     test('10. Generic document extracts discovered key-value pairs', () {
       const genText = '''
@@ -391,6 +406,72 @@ void main() {
       expect(fieldMap['Reference Number'], 'INV-2023-999');
       expect(fieldMap['Vendor Name'], 'ACME Corporation');
       expect(fieldMap['Tax Id'], 'TX-98765432');
+    });
+
+    test('11. Property / Rent Agreement extracts lease details accurately', () {
+      const propText = '''
+        RESIDENTIAL RENT AGREEMENT
+        This agreement made on 01/06/2023 between:
+        FIRST PARTY / LESSOR: SURESH CHANDRA AGRAWAL
+        SECOND PARTY / LESSEE: AMIT VIKRAM VERMA
+        PREMISES: FLAT NO 302, PALM HEIGHTS, SECTOR 62, NOIDA
+        AGREEMENT DATE: 01/06/2023
+        LEASE PERIOD: 11 MONTHS
+        MONTHLY RENT: RS. 28,000
+        SECURITY DEPOSIT: RS. 56,000
+        REGISTRATION NO: REG/NOIDA/2023/8821
+      ''';
+
+      final fields = DocumentFieldExtractor.extractFields(
+        fullText: propText,
+        documentType: 'Rent Agreements',
+      );
+
+      final fieldMap = {for (var f in fields) f.fieldName: f.value};
+
+      expect(fieldMap['Agreement Type'], 'Rent / Lease Agreement');
+      expect(fieldMap['Lessor / Owner Name'], 'SURESH CHANDRA AGRAWAL');
+      expect(fieldMap['Lessee / Tenant Name'], 'AMIT VIKRAM VERMA');
+      expect(
+        fieldMap['Property Address'],
+        'FLAT NO 302, PALM HEIGHTS, SECTOR 62, NOIDA',
+      );
+      expect(fieldMap['Agreement Date'], '01/06/2023');
+      expect(fieldMap['Lease Period'], '11 MONTHS');
+      expect(fieldMap['Monthly Rent'], '28,000');
+      expect(fieldMap['Security Deposit'], '56,000');
+      expect(fieldMap['Registration / Document No'], 'REG/NOIDA/2023/8821');
+    });
+
+    test('12. Medical Report extracts diagnostic metadata accurately', () {
+      const medText = '''
+        METROPOLIS HEALTHCARE & DIAGNOSTICS LAB
+        PATIENT NAME: SUNITA DESHMUKH
+        AGE / GENDER: 45 YRS / FEMALE
+        CONSULTANT: DR. RAJESH KULKARNI
+        HOSPITAL: RUBY HALL CLINIC
+        REPORT DATE: 18/09/2023
+        INVESTIGATION: COMPLETE BLOOD COUNT (CBC)
+        UHID: UHID-2023-88912
+      ''';
+
+      final fields = DocumentFieldExtractor.extractFields(
+        fullText: medText,
+        documentType: 'Medical Reports',
+      );
+
+      final fieldMap = {for (var f in fields) f.fieldName: f.value};
+
+      expect(fieldMap['Patient Name'], 'SUNITA DESHMUKH');
+      expect(fieldMap['Age / Gender'], '45 YRS / FEMALE');
+      expect(fieldMap['Consulting Doctor'], 'RAJESH KULKARNI');
+      expect(fieldMap['Hospital / Lab Name'], 'RUBY HALL CLINIC');
+      expect(fieldMap['Report Date'], '18/09/2023');
+      expect(
+        fieldMap['Investigation / Test Name'],
+        'COMPLETE BLOOD COUNT (CBC)',
+      );
+      expect(fieldMap['Patient UHID / Ref No'], 'UHID-2023-88912');
     });
   });
 
@@ -419,7 +500,10 @@ void main() {
       expect(map['is_verified'], 0);
       expect(map['document_id'], 'doc_1');
 
-      final deserialized = ExtractedFieldModel.fromMap(map, 'MA3ERB12S00123456');
+      final deserialized = ExtractedFieldModel.fromMap(
+        map,
+        'MA3ERB12S00123456',
+      );
       expect(deserialized.isSelected, isTrue);
       expect(deserialized.isVerified, isFalse);
       expect(deserialized.plainValue, 'MA3ERB12S00123456');
@@ -429,4 +513,3 @@ void main() {
     });
   });
 }
-

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+
 import '../constants/app_constants.dart';
 
 class LocalNotificationService {
@@ -10,7 +11,7 @@ class LocalNotificationService {
   bool _isInitialized = false;
 
   LocalNotificationService._({FlutterLocalNotificationsPlugin? plugin})
-      : _notificationsPlugin = plugin ?? FlutterLocalNotificationsPlugin();
+    : _notificationsPlugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   static LocalNotificationService get instance =>
       _instance ??= LocalNotificationService._();
@@ -20,7 +21,9 @@ class LocalNotificationService {
 
     tz.initializeTimeZones();
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const initSettings = InitializationSettings(android: androidSettings);
 
     await _notificationsPlugin.initialize(
@@ -40,7 +43,9 @@ class LocalNotificationService {
     );
 
     final androidImplementation = _notificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
 
     await androidImplementation?.createNotificationChannel(androidChannel);
 
@@ -50,9 +55,12 @@ class LocalNotificationService {
   /// Requests permission on Android 13+
   Future<bool> requestPermission() async {
     final androidImplementation = _notificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
 
-    final granted = await androidImplementation?.requestNotificationsPermission();
+    final granted = await androidImplementation
+        ?.requestNotificationsPermission();
     return granted ?? false;
   }
 
@@ -94,7 +102,9 @@ class LocalNotificationService {
     );
 
     final tzDateTime = tz.TZDateTime.from(
-      scheduledTime.isBefore(now) ? scheduledTime.add(const Duration(minutes: 5)) : scheduledTime,
+      scheduledTime.isBefore(now)
+          ? scheduledTime.add(const Duration(minutes: 5))
+          : scheduledTime,
       tz.local,
     );
 
@@ -110,11 +120,14 @@ class LocalNotificationService {
     const notificationDetails = NotificationDetails(android: androidDetails);
 
     final androidImplementation = _notificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
 
     bool canUseExact = false;
     try {
-      canUseExact = await androidImplementation?.canScheduleExactNotifications() ?? false;
+      canUseExact =
+          await androidImplementation?.canScheduleExactNotifications() ?? false;
     } catch (_) {}
 
     final scheduleMode = canUseExact
@@ -142,7 +155,9 @@ class LocalNotificationService {
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         );
       } catch (fallbackError) {
-        debugPrint('LocalNotificationService: Could not schedule reminder: $fallbackError');
+        debugPrint(
+          'LocalNotificationService: Could not schedule reminder: $fallbackError',
+        );
       }
     }
   }

@@ -48,7 +48,8 @@ class DocumentExtractionModel {
       id: id ?? this.id,
       documentId: documentId ?? this.documentId,
       documentType: documentType ?? this.documentType,
-      extractedTextEncrypted: extractedTextEncrypted ?? this.extractedTextEncrypted,
+      extractedTextEncrypted:
+          extractedTextEncrypted ?? this.extractedTextEncrypted,
       encryptedTxtFilePath: encryptedTxtFilePath ?? this.encryptedTxtFilePath,
       extractionEngine: extractionEngine ?? this.extractionEngine,
       language: language ?? this.language,
@@ -78,7 +79,10 @@ class DocumentExtractionModel {
     };
   }
 
-  factory DocumentExtractionModel.fromMap(Map<String, dynamic> map, [List<ExtractedFieldModel> fields = const []]) {
+  factory DocumentExtractionModel.fromMap(
+    Map<String, dynamic> map, [
+    List<ExtractedFieldModel> fields = const [],
+  ]) {
     return DocumentExtractionModel(
       id: map['id'] as String,
       documentId: map['document_id'] as String,
@@ -102,7 +106,8 @@ class ExtractedFieldModel {
   final String extractionId;
   final String? documentId;
   final String fieldName;
-  final String encryptedValue; // Encrypted with AES-256-GCM or in-memory decrypted
+  final String
+  encryptedValue; // Encrypted with AES-256-GCM or in-memory decrypted
   final double confidence;
   final String confidenceCategory; // 'High', 'Medium', 'Low'
   final int sourcePage;
@@ -184,7 +189,10 @@ class ExtractedFieldModel {
     };
   }
 
-  factory ExtractedFieldModel.fromMap(Map<String, dynamic> map, [String? decryptedPlainValue]) {
+  factory ExtractedFieldModel.fromMap(
+    Map<String, dynamic> map, [
+    String? decryptedPlainValue,
+  ]) {
     return ExtractedFieldModel(
       id: map['id'] as String,
       extractionId: map['extraction_id'] as String,

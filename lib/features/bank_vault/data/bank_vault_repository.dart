@@ -1,5 +1,6 @@
 import 'package:cryptography/cryptography.dart';
 import 'package:sqflite/sqflite.dart';
+
 import '../../../core/database/vault_database.dart';
 import '../../../core/errors/exceptions.dart';
 import '../../../core/security/encryption_service.dart';
@@ -9,11 +10,9 @@ class BankVaultRepository {
   final VaultDatabase _db;
   final EncryptionService _encryptionService;
 
-  BankVaultRepository({
-    VaultDatabase? db,
-    EncryptionService? encryptionService,
-  })  : _db = db ?? VaultDatabase.instance,
-        _encryptionService = encryptionService ?? EncryptionService();
+  BankVaultRepository({VaultDatabase? db, EncryptionService? encryptionService})
+    : _db = db ?? VaultDatabase.instance,
+      _encryptionService = encryptionService ?? EncryptionService();
 
   Future<List<BankAccountModel>> getAllAccounts(SecretKey masterKey) async {
     try {
@@ -38,7 +37,9 @@ class BankVaultRepository {
     }
   }
 
-  Future<List<BankAccountModel>> getFavoriteAccounts(SecretKey masterKey) async {
+  Future<List<BankAccountModel>> getFavoriteAccounts(
+    SecretKey masterKey,
+  ) async {
     try {
       final db = await _db.database;
       final rows = await db.query(
@@ -58,11 +59,17 @@ class BankVaultRepository {
       }
       return list;
     } catch (e) {
-      throw DatabaseOperationException('Failed to load favorite bank accounts.', e);
+      throw DatabaseOperationException(
+        'Failed to load favorite bank accounts.',
+        e,
+      );
     }
   }
 
-  Future<BankAccountModel?> getAccountById(String id, SecretKey masterKey) async {
+  Future<BankAccountModel?> getAccountById(
+    String id,
+    SecretKey masterKey,
+  ) async {
     try {
       final db = await _db.database;
       final rows = await db.query(
@@ -118,11 +125,7 @@ class BankVaultRepository {
     try {
       final db = await _db.database;
       await db.transaction((txn) async {
-        await txn.delete(
-          'bank_accounts',
-          where: 'id = ?',
-          whereArgs: [id],
-        );
+        await txn.delete('bank_accounts', where: 'id = ?', whereArgs: [id]);
       });
     } catch (e) {
       throw DatabaseOperationException('Failed to delete bank account.', e);
@@ -142,8 +145,10 @@ class BankVaultRepository {
         whereArgs: [id],
       );
     } catch (e) {
-      throw DatabaseOperationException('Failed to toggle bank account favorite.', e);
+      throw DatabaseOperationException(
+        'Failed to toggle bank account favorite.',
+        e,
+      );
     }
   }
 }
-

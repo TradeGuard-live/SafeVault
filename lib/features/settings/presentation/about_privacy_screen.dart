@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
@@ -13,7 +14,10 @@ class AboutPrivacyScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('About & Privacy Architecture', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          'About & Privacy Architecture',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -36,7 +40,11 @@ class AboutPrivacyScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.shield_outlined, color: Colors.white, size: 36),
+                  child: const Icon(
+                    Icons.shield_outlined,
+                    color: Colors.white,
+                    size: 36,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -50,10 +58,7 @@ class AboutPrivacyScreen extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   '${AppConstants.appTagline} • v${AppConstants.appVersion}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 12, color: colors.textSecondary),
                 ),
               ],
             ),
@@ -142,9 +147,7 @@ class AboutPrivacyScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colors.cardBorder,
-        ),
+        border: Border.all(color: colors.cardBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

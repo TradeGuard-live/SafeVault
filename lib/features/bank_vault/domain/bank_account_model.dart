@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:cryptography/cryptography.dart';
+
 import '../../../core/security/encryption_service.dart';
 
 /// Bank Account Reference Model.
@@ -297,8 +299,10 @@ class BankAccountModel {
       isFavorite: isFavorite ?? this.isFavorite,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      decryptedAccountHolder: decryptedAccountHolder ?? this.decryptedAccountHolder,
-      decryptedAccountNumber: decryptedAccountNumber ?? this.decryptedAccountNumber,
+      decryptedAccountHolder:
+          decryptedAccountHolder ?? this.decryptedAccountHolder,
+      decryptedAccountNumber:
+          decryptedAccountNumber ?? this.decryptedAccountNumber,
       decryptedIFSC: decryptedIFSC ?? this.decryptedIFSC,
       decryptedBranch: decryptedBranch ?? this.decryptedBranch,
       decryptedNotes: decryptedNotes ?? this.decryptedNotes,

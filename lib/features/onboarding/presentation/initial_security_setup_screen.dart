@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../../../core/widgets/pin_pad.dart';
 import '../../authentication/presentation/auth_providers.dart';
 
-enum SetupStep {
-  createPin,
-  confirmPin,
-  biometricsNotice,
-  finalizing,
-}
+enum SetupStep { createPin, confirmPin, biometricsNotice, finalizing }
 
 class InitialSecuritySetupScreen extends ConsumerStatefulWidget {
   const InitialSecuritySetupScreen({super.key});
@@ -58,7 +54,8 @@ class _InitialSecuritySetupScreenState
       _confirmedPin = pin;
       if (_confirmedPin != _firstEnteredPin) {
         setState(() {
-          _errorMessage = 'PINs do not match. Please re-enter your 6-digit PIN.';
+          _errorMessage =
+              'PINs do not match. Please re-enter your 6-digit PIN.';
           _firstEnteredPin = '';
           _confirmedPin = '';
           _currentStep = SetupStep.createPin;
@@ -115,7 +112,10 @@ class _InitialSecuritySetupScreenState
           _currentStep == SetupStep.finalizing
               ? 'Finalizing Security'
               : 'Mandatory 2FA Setup',
-          style: TextStyle(fontWeight: FontWeight.w700, color: colors.textPrimary),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: colors.textPrimary,
+          ),
         ),
         backgroundColor: colors.background,
         elevation: 0,
@@ -138,8 +138,8 @@ class _InitialSecuritySetupScreenState
           child: _currentStep == SetupStep.finalizing
               ? _buildFinalizingView(colors)
               : _currentStep == SetupStep.biometricsNotice
-                  ? _buildBiometricsNoticeView(colors)
-                  : _buildPinSetupView(colors),
+              ? _buildBiometricsNoticeView(colors)
+              : _buildPinSetupView(colors),
         ),
       ),
     );
@@ -158,7 +158,9 @@ class _InitialSecuritySetupScreenState
             shape: BoxShape.circle,
           ),
           child: Icon(
-            isCreating ? Icons.pin_outlined : Icons.check_circle_outline_rounded,
+            isCreating
+                ? Icons.pin_outlined
+                : Icons.check_circle_outline_rounded,
             size: 36,
             color: colors.primaryAccent,
           ),
@@ -178,10 +180,7 @@ class _InitialSecuritySetupScreenState
               ? 'Enter a mandatory 6-digit application PIN. Factor 2 of your two-factor security.'
               : 'Re-enter your 6-digit PIN to confirm.',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 13,
-            color: colors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 13, color: colors.textSecondary),
         ),
         if (_errorMessage != null) ...[
           const SizedBox(height: 14),
@@ -257,15 +256,16 @@ class _InitialSecuritySetupScreenState
           decoration: BoxDecoration(
             color: colors.surfaceSecondary,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: colors.cardBorder,
-            ),
+            border: Border.all(color: colors.cardBorder),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.info_outline_rounded,
-                  color: colors.primaryAccent, size: 20),
+              Icon(
+                Icons.info_outline_rounded,
+                color: colors.primaryAccent,
+                size: 20,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -289,7 +289,9 @@ class _InitialSecuritySetupScreenState
             minimumSize: const Size.fromHeight(52),
             backgroundColor: colors.primaryAccent,
             foregroundColor: colors.onPrimaryAccent,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -315,10 +317,7 @@ class _InitialSecuritySetupScreenState
           const SizedBox(height: 8),
           Text(
             'Splitting Master Key into 2-of-2 secret shares (Biometric ⊕ PIN)',
-            style: TextStyle(
-              fontSize: 13,
-              color: colors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 13, color: colors.textSecondary),
           ),
         ],
       ),

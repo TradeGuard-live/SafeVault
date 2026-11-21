@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
+
 import '../../../core/security/encryption_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
@@ -15,10 +16,12 @@ class AddEditBankAccountScreen extends ConsumerStatefulWidget {
   const AddEditBankAccountScreen({super.key, this.accountId});
 
   @override
-  ConsumerState<AddEditBankAccountScreen> createState() => _AddEditBankAccountScreenState();
+  ConsumerState<AddEditBankAccountScreen> createState() =>
+      _AddEditBankAccountScreenState();
 }
 
-class _AddEditBankAccountScreenState extends ConsumerState<AddEditBankAccountScreen> {
+class _AddEditBankAccountScreenState
+    extends ConsumerState<AddEditBankAccountScreen> {
   final _formKey = GlobalKey<FormState>();
   final _bankNameCtrl = TextEditingController();
   final _nicknameCtrl = TextEditingController();
@@ -60,7 +63,10 @@ class _AddEditBankAccountScreenState extends ConsumerState<AddEditBankAccountScr
     if (!session.isUnlocked || session.masterKey == null) return;
 
     final repo = ref.read(bankVaultRepositoryProvider);
-    final account = await repo.getAccountById(widget.accountId!, session.masterKey!);
+    final account = await repo.getAccountById(
+      widget.accountId!,
+      session.masterKey!,
+    );
     if (account != null && mounted) {
       setState(() {
         _bankNameCtrl.text = account.bankName;
@@ -82,7 +88,11 @@ class _AddEditBankAccountScreenState extends ConsumerState<AddEditBankAccountScr
 
     final session = ref.read(vaultSessionProvider);
     if (!session.isUnlocked || session.masterKey == null) {
-      ErrorDialog.show(context, title: 'Vault Locked', message: 'Please unlock vault.');
+      ErrorDialog.show(
+        context,
+        title: 'Vault Locked',
+        message: 'Please unlock vault.',
+      );
       return;
     }
 
@@ -96,13 +106,23 @@ class _AddEditBankAccountScreenState extends ConsumerState<AddEditBankAccountScr
       final account = await BankAccountModel.createEncrypted(
         id: id,
         bankName: _bankNameCtrl.text.trim(),
-        nickname: _nicknameCtrl.text.trim().isNotEmpty ? _nicknameCtrl.text.trim() : null,
-        accountHolder: _holderCtrl.text.trim().isNotEmpty ? _holderCtrl.text.trim() : null,
+        nickname: _nicknameCtrl.text.trim().isNotEmpty
+            ? _nicknameCtrl.text.trim()
+            : null,
+        accountHolder: _holderCtrl.text.trim().isNotEmpty
+            ? _holderCtrl.text.trim()
+            : null,
         accountNumber: _accountNumberCtrl.text.trim(),
-        ifsc: _ifscCtrl.text.trim().isNotEmpty ? _ifscCtrl.text.trim().toUpperCase() : null,
-        branch: _branchCtrl.text.trim().isNotEmpty ? _branchCtrl.text.trim() : null,
+        ifsc: _ifscCtrl.text.trim().isNotEmpty
+            ? _ifscCtrl.text.trim().toUpperCase()
+            : null,
+        branch: _branchCtrl.text.trim().isNotEmpty
+            ? _branchCtrl.text.trim()
+            : null,
         accountType: _accountType,
-        notes: _notesCtrl.text.trim().isNotEmpty ? _notesCtrl.text.trim() : null,
+        notes: _notesCtrl.text.trim().isNotEmpty
+            ? _notesCtrl.text.trim()
+            : null,
         isFavorite: _isFavorite,
         masterKey: session.masterKey!,
         encryptionService: encService,
@@ -142,14 +162,19 @@ class _AddEditBankAccountScreenState extends ConsumerState<AddEditBankAccountScr
         title: Text(_isEditing ? 'Edit Bank Account' : 'Add Bank Account'),
         actions: [
           IconButton(
-            icon: Icon(_isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
-                color: _isFavorite ? Colors.amber : null),
+            icon: Icon(
+              _isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+              color: _isFavorite ? Colors.amber : null,
+            ),
             tooltip: 'Favorite',
             onPressed: () => setState(() => _isFavorite = !_isFavorite),
           ),
           TextButton(
             onPressed: _isLoading ? null : _saveAccount,
-            child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            child: const Text(
+              'Save',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            ),
           ),
         ],
       ),
@@ -195,7 +220,9 @@ class _AddEditBankAccountScreenState extends ConsumerState<AddEditBankAccountScr
                 hintText: 'e.g. State Bank of India, HDFC Bank, Chase',
                 prefixIcon: Icon(Icons.account_balance_outlined),
               ),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Bank Name is required' : null,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'Bank Name is required'
+                  : null,
             ),
             const SizedBox(height: 16),
 
@@ -218,9 +245,18 @@ class _AddEditBankAccountScreenState extends ConsumerState<AddEditBankAccountScr
                 prefixIcon: Icon(Icons.category_outlined),
               ),
               items: const [
-                DropdownMenuItem(value: 'savings', child: Text('Savings Account')),
-                DropdownMenuItem(value: 'current', child: Text('Current / Business Account')),
-                DropdownMenuItem(value: 'salary', child: Text('Salary Account')),
+                DropdownMenuItem(
+                  value: 'savings',
+                  child: Text('Savings Account'),
+                ),
+                DropdownMenuItem(
+                  value: 'current',
+                  child: Text('Current / Business Account'),
+                ),
+                DropdownMenuItem(
+                  value: 'salary',
+                  child: Text('Salary Account'),
+                ),
                 DropdownMenuItem(value: 'other', child: Text('Other Account')),
               ],
               onChanged: (val) {
@@ -249,7 +285,9 @@ class _AddEditBankAccountScreenState extends ConsumerState<AddEditBankAccountScr
                 prefixIcon: Icon(Icons.numbers_rounded),
               ),
               keyboardType: TextInputType.number,
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Account number is required' : null,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'Account number is required'
+                  : null,
             ),
             const SizedBox(height: 16),
 
@@ -297,8 +335,13 @@ class _AddEditBankAccountScreenState extends ConsumerState<AddEditBankAccountScr
               ),
               child: _isLoading
                   ? const CircularProgressIndicator(color: Colors.white)
-                  : Text(_isEditing ? 'Save Changes' : 'Save Account',
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                  : Text(
+                      _isEditing ? 'Save Changes' : 'Save Account',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
             ),
             const SizedBox(height: 32),
           ],
@@ -307,4 +350,3 @@ class _AddEditBankAccountScreenState extends ConsumerState<AddEditBankAccountScr
     );
   }
 }
-

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
+
 import '../../../core/security/clipboard_security_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
@@ -12,26 +13,20 @@ import '../../documents/data/document_repository.dart';
 import '../../documents/domain/document_model.dart';
 import '../domain/document_extraction_model.dart';
 
-enum FieldFilterMode {
-  all,
-  selectedOnly,
-  recommendedOnly,
-  highConfidenceOnly,
-}
+enum FieldFilterMode { all, selectedOnly, recommendedOnly, highConfidenceOnly }
 
 class ExtractionReviewScreen extends ConsumerStatefulWidget {
   final String documentId;
 
-  const ExtractionReviewScreen({
-    super.key,
-    required this.documentId,
-  });
+  const ExtractionReviewScreen({super.key, required this.documentId});
 
   @override
-  ConsumerState<ExtractionReviewScreen> createState() => _ExtractionReviewScreenState();
+  ConsumerState<ExtractionReviewScreen> createState() =>
+      _ExtractionReviewScreenState();
 }
 
-class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen> {
+class _ExtractionReviewScreenState
+    extends ConsumerState<ExtractionReviewScreen> {
   final Uuid _uuid = const Uuid();
   bool _isLoading = true;
   bool _isSaving = false;
@@ -64,8 +59,14 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
 
     try {
       final repo = ref.read(documentRepositoryProvider);
-      final doc = await repo.getDocumentById(widget.documentId, session.masterKey!);
-      final ext = await repo.getExtractionForDocument(widget.documentId, session.masterKey!);
+      final doc = await repo.getDocumentById(
+        widget.documentId,
+        session.masterKey!,
+      );
+      final ext = await repo.getExtractionForDocument(
+        widget.documentId,
+        session.masterKey!,
+      );
 
       if (mounted) {
         setState(() {
@@ -78,7 +79,11 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ErrorDialog.show(context, title: 'Error', message: 'Failed to load extraction details.');
+        ErrorDialog.show(
+          context,
+          title: 'Error',
+          message: 'Failed to load extraction details.',
+        );
       }
     }
   }
@@ -89,10 +94,12 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
       if (_filterMode == FieldFilterMode.selectedOnly && !field.isSelected) {
         return false;
       }
-      if (_filterMode == FieldFilterMode.recommendedOnly && !field.isRecommended) {
+      if (_filterMode == FieldFilterMode.recommendedOnly &&
+          !field.isRecommended) {
         return false;
       }
-      if (_filterMode == FieldFilterMode.highConfidenceOnly && field.confidenceCategory != 'High') {
+      if (_filterMode == FieldFilterMode.highConfidenceOnly &&
+          field.confidenceCategory != 'High') {
         return false;
       }
 
@@ -100,7 +107,9 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
       if (_searchQuery.isNotEmpty) {
         final query = _searchQuery.toLowerCase();
         final nameMatches = field.fieldName.toLowerCase().contains(query);
-        final valMatches = (field.plainValue ?? '').toLowerCase().contains(query);
+        final valMatches = (field.plainValue ?? '').toLowerCase().contains(
+          query,
+        );
         if (!nameMatches && !valMatches) return false;
       }
 
@@ -138,7 +147,9 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
       final index = _editableFields.indexWhere((f) => f.id == fieldId);
       if (index != -1) {
         final current = _editableFields[index];
-        _editableFields[index] = current.copyWith(isSelected: !current.isSelected);
+        _editableFields[index] = current.copyWith(
+          isSelected: !current.isSelected,
+        );
       }
     });
   }
@@ -158,7 +169,10 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
         ),
         title: Text(
           'Edit Extracted Field',
-          style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -171,7 +185,9 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
                 labelStyle: TextStyle(color: colors.textSecondary),
                 filled: true,
                 fillColor: colors.inputBackground,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               style: TextStyle(color: colors.textPrimary),
             ),
@@ -184,7 +200,9 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
                 labelStyle: TextStyle(color: colors.textSecondary),
                 filled: true,
                 fillColor: colors.inputBackground,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               style: TextStyle(color: colors.textPrimary),
             ),
@@ -193,7 +211,10 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel', style: TextStyle(color: colors.textSecondary)),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: colors.textSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -248,7 +269,10 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
         ),
         title: Text(
           'Add Custom Field',
-          style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -261,7 +285,9 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
                 labelStyle: TextStyle(color: colors.textSecondary),
                 filled: true,
                 fillColor: colors.inputBackground,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               style: TextStyle(color: colors.textPrimary),
             ),
@@ -274,7 +300,9 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
                 labelStyle: TextStyle(color: colors.textSecondary),
                 filled: true,
                 fillColor: colors.inputBackground,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               style: TextStyle(color: colors.textPrimary),
             ),
@@ -283,11 +311,15 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel', style: TextStyle(color: colors.textSecondary)),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: colors.textSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
-              if (nameCtrl.text.trim().isNotEmpty && valCtrl.text.trim().isNotEmpty) {
+              if (nameCtrl.text.trim().isNotEmpty &&
+                  valCtrl.text.trim().isNotEmpty) {
                 Navigator.pop(ctx, true);
               }
             },
@@ -328,7 +360,8 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
 
   void _showRawTextSheet() {
     final colors = context.themeColors;
-    final rawText = _extraction?.extractedTextEncrypted ?? 'No extracted text available.';
+    final rawText =
+        _extraction?.extractedTextEncrypted ?? 'No extracted text available.';
 
     showModalBottomSheet(
       context: context,
@@ -369,7 +402,11 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
                   ),
                   const Spacer(),
                   IconButton(
-                    icon: Icon(Icons.copy_rounded, color: colors.primaryAccent, size: 20),
+                    icon: Icon(
+                      Icons.copy_rounded,
+                      color: colors.primaryAccent,
+                      size: 20,
+                    ),
                     tooltip: 'Copy Raw Text',
                     onPressed: () {
                       ClipboardSecurityService.instance.copySensitive(
@@ -424,7 +461,9 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
         final selectedCount = _editableFields.where((f) => f.isSelected).length;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Saved $selectedCount selected fields to encrypted vault.'),
+            content: Text(
+              'Saved $selectedCount selected fields to encrypted vault.',
+            ),
             backgroundColor: AppColors.successGreen,
           ),
         );
@@ -458,7 +497,8 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
     final selectedCount = _editableFields.where((f) => f.isSelected).length;
     final totalCount = _editableFields.length;
     final filtered = _filteredFields;
-    final docType = _extraction?.documentType ?? _document?.documentType ?? 'Document';
+    final docType =
+        _extraction?.documentType ?? _document?.documentType ?? 'Document';
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -466,7 +506,10 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Intelligent Field Review', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              'Intelligent Field Review',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             Text(
               _document?.name ?? 'Document',
               style: TextStyle(fontSize: 12, color: colors.textSecondary),
@@ -502,7 +545,10 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: colors.primaryAccent.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
@@ -520,7 +566,10 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
                     Expanded(
                       child: Text(
                         '${_extraction?.pageCount ?? 1} Page(s) • ${_extraction?.extractionEngine ?? "Offline Engine"}',
-                        style: TextStyle(color: colors.textSecondary, fontSize: 11),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 11,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -543,8 +592,18 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
                         padding: EdgeInsets.zero,
                         visualDensity: VisualDensity.compact,
                       ),
-                      icon: Icon(Icons.menu_book_rounded, size: 14, color: colors.primaryAccent),
-                      label: Text('Raw Text', style: TextStyle(color: colors.primaryAccent, fontSize: 12)),
+                      icon: Icon(
+                        Icons.menu_book_rounded,
+                        size: 14,
+                        color: colors.primaryAccent,
+                      ),
+                      label: Text(
+                        'Raw Text',
+                        style: TextStyle(
+                          color: colors.primaryAccent,
+                          fontSize: 12,
+                        ),
+                      ),
                       onPressed: _showRawTextSheet,
                     ),
                   ],
@@ -563,8 +622,15 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: 'Search fields or values...',
-                    hintStyle: TextStyle(color: colors.textSecondary, fontSize: 13),
-                    prefixIcon: Icon(Icons.search_rounded, color: colors.textSecondary, size: 18),
+                    hintStyle: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 13,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: colors.textSecondary,
+                      size: 18,
+                    ),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear_rounded, size: 16),
@@ -594,13 +660,29 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildFilterChip('All ($totalCount)', FieldFilterMode.all, colors),
+                      _buildFilterChip(
+                        'All ($totalCount)',
+                        FieldFilterMode.all,
+                        colors,
+                      ),
                       const SizedBox(width: 6),
-                      _buildFilterChip('Selected ($selectedCount)', FieldFilterMode.selectedOnly, colors),
+                      _buildFilterChip(
+                        'Selected ($selectedCount)',
+                        FieldFilterMode.selectedOnly,
+                        colors,
+                      ),
                       const SizedBox(width: 6),
-                      _buildFilterChip('Recommended', FieldFilterMode.recommendedOnly, colors),
+                      _buildFilterChip(
+                        'Recommended',
+                        FieldFilterMode.recommendedOnly,
+                        colors,
+                      ),
                       const SizedBox(width: 6),
-                      _buildFilterChip('High Confidence', FieldFilterMode.highConfidenceOnly, colors),
+                      _buildFilterChip(
+                        'High Confidence',
+                        FieldFilterMode.highConfidenceOnly,
+                        colors,
+                      ),
                     ],
                   ),
                 ),
@@ -680,18 +762,28 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: colors.primaryAccent,
                 foregroundColor: colors.onPrimaryAccent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               icon: _isSaving
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Icon(Icons.check_circle_outline_rounded),
               label: Text(
-                _isSaving ? 'Encrypting & Saving...' : 'Save $selectedCount Selected Fields',
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                _isSaving
+                    ? 'Encrypting & Saving...'
+                    : 'Save $selectedCount Selected Fields',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -700,14 +792,26 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
     );
   }
 
-  Widget _buildFilterChip(String label, FieldFilterMode mode, AppThemeColors colors) {
+  Widget _buildFilterChip(
+    String label,
+    FieldFilterMode mode,
+    AppThemeColors colors,
+  ) {
     final isSelected = _filterMode == mode;
     return ChoiceChip(
-      label: Text(label, style: TextStyle(fontSize: 11, color: isSelected ? colors.onPrimaryAccent : colors.textPrimary)),
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          color: isSelected ? colors.onPrimaryAccent : colors.textPrimary,
+        ),
+      ),
       selected: isSelected,
       selectedColor: colors.primaryAccent,
       backgroundColor: colors.cardBackground,
-      side: BorderSide(color: isSelected ? colors.primaryAccent : colors.cardBorder),
+      side: BorderSide(
+        color: isSelected ? colors.primaryAccent : colors.cardBorder,
+      ),
       visualDensity: VisualDensity.compact,
       onSelected: (_) => setState(() => _filterMode = mode),
     );
@@ -734,7 +838,10 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
           children: [
             Icon(icon, size: 14, color: colors.textSecondary),
             const SizedBox(width: 4),
-            Text(label, style: TextStyle(color: colors.textSecondary, fontSize: 11)),
+            Text(
+              label,
+              style: TextStyle(color: colors.textSecondary, fontSize: 11),
+            ),
           ],
         ),
       ),
@@ -746,16 +853,20 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
     final confidenceColor = field.confidence >= 0.85
         ? colors.success
         : field.confidence >= 0.70
-            ? colors.warning
-            : colors.error;
+        ? colors.warning
+        : colors.error;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: isSelected ? colors.cardBackground : colors.surface.withValues(alpha: 0.5),
+        color: isSelected
+            ? colors.cardBackground
+            : colors.surface.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isSelected ? colors.primaryAccent.withValues(alpha: 0.5) : colors.cardBorder,
+          color: isSelected
+              ? colors.primaryAccent.withValues(alpha: 0.5)
+              : colors.cardBorder,
           width: isSelected ? 1.5 : 1,
         ),
       ),
@@ -783,14 +894,19 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
                           child: Text(
                             field.fieldName,
                             style: TextStyle(
-                              color: isSelected ? colors.textPrimary : colors.textSecondary,
+                              color: isSelected
+                                  ? colors.textPrimary
+                                  : colors.textSecondary,
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: confidenceColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(4),
@@ -810,7 +926,9 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
                     SelectableText(
                       field.plainValue ?? '—',
                       style: TextStyle(
-                        color: isSelected ? colors.textPrimary : colors.textSecondary,
+                        color: isSelected
+                            ? colors.textPrimary
+                            : colors.textSecondary,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -820,12 +938,18 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
                       children: [
                         Text(
                           'Page ${field.sourcePage}',
-                          style: TextStyle(color: colors.textSecondary, fontSize: 10),
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 10,
+                          ),
                         ),
                         if (field.verificationStatus == 'edited') ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
                             decoration: BoxDecoration(
                               color: colors.info.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(3),
@@ -841,7 +965,11 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
                           onTap: () => _editField(field),
                           child: Padding(
                             padding: const EdgeInsets.all(4),
-                            child: Icon(Icons.edit_outlined, size: 16, color: colors.textSecondary),
+                            child: Icon(
+                              Icons.edit_outlined,
+                              size: 16,
+                              color: colors.textSecondary,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -855,7 +983,11 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
                           },
                           child: Padding(
                             padding: const EdgeInsets.all(4),
-                            child: Icon(Icons.copy_outlined, size: 16, color: colors.textSecondary),
+                            child: Icon(
+                              Icons.copy_outlined,
+                              size: 16,
+                              color: colors.textSecondary,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -863,7 +995,11 @@ class _ExtractionReviewScreenState extends ConsumerState<ExtractionReviewScreen>
                           onTap: () => _deleteField(field.id),
                           child: Padding(
                             padding: const EdgeInsets.all(4),
-                            child: Icon(Icons.delete_outline, size: 16, color: colors.error),
+                            child: Icon(
+                              Icons.delete_outline,
+                              size: 16,
+                              color: colors.error,
+                            ),
                           ),
                         ),
                       ],

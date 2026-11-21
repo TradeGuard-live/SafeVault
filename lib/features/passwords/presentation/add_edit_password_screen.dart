@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
+
 import '../../../core/security/encryption_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
@@ -14,14 +15,11 @@ class AddEditPasswordScreen extends ConsumerStatefulWidget {
   final String? entryId;
   final String? initialPassword;
 
-  const AddEditPasswordScreen({
-    super.key,
-    this.entryId,
-    this.initialPassword,
-  });
+  const AddEditPasswordScreen({super.key, this.entryId, this.initialPassword});
 
   @override
-  ConsumerState<AddEditPasswordScreen> createState() => _AddEditPasswordScreenState();
+  ConsumerState<AddEditPasswordScreen> createState() =>
+      _AddEditPasswordScreenState();
 }
 
 class _AddEditPasswordScreenState extends ConsumerState<AddEditPasswordScreen> {
@@ -85,13 +83,15 @@ class _AddEditPasswordScreenState extends ConsumerState<AddEditPasswordScreen> {
   }
 
   void _generateRandomPassword() {
-    final generated = PasswordGenerator.generate(const PasswordGeneratorConfig(
-      length: 16,
-      includeUppercase: true,
-      includeLowercase: true,
-      includeNumbers: true,
-      includeSymbols: true,
-    ));
+    final generated = PasswordGenerator.generate(
+      const PasswordGeneratorConfig(
+        length: 16,
+        includeUppercase: true,
+        includeLowercase: true,
+        includeNumbers: true,
+        includeSymbols: true,
+      ),
+    );
     setState(() {
       _passwordCtrl.text = generated;
       _obscurePassword = false;
@@ -109,7 +109,11 @@ class _AddEditPasswordScreenState extends ConsumerState<AddEditPasswordScreen> {
 
     final session = ref.read(vaultSessionProvider);
     if (!session.isUnlocked || session.masterKey == null) {
-      ErrorDialog.show(context, title: 'Vault Locked', message: 'Please unlock vault.');
+      ErrorDialog.show(
+        context,
+        title: 'Vault Locked',
+        message: 'Please unlock vault.',
+      );
       return;
     }
 
@@ -123,11 +127,19 @@ class _AddEditPasswordScreenState extends ConsumerState<AddEditPasswordScreen> {
       final entry = await PasswordEntryModel.createEncrypted(
         id: id,
         title: _titleCtrl.text.trim(),
-        websiteUrl: _urlCtrl.text.trim().isNotEmpty ? _urlCtrl.text.trim() : null,
-        username: _usernameCtrl.text.trim().isNotEmpty ? _usernameCtrl.text.trim() : null,
-        email: _emailCtrl.text.trim().isNotEmpty ? _emailCtrl.text.trim() : null,
+        websiteUrl: _urlCtrl.text.trim().isNotEmpty
+            ? _urlCtrl.text.trim()
+            : null,
+        username: _usernameCtrl.text.trim().isNotEmpty
+            ? _usernameCtrl.text.trim()
+            : null,
+        email: _emailCtrl.text.trim().isNotEmpty
+            ? _emailCtrl.text.trim()
+            : null,
         password: _passwordCtrl.text,
-        notes: _notesCtrl.text.trim().isNotEmpty ? _notesCtrl.text.trim() : null,
+        notes: _notesCtrl.text.trim().isNotEmpty
+            ? _notesCtrl.text.trim()
+            : null,
         categoryId: _selectedCategory,
         isFavorite: _isFavorite,
         masterKey: session.masterKey!,
@@ -170,14 +182,19 @@ class _AddEditPasswordScreenState extends ConsumerState<AddEditPasswordScreen> {
         title: Text(_isEditing ? 'Edit Password' : 'Add Password'),
         actions: [
           IconButton(
-            icon: Icon(_isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
-                color: _isFavorite ? Colors.amber : null),
+            icon: Icon(
+              _isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+              color: _isFavorite ? Colors.amber : null,
+            ),
             tooltip: 'Favorite',
             onPressed: () => setState(() => _isFavorite = !_isFavorite),
           ),
           TextButton(
             onPressed: _isLoading ? null : _saveEntry,
-            child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            child: const Text(
+              'Save',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            ),
           ),
         ],
       ),
@@ -194,7 +211,8 @@ class _AddEditPasswordScreenState extends ConsumerState<AddEditPasswordScreen> {
                 hintText: 'e.g. Google, GitHub, Netflix',
                 prefixIcon: Icon(Icons.title_rounded),
               ),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Title is required' : null,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Title is required' : null,
             ),
             const SizedBox(height: 16),
 
@@ -214,7 +232,9 @@ class _AddEditPasswordScreenState extends ConsumerState<AddEditPasswordScreen> {
             categoriesAsync.when(
               data: (cats) {
                 return DropdownButtonFormField<String>(
-                  value: cats.any((c) => c.id == _selectedCategory) ? _selectedCategory : cats.first.id,
+                  value: cats.any((c) => c.id == _selectedCategory)
+                      ? _selectedCategory
+                      : cats.first.id,
                   decoration: const InputDecoration(
                     labelText: 'Category',
                     prefixIcon: Icon(Icons.folder_outlined),
@@ -224,7 +244,10 @@ class _AddEditPasswordScreenState extends ConsumerState<AddEditPasswordScreen> {
                       value: c.id,
                       child: Row(
                         children: [
-                          CircleAvatar(radius: 6, backgroundColor: Color(c.colorValue)),
+                          CircleAvatar(
+                            radius: 6,
+                            backgroundColor: Color(c.colorValue),
+                          ),
                           const SizedBox(width: 8),
                           Text(c.name),
                         ],
@@ -275,19 +298,28 @@ class _AddEditPasswordScreenState extends ConsumerState<AddEditPasswordScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
                       tooltip: 'Toggle Visibility',
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                     ),
                     IconButton(
-                      icon: Icon(Icons.auto_awesome_rounded, color: colors.primaryAccent),
+                      icon: Icon(
+                        Icons.auto_awesome_rounded,
+                        color: colors.primaryAccent,
+                      ),
                       tooltip: 'Generate Strong Password',
                       onPressed: _generateRandomPassword,
                     ),
                   ],
                 ),
               ),
-              validator: (v) => (v == null || v.isEmpty) ? 'Password is required' : null,
+              validator: (v) =>
+                  (v == null || v.isEmpty) ? 'Password is required' : null,
             ),
             const SizedBox(height: 16),
 
@@ -312,8 +344,13 @@ class _AddEditPasswordScreenState extends ConsumerState<AddEditPasswordScreen> {
               ),
               child: _isLoading
                   ? const CircularProgressIndicator(color: Colors.white)
-                  : Text(_isEditing ? 'Save Changes' : 'Save Password',
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                  : Text(
+                      _isEditing ? 'Save Changes' : 'Save Password',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
             ),
             const SizedBox(height: 32),
           ],
@@ -322,4 +359,3 @@ class _AddEditPasswordScreenState extends ConsumerState<AddEditPasswordScreen> {
     );
   }
 }
-

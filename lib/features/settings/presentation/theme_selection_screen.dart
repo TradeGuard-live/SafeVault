@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/widgets/rupee_bunny_mascot.dart';
@@ -41,10 +42,7 @@ class ThemeSelectionScreen extends ConsumerWidget {
             ),
             child: Row(
               children: [
-                const RupeeBunnyMascot(
-                  pose: MascotPose.celebration,
-                  size: 64,
-                ),
+                const RupeeBunnyMascot(pose: MascotPose.celebration, size: 64),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -89,7 +87,10 @@ class ThemeSelectionScreen extends ConsumerWidget {
           // 1. Peachy Cozy (Active / Default)
           _ThemePreviewCard(
             theme: AppThemeColors.peachy,
-            isSelected: currentThemeId == 'peachy' || currentThemeId == 'light' || currentThemeId.isEmpty,
+            isSelected:
+                currentThemeId == 'peachy' ||
+                currentThemeId == 'light' ||
+                currentThemeId.isEmpty,
             onSelect: () => _selectTheme(ref, 'peachy'),
           ),
           const SizedBox(height: 14),
@@ -105,7 +106,8 @@ class ThemeSelectionScreen extends ConsumerWidget {
           // 3. Midnight Mochi
           _ThemePreviewCard(
             theme: AppThemeColors.midnightMochi,
-            isSelected: currentThemeId == 'midnight_mochi' || currentThemeId == 'mochi',
+            isSelected:
+                currentThemeId == 'midnight_mochi' || currentThemeId == 'mochi',
             onSelect: () => _selectTheme(ref, 'midnight_mochi'),
           ),
           const SizedBox(height: 14),
@@ -113,7 +115,8 @@ class ThemeSelectionScreen extends ConsumerWidget {
           // 4. RupeeFlow Theme (Midnight Dark)
           _ThemePreviewCard(
             theme: AppThemeColors.rupeeFlowDark,
-            isSelected: currentThemeId == 'dark' || currentThemeId == 'rupeeflow_dark',
+            isSelected:
+                currentThemeId == 'dark' || currentThemeId == 'rupeeflow_dark',
             onSelect: () => _selectTheme(ref, 'dark'),
           ),
           const SizedBox(height: 28),
@@ -188,7 +191,10 @@ class _ThemePreviewCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: theme.isDark
                                   ? const Color(0xFF252036)
@@ -224,9 +230,13 @@ class _ThemePreviewCard extends StatelessWidget {
                   height: 26,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isSelected ? theme.primaryAccent : Colors.transparent,
+                    color: isSelected
+                        ? theme.primaryAccent
+                        : Colors.transparent,
                     border: Border.all(
-                      color: isSelected ? theme.primaryAccent : activeColors.cardBorder,
+                      color: isSelected
+                          ? theme.primaryAccent
+                          : activeColors.cardBorder,
                       width: 2,
                     ),
                   ),
@@ -316,7 +326,10 @@ class _ThemePreviewCard extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: theme.successContainer,
                       borderRadius: BorderRadius.circular(8),
@@ -339,4 +352,3 @@ class _ThemePreviewCard extends StatelessWidget {
     );
   }
 }
-

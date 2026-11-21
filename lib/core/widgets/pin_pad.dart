@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../theme/app_theme.dart';
 
 class PinPad extends StatefulWidget {
@@ -200,7 +202,8 @@ class _PinPadState extends State<PinPad> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   // Biometric or empty
-                  if (widget.showBiometricButton && widget.onBiometricPressed != null)
+                  if (widget.showBiometricButton &&
+                      widget.onBiometricPressed != null)
                     _buildActionButton(
                       icon: Icons.fingerprint,
                       onTap: widget.onBiometricPressed!,
@@ -243,9 +246,7 @@ class _PinPadState extends State<PinPad> {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: colors.surfaceSecondary,
-          border: Border.all(
-            color: colors.cardBorder,
-          ),
+          border: Border.all(color: colors.cardBorder),
         ),
         child: Text(
           digit,

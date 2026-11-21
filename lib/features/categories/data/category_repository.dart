@@ -1,4 +1,5 @@
 import 'package:uuid/uuid.dart';
+
 import '../../../core/database/vault_database.dart';
 import '../../../core/errors/exceptions.dart';
 import '../domain/category_model.dart';
@@ -8,11 +9,14 @@ class CategoryRepository {
   final Uuid _uuid = const Uuid();
 
   CategoryRepository({VaultDatabase? dbHelper})
-      : _dbHelper = dbHelper ?? VaultDatabase.instance;
+    : _dbHelper = dbHelper ?? VaultDatabase.instance;
 
   Future<List<CategoryModel>> getAllCategories() async {
     final db = await _dbHelper.database;
-    final rows = await db.query('categories', orderBy: 'is_default DESC, name ASC');
+    final rows = await db.query(
+      'categories',
+      orderBy: 'is_default DESC, name ASC',
+    );
     return rows.map((r) => CategoryModel.fromMap(r)).toList();
   }
 
@@ -60,7 +64,9 @@ class CategoryRepository {
     final category = await getCategoryById(id);
     if (category == null) return;
     if (category.isDefault) {
-      throw const DatabaseOperationException('Default system categories cannot be deleted.');
+      throw const DatabaseOperationException(
+        'Default system categories cannot be deleted.',
+      );
     }
 
     await db.transaction((txn) async {
@@ -73,11 +79,7 @@ class CategoryRepository {
       );
 
       // 2. Delete custom category
-      await txn.delete(
-        'categories',
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+      await txn.delete('categories', where: 'id = ?', whereArgs: [id]);
     });
   }
 }

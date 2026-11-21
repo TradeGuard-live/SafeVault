@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/utils/masked_text_formatter.dart';
@@ -28,7 +29,10 @@ class CategoryDocumentsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        title: Text(categoryName, style: const TextStyle(fontWeight: FontWeight.w700)),
+        title: Text(
+          categoryName,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.add_rounded),
@@ -41,13 +45,16 @@ class CategoryDocumentsScreen extends ConsumerWidget {
       ),
       body: docsAsync.when(
         data: (allDocs) {
-          final catDocs = allDocs.where((d) => d.categoryId == categoryId).toList();
+          final catDocs = allDocs
+              .where((d) => d.categoryId == categoryId)
+              .toList();
 
           if (catDocs.isEmpty) {
             return EmptyStateView(
               icon: Icons.folder_open_rounded,
               title: 'No Documents in $categoryName',
-              description: 'You haven\'t stored any documents in this category yet.',
+              description:
+                  'You haven\'t stored any documents in this category yet.',
               mascotPose: MascotPose.friendly,
               actionLabel: 'Add to $categoryName',
               onAction: () => context.push(
@@ -67,13 +74,14 @@ class CategoryDocumentsScreen extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: colors.cardBackground,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: colors.cardBorder,
-                  ),
+                  border: Border.all(color: colors.cardBorder),
                 ),
                 child: ListTile(
                   onTap: () => context.push('/document/${doc.id}'),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
                   leading: Container(
                     width: 44,
                     height: 44,
@@ -81,7 +89,11 @@ class CategoryDocumentsScreen extends ConsumerWidget {
                       color: colors.primaryAccent.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.description_outlined, color: colors.primaryAccent, size: 22),
+                    child: Icon(
+                      Icons.description_outlined,
+                      color: colors.primaryAccent,
+                      size: 22,
+                    ),
                   ),
                   title: Text(
                     doc.name,
@@ -92,7 +104,9 @@ class CategoryDocumentsScreen extends ConsumerWidget {
                   ),
                   subtitle: Text(
                     doc.documentNumber != null
-                        ? MaskedTextFormatter.maskDocumentNumber(doc.documentNumber)
+                        ? MaskedTextFormatter.maskDocumentNumber(
+                            doc.documentNumber,
+                          )
                         : (doc.documentType ?? 'Document'),
                     style: TextStyle(
                       fontSize: 12.5,
@@ -105,10 +119,11 @@ class CategoryDocumentsScreen extends ConsumerWidget {
             },
           );
         },
-        loading: () => Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
+        loading: () => Center(
+          child: CircularProgressIndicator(color: colors.primaryAccent),
+        ),
         error: (e, _) => Center(child: Text('Error: $e')),
       ),
     );
   }
 }
-

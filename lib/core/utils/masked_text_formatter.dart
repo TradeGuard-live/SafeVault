@@ -10,7 +10,7 @@ class MaskedTextFormatter {
 
     final visibleSuffix = clean.substring(clean.length - 4);
     final maskedLength = clean.length - 4;
-    
+
     // Group in chunks of 4 for readability
     final buffer = StringBuffer();
     for (int i = 0; i < maskedLength; i++) {
@@ -32,4 +32,3 @@ class MaskedTextFormatter {
     return '••••••••$suffix';
   }
 }
-

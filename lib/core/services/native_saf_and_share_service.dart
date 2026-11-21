@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+
 import '../security/vault_session.dart';
 
 /// Representation of a file staged through Android Storage Access Framework (SAF)
@@ -30,15 +32,11 @@ class SafFileItem {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'path': path,
-      'name': name,
-      'size': size,
-      'mimeType': mimeType,
-    };
+    return {'path': path, 'name': name, 'size': size, 'mimeType': mimeType};
   }
 
-  bool get isPdf => mimeType.contains('pdf') || name.toLowerCase().endsWith('.pdf');
+  bool get isPdf =>
+      mimeType.contains('pdf') || name.toLowerCase().endsWith('.pdf');
   bool get isImage =>
       mimeType.startsWith('image/') ||
       name.toLowerCase().endsWith('.jpg') ||
@@ -49,7 +47,9 @@ class SafFileItem {
 /// Service interfacing with native Android Kotlin Storage Access Framework (SAF)
 /// and Android Sharesheet for 100% offline document import and outgoing sharing.
 class NativeSafAndShareService {
-  static const MethodChannel _channel = MethodChannel('com.vault.native/saf_and_sharing');
+  static const MethodChannel _channel = MethodChannel(
+    'com.vault.native/saf_and_sharing',
+  );
 
   static final NativeSafAndShareService instance = NativeSafAndShareService._();
   NativeSafAndShareService._() {
@@ -64,8 +64,10 @@ class NativeSafAndShareService {
     _session = session;
   }
 
-  final _incomingShareStreamController = StreamController<List<SafFileItem>>.broadcast();
-  Stream<List<SafFileItem>> get incomingShareStream => _incomingShareStreamController.stream;
+  final _incomingShareStreamController =
+      StreamController<List<SafFileItem>>.broadcast();
+  Stream<List<SafFileItem>> get incomingShareStream =>
+      _incomingShareStreamController.stream;
 
   Future<dynamic> _handleNativeCall(MethodCall call) async {
     if (call.method == 'onIncomingShareReceived') {
@@ -93,18 +95,14 @@ class NativeSafAndShareService {
 
     _session?.beginSystemActivity('SAF_OPEN_DOCUMENT');
     try {
-      final effectiveMimeTypes = mimeTypes ??
-          const [
-            'application/pdf',
-            'image/jpeg',
-            'image/jpg',
-            'image/png',
-          ];
+      final effectiveMimeTypes =
+          mimeTypes ??
+          const ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
 
-      final result = await _channel.invokeMethod<List<dynamic>>('openDocument', {
-        'allowMultiple': allowMultiple,
-        'mimeTypes': effectiveMimeTypes,
-      });
+      final result = await _channel.invokeMethod<List<dynamic>>(
+        'openDocument',
+        {'allowMultiple': allowMultiple, 'mimeTypes': effectiveMimeTypes},
+      );
 
       if (result == null) return [];
 
@@ -207,7 +205,9 @@ class NativeSafAndShareService {
     if (!Platform.isAndroid) return [];
 
     try {
-      final result = await _channel.invokeMethod<List<dynamic>>('getPendingIncomingShare');
+      final result = await _channel.invokeMethod<List<dynamic>>(
+        'getPendingIncomingShare',
+      );
       if (result == null) return [];
       return result
           .whereType<Map<dynamic, dynamic>>()
@@ -215,7 +215,9 @@ class NativeSafAndShareService {
           .where((item) => item.path.isNotEmpty && File(item.path).existsSync())
           .toList();
     } catch (e) {
-      debugPrint('NativeSafAndShareService: getPendingIncomingShares failed: $e');
+      debugPrint(
+        'NativeSafAndShareService: getPendingIncomingShares failed: $e',
+      );
       return [];
     }
   }
@@ -226,8 +228,9 @@ class NativeSafAndShareService {
     try {
       await _channel.invokeMethod<bool>('clearPendingIncomingShare');
     } catch (e) {
-      debugPrint('NativeSafAndShareService: clearPendingIncomingShares failed: $e');
+      debugPrint(
+        'NativeSafAndShareService: clearPendingIncomingShares failed: $e',
+      );
     }
   }
 }
-

@@ -1,8 +1,10 @@
 import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/security/file_validator.dart';
 import '../../../core/services/native_saf_and_share_service.dart';
 import '../../../core/storage/encrypted_file_storage.dart';
@@ -21,7 +23,8 @@ class HomeDashboardScreen extends ConsumerStatefulWidget {
   const HomeDashboardScreen({super.key});
 
   @override
-  ConsumerState<HomeDashboardScreen> createState() => _HomeDashboardScreenState();
+  ConsumerState<HomeDashboardScreen> createState() =>
+      _HomeDashboardScreenState();
 }
 
 class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
@@ -134,7 +137,11 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                 color: colors.primaryAccent.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(Icons.shield_rounded, color: colors.primaryAccent, size: 22),
+              child: Icon(
+                Icons.shield_rounded,
+                color: colors.primaryAccent,
+                size: 22,
+              ),
             ),
             const SizedBox(width: 10),
             Text(
@@ -200,7 +207,12 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           children: [
             // 1. Vault Overview Card (Themed Hero Gradient)
-            _buildOverviewCard(colors, docsAsync, passwordsAsync, bankAccountsAsync),
+            _buildOverviewCard(
+              colors,
+              docsAsync,
+              passwordsAsync,
+              bankAccountsAsync,
+            ),
             const SizedBox(height: 20),
 
             // 2. Quick Actions
@@ -235,8 +247,13 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     final docsCount = docsAsync.valueOrNull?.length ?? 0;
     final passwordsCount = passwordsAsync.valueOrNull?.length ?? 0;
     final bankAccountsCount = bankAccountsAsync.valueOrNull?.length ?? 0;
-    final expiringCount = docsAsync.valueOrNull
-            ?.where((d) => d.expiryDate != null && DateFormatter.daysRemaining(d.expiryDate!) <= 30)
+    final expiringCount =
+        docsAsync.valueOrNull
+            ?.where(
+              (d) =>
+                  d.expiryDate != null &&
+                  DateFormatter.daysRemaining(d.expiryDate!) <= 30,
+            )
             .length ??
         0;
 
@@ -278,7 +295,14 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                   children: [
                     Icon(Icons.shield_rounded, color: Colors.white, size: 12),
                     SizedBox(width: 4),
-                    Text('Mandatory 2FA', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                    Text(
+                      'Mandatory 2FA',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -288,9 +312,21 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildStatItem('Documents', '$docsCount', Icons.description_outlined),
-              _buildStatItem('Passwords', '$passwordsCount', Icons.vpn_key_outlined),
-              _buildStatItem('Bank Accounts', '$bankAccountsCount', Icons.account_balance_outlined),
+              _buildStatItem(
+                'Documents',
+                '$docsCount',
+                Icons.description_outlined,
+              ),
+              _buildStatItem(
+                'Passwords',
+                '$passwordsCount',
+                Icons.vpn_key_outlined,
+              ),
+              _buildStatItem(
+                'Bank Accounts',
+                '$bankAccountsCount',
+                Icons.account_balance_outlined,
+              ),
               _buildStatItem(
                 'Expiring',
                 '$expiringCount',
@@ -304,10 +340,21 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon, {bool isWarning = false}) {
+  Widget _buildStatItem(
+    String label,
+    String value,
+    IconData icon, {
+    bool isWarning = false,
+  }) {
     return Column(
       children: [
-        Icon(icon, color: isWarning ? const Color(0xFFFFD98E) : Colors.white.withOpacity(0.85), size: 20),
+        Icon(
+          icon,
+          color: isWarning
+              ? const Color(0xFFFFD98E)
+              : Colors.white.withOpacity(0.85),
+          size: 20,
+        ),
         const SizedBox(height: 6),
         Text(
           value,
@@ -391,9 +438,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
         decoration: BoxDecoration(
           color: colors.surfaceSecondary,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: colors.cardBorder,
-          ),
+          border: Border.all(color: colors.cardBorder),
         ),
         child: Column(
           children: [
@@ -441,7 +486,14 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
             ),
             TextButton(
               onPressed: () => context.push('/category-management'),
-              child: Text('Manage', style: TextStyle(fontSize: 13, color: colors.primaryAccent, fontWeight: FontWeight.w600)),
+              child: Text(
+                'Manage',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colors.primaryAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),
@@ -457,20 +509,31 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                 separatorBuilder: (_, __) => const SizedBox(width: 12),
                 itemBuilder: (ctx, i) {
                   final cat = categories[i];
-                  final count = docs.where((d) => d.categoryId == cat.id).length;
+                  final count = docs
+                      .where((d) => d.categoryId == cat.id)
+                      .length;
                   return _buildCategoryCard(colors, cat, count);
                 },
               ),
             );
           },
-          loading: () => Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
-          error: (e, _) => Text('Error loading categories: $e', style: TextStyle(color: colors.error)),
+          loading: () => Center(
+            child: CircularProgressIndicator(color: colors.primaryAccent),
+          ),
+          error: (e, _) => Text(
+            'Error loading categories: $e',
+            style: TextStyle(color: colors.error),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildCategoryCard(AppThemeColors colors, CategoryModel cat, int docCount) {
+  Widget _buildCategoryCard(
+    AppThemeColors colors,
+    CategoryModel cat,
+    int docCount,
+  ) {
     final color = Color(cat.colorValue);
 
     return InkWell(
@@ -482,9 +545,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
         decoration: BoxDecoration(
           color: colors.surfaceSecondary,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: colors.cardBorder,
-          ),
+          border: Border.all(color: colors.cardBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -514,10 +575,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                 const SizedBox(height: 2),
                 Text(
                   '$docCount doc${docCount == 1 ? '' : 's'}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: colors.textTertiary,
-                  ),
+                  style: TextStyle(fontSize: 11, color: colors.textTertiary),
                 ),
               ],
             ),
@@ -546,7 +604,10 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     }
   }
 
-  Widget _buildExpirySection(AppThemeColors colors, AsyncValue<List<DocumentModel>> expiringAsync) {
+  Widget _buildExpirySection(
+    AppThemeColors colors,
+    AsyncValue<List<DocumentModel>> expiringAsync,
+  ) {
     final docs = expiringAsync.valueOrNull ?? [];
     if (docs.isEmpty) return const SizedBox.shrink();
 
@@ -558,7 +619,11 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.warning_amber_rounded, color: colors.warning, size: 18),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: colors.warning,
+                  size: 18,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   'Upcoming Expiry (${docs.length})',
@@ -572,7 +637,14 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
             ),
             TextButton(
               onPressed: () => context.push('/expiry-dashboard'),
-              child: Text('View All', style: TextStyle(fontSize: 13, color: colors.primaryAccent, fontWeight: FontWeight.w600)),
+              child: Text(
+                'View All',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colors.primaryAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),
@@ -583,7 +655,10 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     );
   }
 
-  Widget _buildFavoritesSection(AppThemeColors colors, AsyncValue<List<DocumentModel>> favoritesAsync) {
+  Widget _buildFavoritesSection(
+    AppThemeColors colors,
+    AsyncValue<List<DocumentModel>> favoritesAsync,
+  ) {
     final docs = favoritesAsync.valueOrNull ?? [];
     if (docs.isEmpty) return const SizedBox.shrink();
 
@@ -603,7 +678,14 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
             ),
             TextButton(
               onPressed: () => context.go('/favorites'),
-              child: Text('View All', style: TextStyle(fontSize: 13, color: colors.primaryAccent, fontWeight: FontWeight.w600)),
+              child: Text(
+                'View All',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colors.primaryAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),
@@ -614,7 +696,10 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     );
   }
 
-  Widget _buildRecentDocumentsSection(AppThemeColors colors, AsyncValue<List<DocumentModel>> docsAsync) {
+  Widget _buildRecentDocumentsSection(
+    AppThemeColors colors,
+    AsyncValue<List<DocumentModel>> docsAsync,
+  ) {
     final docs = docsAsync.valueOrNull ?? [];
 
     return Column(
@@ -633,7 +718,14 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
             ),
             TextButton(
               onPressed: () => context.go('/all-documents'),
-              child: Text('View All', style: TextStyle(fontSize: 13, color: colors.primaryAccent, fontWeight: FontWeight.w600)),
+              child: Text(
+                'View All',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colors.primaryAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),
@@ -648,10 +740,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
             ),
             child: Row(
               children: [
-                const RupeeBunnyMascot(
-                  pose: MascotPose.thinking,
-                  size: 56,
-                ),
+                const RupeeBunnyMascot(pose: MascotPose.thinking, size: 56),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -668,7 +757,10 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                       const SizedBox(height: 3),
                       Text(
                         'Tap Scan or Import to safely encrypt your first document.',
-                        style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -688,9 +780,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
       decoration: BoxDecoration(
         color: colors.surfaceSecondary,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: colors.cardBorder,
-        ),
+        border: Border.all(color: colors.cardBorder),
       ),
       child: ListTile(
         onTap: () => context.push('/document/${doc.id}'),
@@ -702,7 +792,11 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
             color: colors.primaryAccent.withOpacity(0.12),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(Icons.description_outlined, color: colors.primaryAccent, size: 22),
+          child: Icon(
+            Icons.description_outlined,
+            color: colors.primaryAccent,
+            size: 22,
+          ),
         ),
         title: Text(
           doc.name,
@@ -722,10 +816,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
               doc.documentNumber != null
                   ? MaskedTextFormatter.maskDocumentNumber(doc.documentNumber)
                   : (doc.documentType ?? 'Personal Document'),
-              style: TextStyle(
-                fontSize: 12,
-                color: colors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 12, color: colors.textSecondary),
             ),
           ],
         ),

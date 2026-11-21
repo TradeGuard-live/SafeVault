@@ -1,9 +1,12 @@
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:cryptography/cryptography.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
+
+import '../constants/app_constants.dart';
 import '../errors/exceptions.dart';
 import '../security/encryption_service.dart';
 
@@ -12,7 +15,7 @@ class EncryptedFileStorage {
   final Uuid _uuid = const Uuid();
 
   EncryptedFileStorage({EncryptionService? encryptionService})
-      : _encryptionService = encryptionService ?? EncryptionService();
+    : _encryptionService = encryptionService ?? EncryptionService();
 
   Future<Directory> get _filesDirectory async {
     final appDir = await getApplicationDocumentsDirectory();
@@ -48,7 +51,10 @@ class EncryptedFileStorage {
     required SecretKey masterKey,
   }) async {
     try {
-      final encryptedBytes = await _encryptionService.encryptBytes(plainBytes, masterKey);
+      final encryptedBytes = await _encryptionService.encryptBytes(
+        plainBytes,
+        masterKey,
+      );
       final filesDir = await _filesDirectory;
       final uniqueFileName = '${_uuid.v4()}.enc';
       final finalPath = join(filesDir.path, uniqueFileName);
@@ -70,7 +76,10 @@ class EncryptedFileStorage {
     required SecretKey masterKey,
   }) async {
     try {
-      final encryptedBytes = await _encryptionService.encryptBytes(thumbnailBytes, masterKey);
+      final encryptedBytes = await _encryptionService.encryptBytes(
+        thumbnailBytes,
+        masterKey,
+      );
       final thumbsDir = await _thumbnailsDirectory;
       final uniqueFileName = 'thumb_${_uuid.v4()}.enc';
       final finalPath = join(thumbsDir.path, uniqueFileName);
@@ -113,9 +122,14 @@ class EncryptedFileStorage {
     required String fileExtension,
     required SecretKey masterKey,
   }) async {
-    final plainBytes = await readDecryptedFile(filePath: encryptedFilePath, masterKey: masterKey);
+    final plainBytes = await readDecryptedFile(
+      filePath: encryptedFilePath,
+      masterKey: masterKey,
+    );
     final tempDir = await _tempDirectory;
-    final tempFile = File(join(tempDir.path, 'view_${_uuid.v4()}.$fileExtension'));
+    final tempFile = File(
+      join(tempDir.path, 'view_${_uuid.v4()}.$fileExtension'),
+    );
     await tempFile.writeAsBytes(plainBytes, flush: true);
     return tempFile;
   }
@@ -132,7 +146,9 @@ class EncryptedFileStorage {
           final raf = await file.open(mode: FileMode.write);
           int written = 0;
           while (written < length) {
-            final toWrite = (length - written) > zeros.length ? zeros.length : (length - written);
+            final toWrite = (length - written) > zeros.length
+                ? zeros.length
+                : (length - written);
             await raf.writeFrom(zeros, 0, toWrite);
             written += toWrite;
           }
@@ -246,7 +262,9 @@ class StorageBreakdown {
     if (bytes <= 0) return '0 B';
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    if (bytes < 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
   }
 
@@ -255,4 +273,3 @@ class StorageBreakdown {
   String get formattedThumbnails => formatBytes(thumbnailsBytes);
   String get formattedDatabase => formatBytes(databaseBytes);
 }
-

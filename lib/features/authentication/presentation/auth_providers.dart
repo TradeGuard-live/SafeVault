@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/security/biometric_service.dart';
 import '../../../core/security/key_management_service.dart';
 import '../../../core/security/pin_service.dart';
@@ -25,9 +26,10 @@ final vaultSessionProvider = ChangeNotifierProvider<VaultSession>((ref) {
   return VaultSession();
 });
 
-final twoFactorCoordinatorProvider = ChangeNotifierProvider<TwoFactorAuthCoordinator>((ref) {
-  return TwoFactorAuthCoordinator();
-});
+final twoFactorCoordinatorProvider =
+    ChangeNotifierProvider<TwoFactorAuthCoordinator>((ref) {
+      return TwoFactorAuthCoordinator();
+    });
 
 final keyManagementServiceProvider = Provider<KeyManagementService>((ref) {
   return KeyManagementService();
@@ -105,10 +107,11 @@ class SettingsNotifier extends StateNotifier<VaultSettingsModel> {
   }
 }
 
-final settingsProvider = StateNotifierProvider<SettingsNotifier, VaultSettingsModel>((ref) {
-  final repo = ref.watch(settingsRepositoryProvider);
-  return SettingsNotifier(repo);
-});
+final settingsProvider =
+    StateNotifierProvider<SettingsNotifier, VaultSettingsModel>((ref) {
+      final repo = ref.watch(settingsRepositoryProvider);
+      return SettingsNotifier(repo);
+    });
 
 // Categories Provider
 final categoriesProvider = FutureProvider<List<CategoryModel>>((ref) async {
@@ -117,7 +120,9 @@ final categoriesProvider = FutureProvider<List<CategoryModel>>((ref) async {
 });
 
 // Active Documents Provider
-final activeDocumentsProvider = FutureProvider<List<DocumentModel>>((ref) async {
+final activeDocumentsProvider = FutureProvider<List<DocumentModel>>((
+  ref,
+) async {
   final session = ref.watch(vaultSessionProvider);
   if (!session.isUnlocked || session.masterKey == null) {
     return [];
@@ -127,7 +132,9 @@ final activeDocumentsProvider = FutureProvider<List<DocumentModel>>((ref) async 
 });
 
 // Favorite Documents Provider
-final favoriteDocumentsProvider = FutureProvider<List<DocumentModel>>((ref) async {
+final favoriteDocumentsProvider = FutureProvider<List<DocumentModel>>((
+  ref,
+) async {
   final session = ref.watch(vaultSessionProvider);
   if (!session.isUnlocked || session.masterKey == null) {
     return [];
@@ -147,13 +154,18 @@ final trashDocumentsProvider = FutureProvider<List<DocumentModel>>((ref) async {
 });
 
 // Expiring Documents Provider (within 30 days)
-final expiringDocumentsProvider = FutureProvider<List<DocumentModel>>((ref) async {
+final expiringDocumentsProvider = FutureProvider<List<DocumentModel>>((
+  ref,
+) async {
   final session = ref.watch(vaultSessionProvider);
   if (!session.isUnlocked || session.masterKey == null) {
     return [];
   }
   final repo = ref.watch(documentRepositoryProvider);
-  return await repo.getExpiringDocuments(days: 30, masterKey: session.masterKey!);
+  return await repo.getExpiringDocuments(
+    days: 30,
+    masterKey: session.masterKey!,
+  );
 });
 
 // Activities Provider
@@ -167,12 +179,16 @@ final passwordRepositoryProvider = Provider<PasswordRepository>((ref) {
   return PasswordRepository();
 });
 
-final passwordCategoriesProvider = FutureProvider<List<PasswordCategoryModel>>((ref) async {
+final passwordCategoriesProvider = FutureProvider<List<PasswordCategoryModel>>((
+  ref,
+) async {
   final repo = ref.watch(passwordRepositoryProvider);
   return await repo.getAllCategories();
 });
 
-final allPasswordsProvider = FutureProvider<List<PasswordEntryModel>>((ref) async {
+final allPasswordsProvider = FutureProvider<List<PasswordEntryModel>>((
+  ref,
+) async {
   final session = ref.watch(vaultSessionProvider);
   if (!session.isUnlocked || session.masterKey == null) {
     return [];
@@ -181,7 +197,9 @@ final allPasswordsProvider = FutureProvider<List<PasswordEntryModel>>((ref) asyn
   return await repo.getAllEntries(session.masterKey!);
 });
 
-final favoritePasswordsProvider = FutureProvider<List<PasswordEntryModel>>((ref) async {
+final favoritePasswordsProvider = FutureProvider<List<PasswordEntryModel>>((
+  ref,
+) async {
   final session = ref.watch(vaultSessionProvider);
   if (!session.isUnlocked || session.masterKey == null) {
     return [];
@@ -190,7 +208,9 @@ final favoritePasswordsProvider = FutureProvider<List<PasswordEntryModel>>((ref)
   return await repo.getFavoriteEntries(session.masterKey!);
 });
 
-final passwordSecurityAuditProvider = FutureProvider<PasswordAuditResult>((ref) async {
+final passwordSecurityAuditProvider = FutureProvider<PasswordAuditResult>((
+  ref,
+) async {
   final passwords = await ref.watch(allPasswordsProvider.future);
   return PasswordSecurityAnalyzer.analyze(passwords);
 });
@@ -200,7 +220,9 @@ final bankVaultRepositoryProvider = Provider<BankVaultRepository>((ref) {
   return BankVaultRepository();
 });
 
-final allBankAccountsProvider = FutureProvider<List<BankAccountModel>>((ref) async {
+final allBankAccountsProvider = FutureProvider<List<BankAccountModel>>((
+  ref,
+) async {
   final session = ref.watch(vaultSessionProvider);
   if (!session.isUnlocked || session.masterKey == null) {
     return [];
@@ -209,7 +231,9 @@ final allBankAccountsProvider = FutureProvider<List<BankAccountModel>>((ref) asy
   return await repo.getAllAccounts(session.masterKey!);
 });
 
-final favoriteBankAccountsProvider = FutureProvider<List<BankAccountModel>>((ref) async {
+final favoriteBankAccountsProvider = FutureProvider<List<BankAccountModel>>((
+  ref,
+) async {
   final session = ref.watch(vaultSessionProvider);
   if (!session.isUnlocked || session.masterKey == null) {
     return [];
@@ -217,5 +241,3 @@ final favoriteBankAccountsProvider = FutureProvider<List<BankAccountModel>>((ref
   final repo = ref.watch(bankVaultRepositoryProvider);
   return await repo.getFavoriteAccounts(session.masterKey!);
 });
-
-

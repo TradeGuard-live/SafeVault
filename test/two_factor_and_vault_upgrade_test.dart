@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vault/core/errors/exceptions.dart';
@@ -136,29 +137,32 @@ void main() {
       );
     });
 
-    test('3. Biometric fails (invalid/empty share) + PIN succeeds = Locked', () async {
-      const pin = '123456';
-      await keyService.initializeTwoFactorVault(pin: pin);
+    test(
+      '3. Biometric fails (invalid/empty share) + PIN succeeds = Locked',
+      () async {
+        const pin = '123456';
+        await keyService.initializeTwoFactorVault(pin: pin);
 
-      // Simulate biometric failure / corrupted share
-      final corruptedBioShare = Uint8List(32); // All zeros
+        // Simulate biometric failure / corrupted share
+        final corruptedBioShare = Uint8List(32); // All zeros
 
-      final resultKey = await keyService.completeTwoFactorPinUnlock(
-        bioShare: corruptedBioShare,
-        pin: pin,
-      );
-      final resultBytes = await resultKey.extractBytes();
+        final resultKey = await keyService.completeTwoFactorPinUnlock(
+          bioShare: corruptedBioShare,
+          pin: pin,
+        );
+        final resultBytes = await resultKey.extractBytes();
 
-      // The key cannot be valid VMK because S_bio was missing/corrupted
-      final realBioShare = await keyService.startTwoFactorBiometricUnlock();
-      final realKey = await keyService.completeTwoFactorPinUnlock(
-        bioShare: realBioShare,
-        pin: pin,
-      );
-      final realBytes = await realKey.extractBytes();
+        // The key cannot be valid VMK because S_bio was missing/corrupted
+        final realBioShare = await keyService.startTwoFactorBiometricUnlock();
+        final realKey = await keyService.completeTwoFactorPinUnlock(
+          bioShare: realBioShare,
+          pin: pin,
+        );
+        final realBytes = await realKey.extractBytes();
 
-      expect(resultBytes, isNot(equals(realBytes)));
-    });
+        expect(resultBytes, isNot(equals(realBytes)));
+      },
+    );
 
     test('4. Biometric fails + PIN fails = Locked', () async {
       const pin = '123456';
@@ -174,18 +178,21 @@ void main() {
       );
     });
 
-    test('5. Authentication cancelled = Ephemeral state zeroed and locked', () async {
-      final coordinator = TwoFactorAuthCoordinator();
-      final testShare = Uint8List.fromList(List.generate(32, (i) => i + 1));
+    test(
+      '5. Authentication cancelled = Ephemeral state zeroed and locked',
+      () async {
+        final coordinator = TwoFactorAuthCoordinator();
+        final testShare = Uint8List.fromList(List.generate(32, (i) => i + 1));
 
-      coordinator.recordBiometricSuccess(testShare);
-      expect(coordinator.hasActiveBiometricVerification, isTrue);
+        coordinator.recordBiometricSuccess(testShare);
+        expect(coordinator.hasActiveBiometricVerification, isTrue);
 
-      // Cancel transaction
-      coordinator.cancelTransaction();
-      expect(coordinator.hasActiveBiometricVerification, isFalse);
-      expect(coordinator.consumeBiometricShare(), isNull);
-    });
+        // Cancel transaction
+        coordinator.cancelTransaction();
+        expect(coordinator.hasActiveBiometricVerification, isFalse);
+        expect(coordinator.consumeBiometricShare(), isNull);
+      },
+    );
 
     test('6. Repeated incorrect PIN attempts trigger rate limiting', () async {
       expect(await pinService.isLockedOut(), isFalse);
@@ -202,7 +209,10 @@ void main() {
       }
 
       expect(await pinService.isLockedOut(), isTrue);
-      expect(await pinService.getRemainingLockoutSeconds(), inInclusiveRange(8, 10));
+      expect(
+        await pinService.getRemainingLockoutSeconds(),
+        inInclusiveRange(8, 10),
+      );
     });
 
     test('7. PIN is never stored in plaintext', () async {
@@ -211,48 +221,57 @@ void main() {
 
       // Inspect every value written to storage
       for (final entry in mockStorage.rawMap.entries) {
-        expect(entry.value, isNot(contains(pin)),
-            reason: 'Key "${entry.key}" must not contain plaintext PIN');
+        expect(
+          entry.value,
+          isNot(contains(pin)),
+          reason: 'Key "${entry.key}" must not contain plaintext PIN',
+        );
       }
     });
 
-    test('8. Password records are encrypted at rest with AES-256-GCM + AAD', () async {
-      final masterKey = await encService.generateRandomMasterKey();
-      final entry = await PasswordEntryModel.createEncrypted(
-        id: 'pwd-101',
-        title: 'GitHub',
-        username: 'dev_octocat',
-        email: 'octo@github.com',
-        password: 'SuperSecretPassword#2026',
-        notes: 'Personal access token inside',
-        categoryId: 'developer',
-        masterKey: masterKey,
-        encryptionService: encService,
-      );
+    test(
+      '8. Password records are encrypted at rest with AES-256-GCM + AAD',
+      () async {
+        final masterKey = await encService.generateRandomMasterKey();
+        final entry = await PasswordEntryModel.createEncrypted(
+          id: 'pwd-101',
+          title: 'GitHub',
+          username: 'dev_octocat',
+          email: 'octo@github.com',
+          password: 'SuperSecretPassword#2026',
+          notes: 'Personal access token inside',
+          categoryId: 'developer',
+          masterKey: masterKey,
+          encryptionService: encService,
+        );
 
-      // Verify at rest (SQLite map) contains only ciphertext
-      final map = entry.toMap();
-      expect(map['password_enc'], isNot(contains('SuperSecretPassword#2026')));
-      expect(map['username_enc'], isNot(contains('dev_octocat')));
-      expect(map['email_enc'], isNot(contains('octo@github.com')));
+        // Verify at rest (SQLite map) contains only ciphertext
+        final map = entry.toMap();
+        expect(
+          map['password_enc'],
+          isNot(contains('SuperSecretPassword#2026')),
+        );
+        expect(map['username_enc'], isNot(contains('dev_octocat')));
+        expect(map['email_enc'], isNot(contains('octo@github.com')));
 
-      // Decrypt and verify AAD binding
-      final decrypted = await entry.decrypt(
-        masterKey: masterKey,
-        encryptionService: encService,
-      );
-      expect(decrypted.decryptedPassword, equals('SuperSecretPassword#2026'));
-      expect(decrypted.decryptedUsername, equals('dev_octocat'));
+        // Decrypt and verify AAD binding
+        final decrypted = await entry.decrypt(
+          masterKey: masterKey,
+          encryptionService: encService,
+        );
+        expect(decrypted.decryptedPassword, equals('SuperSecretPassword#2026'));
+        expect(decrypted.decryptedUsername, equals('dev_octocat'));
 
-      // If AAD is tampered (e.g. record ID changed), decryption fails
-      final tamperedEntry = entry.copyWith(id: 'pwd-swapped-id');
-      final failDecrypted = await tamperedEntry.decrypt(
-        masterKey: masterKey,
-        encryptionService: encService,
-      );
-      // Because AAD tag mismatch occurs, decrypted password returns null
-      expect(failDecrypted.decryptedPassword, isNull);
-    });
+        // If AAD is tampered (e.g. record ID changed), decryption fails
+        final tamperedEntry = entry.copyWith(id: 'pwd-swapped-id');
+        final failDecrypted = await tamperedEntry.decrypt(
+          masterKey: masterKey,
+          encryptionService: encService,
+        );
+        // Because AAD tag mismatch occurs, decrypted password returns null
+        expect(failDecrypted.decryptedPassword, isNull);
+      },
+    );
 
     test('9. Bank details are encrypted at rest with AES-256-GCM', () async {
       final masterKey = await encService.generateRandomMasterKey();
@@ -281,26 +300,40 @@ void main() {
       expect(decrypted.maskedAccountNumber, equals('•••• •••• •••• 3411'));
     });
 
-    test('10. Strict Financial Restrictions: BankAccount has NO PIN or CVV fields', () {
-      final fields = [
-        'id',
-        'bank_name',
-        'account_holder_enc',
-        'account_number_enc',
-        'ifsc_enc',
-        'branch_enc',
-        'account_type',
-        'nickname',
-        'notes_enc',
-        'is_favorite',
-        'created_at',
-        'updated_at',
-      ];
-      final forbiddenFields = ['atm_pin', 'cvv', 'card_pin', 'upi_pin', 'otp', 'netbanking_password'];
-      for (final f in forbiddenFields) {
-        expect(fields.contains(f), isFalse, reason: 'Field $f is strictly prohibited');
-      }
-    });
+    test(
+      '10. Strict Financial Restrictions: BankAccount has NO PIN or CVV fields',
+      () {
+        final fields = [
+          'id',
+          'bank_name',
+          'account_holder_enc',
+          'account_number_enc',
+          'ifsc_enc',
+          'branch_enc',
+          'account_type',
+          'nickname',
+          'notes_enc',
+          'is_favorite',
+          'created_at',
+          'updated_at',
+        ];
+        final forbiddenFields = [
+          'atm_pin',
+          'cvv',
+          'card_pin',
+          'upi_pin',
+          'otp',
+          'netbanking_password',
+        ];
+        for (final f in forbiddenFields) {
+          expect(
+            fields.contains(f),
+            isFalse,
+            reason: 'Field $f is strictly prohibited',
+          );
+        }
+      },
+    );
 
     test('11. Password Generator produces cryptographic random entropy', () {
       const config = PasswordGeneratorConfig(
@@ -362,19 +395,22 @@ void main() {
       expect(audit.overallScore, lessThan(80));
     });
 
-    test('13. Automatic locking wipes sensitive master key buffer from memory', () async {
-      final session = VaultSession();
-      final key = await encService.generateRandomMasterKey();
+    test(
+      '13. Automatic locking wipes sensitive master key buffer from memory',
+      () async {
+        final session = VaultSession();
+        final key = await encService.generateRandomMasterKey();
 
-      await session.unlock(key);
-      expect(session.isUnlocked, isTrue);
-      expect(session.masterKey, isNotNull);
+        await session.unlock(key);
+        expect(session.isUnlocked, isTrue);
+        expect(session.masterKey, isNotNull);
 
-      // Lock vault
-      session.lock();
-      expect(session.isUnlocked, isFalse);
-      expect(session.masterKey, isNull);
-    });
+        // Lock vault
+        session.lock();
+        expect(session.isUnlocked, isFalse);
+        expect(session.masterKey, isNull);
+      },
+    );
 
     test('14. Passwords never appear in application logs or toString representations', () async {
       final masterKey = await encService.generateRandomMasterKey();
@@ -391,16 +427,22 @@ void main() {
       expect(mapString, isNot(contains('TopSecretPassword99!')));
     });
 
-    test('15. Offline constraint: Zero network permissions in AndroidManifest.xml', () {
-      final manifestFile = File('android/app/src/main/AndroidManifest.xml');
-      expect(manifestFile.existsSync(), isTrue);
+    test(
+      '15. Offline constraint: Zero network permissions in AndroidManifest.xml',
+      () {
+        final manifestFile = File('android/app/src/main/AndroidManifest.xml');
+        expect(manifestFile.existsSync(), isTrue);
 
-      final content = manifestFile.readAsStringSync();
-      expect(content, contains('android.permission.INTERNET'));
-      expect(content, contains('tools:node="remove"'),
-          reason: 'INTERNET permission must be strictly removed via tools:node="remove"');
-      expect(content, contains('android.permission.ACCESS_NETWORK_STATE'));
-    });
+        final content = manifestFile.readAsStringSync();
+        expect(content, contains('android.permission.INTERNET'));
+        expect(
+          content,
+          contains('tools:node="remove"'),
+          reason: 'INTERNET permission must be strictly removed via tools:node="remove"',
+        );
+        expect(content, contains('android.permission.ACCESS_NETWORK_STATE'));
+      },
+    );
 
     test('16. Invalid encryption tags are rejected in AES-256-GCM', () async {
       final key = await encService.generateRandomMasterKey();

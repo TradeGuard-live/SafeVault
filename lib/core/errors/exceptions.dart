@@ -14,7 +14,11 @@ class VaultSecurityException extends VaultException {
 }
 
 class DecryptionFailedException extends VaultSecurityException {
-  const DecryptionFailedException([super.message = 'Failed to decrypt data. Key may be invalid or data was tampered with.', super.cause]);
+  const DecryptionFailedException([
+    super.message =
+        'Failed to decrypt data. Key may be invalid or data was tampered with.',
+    super.cause,
+  ]);
 }
 
 class InvalidPinException extends VaultSecurityException {
@@ -39,12 +43,33 @@ class BiometricException extends VaultSecurityException {
   const BiometricException(super.message, [super.cause]);
 }
 
+class BiometricEnrollmentChangedException extends BiometricException {
+  const BiometricEnrollmentChangedException([
+    super.message =
+        'Android Keystore invalidated the biometric key because device biometrics were modified in system settings. In a zero-knowledge 2-factor vault, access cannot be restored without the invalidated biometric key.',
+    super.cause,
+  ]);
+}
+
+class VaultLockedException extends VaultSecurityException {
+  const VaultLockedException([
+    super.message = 'The vault is locked. Master key is not accessible.',
+    super.cause,
+  ]);
+}
+
 class FileCorruptedException extends VaultException {
-  const FileCorruptedException([super.message = 'The requested file is corrupt or has been tampered with.', super.cause]);
+  const FileCorruptedException([
+    super.message = 'The requested file is corrupt or has been tampered with.',
+    super.cause,
+  ]);
 }
 
 class UnsupportedFormatException extends VaultException {
-  const UnsupportedFormatException([super.message = 'Unsupported file format.', super.cause]);
+  const UnsupportedFormatException([
+    super.message = 'Unsupported file format.',
+    super.cause,
+  ]);
 }
 
 class StorageException extends VaultException {

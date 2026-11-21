@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
+
 import '../../../core/security/authentication_gate.dart';
 import '../../../core/security/clipboard_security_service.dart';
 import '../../../core/security/two_factor_auth_coordinator.dart';
@@ -35,10 +37,8 @@ class DocumentShareSheet extends ConsumerStatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => DocumentShareSheet(
-        document: document,
-        extractedText: extractedText,
-      ),
+      builder: (ctx) =>
+          DocumentShareSheet(document: document, extractedText: extractedText),
     );
   }
 
@@ -62,11 +62,15 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
         params: {'action': actionTitle},
       ),
       title: 'Authorize Export',
-      reason: 'Biometric + PIN verification required before decrypting files for export: $actionTitle',
+      reason:
+          'Biometric + PIN verification required before decrypting files for export: $actionTitle',
     );
   }
 
-  Future<String> _decryptFileToSharedCache(String encryptedPath, String originalName) async {
+  Future<String> _decryptFileToSharedCache(
+    String encryptedPath,
+    String originalName,
+  ) async {
     final session = ref.read(vaultSessionProvider);
     final storage = ref.read(storageServiceProvider);
     final cacheDir = await getTemporaryDirectory();
@@ -75,7 +79,9 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
       sharedDir.createSync(recursive: true);
     }
 
-    final ext = originalName.contains('.') ? originalName.split('.').last : 'dat';
+    final ext = originalName.contains('.')
+        ? originalName.split('.').last
+        : 'dat';
     final randomName = 'export_${_uuid.v4()}.$ext';
     final exportFile = File('${sharedDir.path}/$randomName');
 
@@ -87,7 +93,10 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
     return exportFile.path;
   }
 
-  Future<String> _writeTextToSharedCache(String textContent, String baseName) async {
+  Future<String> _writeTextToSharedCache(
+    String textContent,
+    String baseName,
+  ) async {
     final cacheDir = await getTemporaryDirectory();
     final sharedDir = Directory('${cacheDir.path}/shared_exports');
     if (!sharedDir.existsSync()) {
@@ -109,7 +118,9 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
       return;
     }
 
-    final authenticated = await _authenticateForExport('Share Original Document');
+    final authenticated = await _authenticateForExport(
+      'Share Original Document',
+    );
     if (!authenticated || !mounted) return;
 
     setState(() => _isProcessing = true);
@@ -118,7 +129,10 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
       final mimeTypes = <String>[];
 
       for (final file in widget.document.files) {
-        final path = await _decryptFileToSharedCache(file.encryptedFilePath, file.originalFileName);
+        final path = await _decryptFileToSharedCache(
+          file.encryptedFilePath,
+          file.originalFileName,
+        );
         decryptedPaths.add(path);
         mimeTypes.add(file.mimeType);
       }
@@ -132,7 +146,11 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _isProcessing = false);
-        ErrorDialog.show(context, title: 'Export Failed', message: e.toString());
+        ErrorDialog.show(
+          context,
+          title: 'Export Failed',
+          message: e.toString(),
+        );
       }
     }
   }
@@ -142,7 +160,9 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
     if (text == null || text.trim().isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No extracted text available to share.')),
+          const SnackBar(
+            content: Text('No extracted text available to share.'),
+          ),
         );
       }
       return;
@@ -163,7 +183,11 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _isProcessing = false);
-        ErrorDialog.show(context, title: 'Export Failed', message: e.toString());
+        ErrorDialog.show(
+          context,
+          title: 'Export Failed',
+          message: e.toString(),
+        );
       }
     }
   }
@@ -173,20 +197,26 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
     if (extraction == null || extraction.fields.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No structured information available to share.')),
+          const SnackBar(
+            content: Text('No structured information available to share.'),
+          ),
         );
       }
       return;
     }
 
-    final authenticated = await _authenticateForExport('Share Structured Information');
+    final authenticated = await _authenticateForExport(
+      'Share Structured Information',
+    );
     if (!authenticated || !mounted) return;
 
     setState(() => _isProcessing = true);
     try {
       final buffer = StringBuffer();
       buffer.writeln('VAULT DOCUMENT SUMMARY: ${widget.document.name}');
-      buffer.writeln('Category: ${widget.document.documentType ?? widget.document.categoryId}');
+      buffer.writeln(
+        'Category: ${widget.document.documentType ?? widget.document.categoryId}',
+      );
       buffer.writeln('--------------------------------');
       for (final f in extraction.fields) {
         buffer.writeln('${f.fieldName}: ${f.plainValue ?? f.encryptedValue}');
@@ -213,7 +243,9 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
       return;
     }
 
-    final authenticated = await _authenticateForExport('Share Original & Extracted Text');
+    final authenticated = await _authenticateForExport(
+      'Share Original & Extracted Text',
+    );
     if (!authenticated || !mounted) return;
 
     setState(() => _isProcessing = true);
@@ -222,13 +254,20 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
       final mimeTypes = <String>[];
 
       for (final file in widget.document.files) {
-        final path = await _decryptFileToSharedCache(file.encryptedFilePath, file.originalFileName);
+        final path = await _decryptFileToSharedCache(
+          file.encryptedFilePath,
+          file.originalFileName,
+        );
         decryptedPaths.add(path);
         mimeTypes.add(file.mimeType);
       }
 
-      if (widget.extractedText != null && widget.extractedText!.trim().isNotEmpty) {
-        final txtPath = await _writeTextToSharedCache(widget.extractedText!, widget.document.name);
+      if (widget.extractedText != null &&
+          widget.extractedText!.trim().isNotEmpty) {
+        final txtPath = await _writeTextToSharedCache(
+          widget.extractedText!,
+          widget.document.name,
+        );
         decryptedPaths.add(txtPath);
         mimeTypes.add('text/plain');
       }
@@ -242,7 +281,11 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _isProcessing = false);
-        ErrorDialog.show(context, title: 'Export Failed', message: e.toString());
+        ErrorDialog.show(
+          context,
+          title: 'Export Failed',
+          message: e.toString(),
+        );
       }
     }
   }
@@ -258,11 +301,15 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
       return;
     }
 
-    final authenticated = await _authenticateForExport('Save Extracted Text via SAF');
+    final authenticated = await _authenticateForExport(
+      'Save Extracted Text via SAF',
+    );
     if (!authenticated || !mounted) return;
 
     // Sanitize default filename
-    final safeName = widget.document.name.replaceAll(RegExp(r'[^\w\s-]'), '_').replaceAll(' ', '_');
+    final safeName = widget.document.name
+        .replaceAll(RegExp(r'[^\w\s-]'), '_')
+        .replaceAll(' ', '_');
     final defaultFileName = '${safeName}_extracted.txt';
 
     if (mounted) Navigator.pop(context);
@@ -324,7 +371,11 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
                     color: theme.primaryAccent.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.share_rounded, color: theme.primaryAccent, size: 24),
+                  child: Icon(
+                    Icons.share_rounded,
+                    color: theme.primaryAccent,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -364,12 +415,19 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.shield_outlined, color: theme.primaryAccent, size: 18),
+                  Icon(
+                    Icons.shield_outlined,
+                    color: theme.primaryAccent,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Outgoing sharing creates a temporary decrypted file outside Vault. 2FA is required.',
-                      style: TextStyle(color: theme.textSecondary, fontSize: 11),
+                      style: TextStyle(
+                        color: theme.textSecondary,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
                 ],
@@ -402,7 +460,8 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
                 theme: theme,
                 icon: Icons.format_list_bulleted_rounded,
                 title: 'Share Selected Information',
-                subtitle: 'Share formatted structured fields as plain text message',
+                subtitle:
+                    'Share formatted structured fields as plain text message',
                 onTap: _shareStructuredFields,
               ),
               _buildOptionTile(
@@ -449,7 +508,9 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
                 : theme.surfaceElevated,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isHighlighted ? theme.primaryAccent.withValues(alpha: 0.3) : theme.cardBorder,
+              color: isHighlighted
+                  ? theme.primaryAccent.withValues(alpha: 0.3)
+                  : theme.cardBorder,
             ),
           ),
           child: Row(
@@ -464,7 +525,9 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
                 ),
                 child: Icon(
                   icon,
-                  color: isHighlighted ? theme.primaryAccent : theme.textPrimary,
+                  color: isHighlighted
+                      ? theme.primaryAccent
+                      : theme.textPrimary,
                   size: 20,
                 ),
               ),
@@ -492,7 +555,11 @@ class _DocumentShareSheetState extends ConsumerState<DocumentShareSheet> {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, color: theme.textSecondary, size: 20),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: theme.textSecondary,
+                size: 20,
+              ),
             ],
           ),
         ),

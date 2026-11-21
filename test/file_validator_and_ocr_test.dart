@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vault/core/errors/exceptions.dart';
 import 'package:vault/core/security/file_validator.dart';
@@ -20,7 +21,16 @@ void main() {
 
     test('Validates authentic JPEG signature', () {
       final jpegBytes = Uint8List.fromList([
-        0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46,
+        0xFF,
+        0xD8,
+        0xFF,
+        0xE0,
+        0x00,
+        0x10,
+        0x4A,
+        0x46,
+        0x49,
+        0x46,
       ]);
 
       final result = FileValidator.validateBytes(jpegBytes);
@@ -31,7 +41,18 @@ void main() {
 
     test('Validates authentic PNG signature', () {
       final pngBytes = Uint8List.fromList([
-        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+        0x89,
+        0x50,
+        0x4E,
+        0x47,
+        0x0D,
+        0x0A,
+        0x1A,
+        0x0A,
+        0x00,
+        0x00,
+        0x00,
+        0x0D,
       ]);
 
       final result = FileValidator.validateBytes(pngBytes);
@@ -107,4 +128,3 @@ void main() {
     });
   });
 }
-

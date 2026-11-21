@@ -1,10 +1,12 @@
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdfx/pdfx.dart' as pfx;
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:uuid/uuid.dart';
+
 import 'document_field_extractor.dart';
 import 'offline_ocr_service.dart';
 import 'smart_document_classifier.dart';
@@ -40,7 +42,7 @@ class DocumentTextExtractor {
   final Uuid _uuid = const Uuid();
 
   DocumentTextExtractor({OfflineOcrService? ocrService})
-      : _ocrService = ocrService ?? OfflineOcrService();
+    : _ocrService = ocrService ?? OfflineOcrService();
 
   /// Automatically processes imported or scanned document bytes.
   Future<ExtractionPipelineResult> processDocumentBytes({
@@ -50,7 +52,8 @@ class DocumentTextExtractor {
     String? password,
     String language = 'eng',
   }) async {
-    final isPdf = mimeType.contains('pdf') || fileName.toLowerCase().endsWith('.pdf');
+    final isPdf =
+        mimeType.contains('pdf') || fileName.toLowerCase().endsWith('.pdf');
 
     if (isPdf) {
       return await _processPdf(
@@ -108,7 +111,10 @@ class DocumentTextExtractor {
         for (int i = 0; i < pageCount; i++) {
           final pageNum = i + 1;
           try {
-            final pageText = extractor.extractText(startPageIndex: i, endPageIndex: i);
+            final pageText = extractor.extractText(
+              startPageIndex: i,
+              endPageIndex: i,
+            );
             if (pageText.trim().length > 15) {
               pageTexts[pageNum] = pageText.trim();
               hasSearchable = true;
@@ -195,10 +201,13 @@ class DocumentTextExtractor {
     final engine = hasSearchable && usedOcr
         ? 'Hybrid (Searchable PDF + Tesseract OCR)'
         : hasSearchable
-            ? 'Searchable PDF Engine'
-            : 'Tesseract OCR (Offline)';
+        ? 'Searchable PDF Engine'
+        : 'Tesseract OCR (Offline)';
 
-    final classification = SmartDocumentClassifier.classify(fullText, originalFileName: fileName);
+    final classification = SmartDocumentClassifier.classify(
+      fullText,
+      originalFileName: fileName,
+    );
     final fields = DocumentFieldExtractor.extractFields(
       fullText: fullText,
       documentType: classification.documentType,
@@ -256,7 +265,10 @@ class DocumentTextExtractor {
       }
     }
 
-    final classification = SmartDocumentClassifier.classify(ocrText, originalFileName: fileName);
+    final classification = SmartDocumentClassifier.classify(
+      ocrText,
+      originalFileName: fileName,
+    );
     final fields = DocumentFieldExtractor.extractFields(
       fullText: ocrText,
       documentType: classification.documentType,
@@ -303,7 +315,9 @@ class DocumentTextExtractor {
     if (fields.isNotEmpty) {
       buffer.writeln('STRUCTURED INFORMATION');
       for (final field in fields) {
-        buffer.writeln('${field.fieldName}: ${field.value} (Confidence: ${field.confidenceCategory})');
+        buffer.writeln(
+          '${field.fieldName}: ${field.value} (Confidence: ${field.confidenceCategory})',
+        );
       }
       buffer.writeln();
     }
@@ -311,13 +325,17 @@ class DocumentTextExtractor {
     buffer.writeln('--------------------------------');
     buffer.writeln('FULL EXTRACTED TEXT');
     buffer.writeln('--------------------------------');
-    buffer.writeln(fullText.isEmpty ? '[No text detected in document]' : fullText);
+    buffer.writeln(
+      fullText.isEmpty ? '[No text detected in document]' : fullText,
+    );
     buffer.writeln();
 
     buffer.writeln('--------------------------------');
     buffer.writeln('EXTRACTION STATUS');
     buffer.writeln('--------------------------------');
-    final unverifiedCount = fields.where((f) => f.confidenceCategory != 'High').length;
+    final unverifiedCount = fields
+        .where((f) => f.confidenceCategory != 'High')
+        .length;
     buffer.writeln('Fields requiring verification: $unverifiedCount');
     buffer.writeln('Extraction engine: $engine');
     buffer.writeln('Language: $language');

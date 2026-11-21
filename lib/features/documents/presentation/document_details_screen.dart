@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/security/authentication_gate.dart';
 import '../../../core/security/clipboard_security_service.dart';
 import '../../../core/security/file_validator.dart';
@@ -35,7 +38,8 @@ class DocumentDetailsScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<DocumentDetailsScreen> createState() => _DocumentDetailsScreenState();
+  ConsumerState<DocumentDetailsScreen> createState() =>
+      _DocumentDetailsScreenState();
 }
 
 class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
@@ -46,6 +50,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
   List<ActivityModel> _activities = [];
   bool _isLoading = true;
   bool _isReprocessing = false;
+  Timer? _visibilityTimer;
   bool _revealDocumentNumber = false;
   Uint8List? _firstPagePreviewBytes;
 
@@ -67,7 +72,15 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
   }
 
   @override
+  void deactivate() {
+    _visibilityTimer?.cancel();
+    _revealDocumentNumber = false;
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
+    _visibilityTimer?.cancel();
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -82,11 +95,19 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
 
     try {
       final repo = ref.read(documentRepositoryProvider);
-      final doc = await repo.getDocumentById(widget.documentId, session.masterKey!);
-      final extraction = await repo.getExtractionForDocument(widget.documentId, session.masterKey!);
+      final doc = await repo.getDocumentById(
+        widget.documentId,
+        session.masterKey!,
+      );
+      final extraction = await repo.getExtractionForDocument(
+        widget.documentId,
+        session.masterKey!,
+      );
 
       final activityRepo = ActivityRepository();
-      final acts = await activityRepo.getActivities(documentId: widget.documentId);
+      final acts = await activityRepo.getActivities(
+        documentId: widget.documentId,
+      );
 
       if (mounted) {
         setState(() {
@@ -117,13 +138,25 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
         if (pending != null && mounted) {
           if (pending.type == VaultActionType.revealDocumentField) {
             setState(() => _revealDocumentNumber = true);
+            _visibilityTimer?.cancel();
+            _visibilityTimer = Timer(const Duration(seconds: 60), () {
+              if (mounted) setState(() => _revealDocumentNumber = false);
+            });
+          } else if (pending.type == VaultActionType.copyAllFields) {
+            _copyAllFields();
+          } else if (pending.type == VaultActionType.viewExtractedText) {
+            _copyFullText();
           }
         }
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ErrorDialog.show(context, title: 'Error', message: 'Failed to decrypt document details.');
+        ErrorDialog.show(
+          context,
+          title: 'Error',
+          message: 'Failed to decrypt document details.',
+        );
       }
     }
   }
@@ -147,13 +180,22 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
     );
     if (verified && mounted) {
       setState(() => _revealDocumentNumber = true);
+      _visibilityTimer?.cancel();
+      _visibilityTimer = Timer(const Duration(seconds: 60), () {
+        if (mounted) {
+          setState(() => _revealDocumentNumber = false);
+        }
+      });
     }
   }
 
   Future<void> _toggleFavorite() async {
     if (_document == null) return;
     final repo = ref.read(documentRepositoryProvider);
-    final newStatus = await repo.toggleFavorite(_document!.id, _document!.isFavorite);
+    final newStatus = await repo.toggleFavorite(
+      _document!.id,
+      _document!.isFavorite,
+    );
     setState(() {
       _document = _document!.copyWith(isFavorite: newStatus);
     });
@@ -192,14 +234,17 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
       createdAt: DateTime.now(),
     );
 
-    await repo.addDocumentPageFile(documentId: widget.documentId, file: newFile);
+    await repo.addDocumentPageFile(
+      documentId: widget.documentId,
+      file: newFile,
+    );
     ref.invalidate(activeDocumentsProvider);
     _loadDocument();
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Page added successfully.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Page added successfully.')));
     }
   }
 
@@ -207,12 +252,28 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
     final confirmed = await ErrorDialog.confirm(
       context,
       title: 'Move to Trash?',
-      message: 'This document will be moved to Trash. You can restore it anytime.',
+      message:
+          'This document will be moved to Trash. You can restore it anytime.',
       confirmLabel: 'Move to Trash',
       isDestructive: true,
     );
 
     if (confirmed && mounted) {
+      final gate = ref.read(authenticationGateProvider);
+      final verified = await gate.authenticateForAction(
+        context,
+        action: PendingVaultAction(
+          type: VaultActionType.deleteDocument,
+          targetId: widget.documentId,
+          targetName: _document?.name ?? 'Document',
+          returnRoute: '/dashboard',
+        ),
+        title: 'Authorize Move to Trash',
+        reason:
+            'Biometric + PIN authorization required to delete "${_document?.name}".',
+      );
+      if (!verified || !mounted) return;
+
       final repo = ref.read(documentRepositoryProvider);
       await repo.moveToTrash(widget.documentId);
       ref.invalidate(activeDocumentsProvider);
@@ -231,7 +292,9 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
     final selectedLang = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Theme.of(context).cardColor,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
@@ -329,14 +392,20 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Reprocessed successfully via ${result.extractionEngine}.'),
+            content: Text(
+              'Reprocessed successfully via ${result.extractionEngine}.',
+            ),
             backgroundColor: AppColors.primaryTeal,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ErrorDialog.show(context, title: 'Reprocessing Failed', message: e.toString());
+        ErrorDialog.show(
+          context,
+          title: 'Reprocessing Failed',
+          message: e.toString(),
+        );
       }
     } finally {
       if (mounted) setState(() => _isReprocessing = false);
@@ -344,7 +413,9 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
   }
 
   Future<void> _editField(ExtractedFieldModel field) async {
-    final controller = TextEditingController(text: field.plainValue ?? field.encryptedValue);
+    final controller = TextEditingController(
+      text: field.plainValue ?? field.encryptedValue,
+    );
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -358,8 +429,14 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Save'),
+          ),
         ],
       ),
     );
@@ -388,6 +465,20 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
     final fields = _extraction?.fields ?? [];
     if (fields.isEmpty) return;
 
+    final gate = ref.read(authenticationGateProvider);
+    final verified = await gate.authenticateForAction(
+      context,
+      action: PendingVaultAction(
+        type: VaultActionType.copyAllFields,
+        targetId: widget.documentId,
+        targetName: _document?.name ?? 'Document',
+        returnRoute: '/document/${widget.documentId}',
+      ),
+      title: 'Authorize Copy All Fields',
+      reason: 'Biometric + PIN authorization required to copy all structured fields to clipboard.',
+    );
+    if (!verified || !mounted) return;
+
     final buffer = StringBuffer();
     buffer.writeln('${_document?.name ?? "Document"} Summary:');
     for (final f in fields) {
@@ -415,7 +506,8 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
         returnRoute: '/document/${widget.documentId}',
       ),
       title: 'Copy Full Text',
-      reason: 'Biometric + PIN authorization required to copy full extracted text',
+      reason:
+          'Biometric + PIN authorization required to copy full extracted text',
     );
     if (!verified || !mounted) return;
 
@@ -446,7 +538,9 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
       return Scaffold(
         backgroundColor: colors.background,
         appBar: AppBar(title: const Text('Document')),
-        body: Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
+        body: Center(
+          child: CircularProgressIndicator(color: colors.primaryAccent),
+        ),
       );
     }
 
@@ -463,7 +557,10 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        title: Text(doc.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+        title: Text(
+          doc.name,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.share_rounded),
@@ -487,10 +584,8 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Edit Metadata',
-            onPressed: () => context.push(
-              '/add-document',
-              extra: {'editDocument': doc},
-            ),
+            onPressed: () =>
+                context.push('/add-document', extra: {'editDocument': doc}),
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline_rounded),
@@ -506,8 +601,14 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
           isScrollable: true,
           tabs: const [
             Tab(icon: Icon(Icons.preview_rounded, size: 18), text: 'Preview'),
-            Tab(icon: Icon(Icons.auto_awesome_rounded, size: 18), text: 'Extracted Info'),
-            Tab(icon: Icon(Icons.text_snippet_rounded, size: 18), text: 'Full Text'),
+            Tab(
+              icon: Icon(Icons.auto_awesome_rounded, size: 18),
+              text: 'Extracted Info',
+            ),
+            Tab(
+              icon: Icon(Icons.text_snippet_rounded, size: 18),
+              text: 'Full Text',
+            ),
             Tab(icon: Icon(Icons.history_rounded, size: 18), text: 'Activity'),
           ],
         ),
@@ -628,14 +729,21 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
               const Spacer(),
               if (doc.documentType != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: colors.primaryAccent.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     doc.documentType!,
-                    style: TextStyle(fontSize: 11, color: colors.primaryAccent, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: colors.primaryAccent,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
             ],
@@ -652,10 +760,22 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
               onReveal: _toggleRevealDocumentNumber,
               isRevealed: _revealDocumentNumber,
             ),
-          if (doc.ownerName != null) _buildMetaRow('Owner Name', doc.ownerName!, colors),
-          if (doc.issuingAuthority != null) _buildMetaRow('Authority', doc.issuingAuthority!, colors),
-          if (doc.issueDate != null) _buildMetaRow('Issue Date', DateFormatter.formatDisplay(doc.issueDate!), colors),
-          if (doc.expiryDate != null) _buildMetaRow('Expiry Date', DateFormatter.formatDisplay(doc.expiryDate!), colors),
+          if (doc.ownerName != null)
+            _buildMetaRow('Owner Name', doc.ownerName!, colors),
+          if (doc.issuingAuthority != null)
+            _buildMetaRow('Authority', doc.issuingAuthority!, colors),
+          if (doc.issueDate != null)
+            _buildMetaRow(
+              'Issue Date',
+              DateFormatter.formatDisplay(doc.issueDate!),
+              colors,
+            ),
+          if (doc.expiryDate != null)
+            _buildMetaRow(
+              'Expiry Date',
+              DateFormatter.formatDisplay(doc.expiryDate!),
+              colors,
+            ),
           if (doc.notes != null) _buildMetaRow('Notes', doc.notes!, colors),
         ],
       ),
@@ -698,7 +818,9 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
                 if (isSensitive && onReveal != null)
                   IconButton(
                     icon: Icon(
-                      isRevealed ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      isRevealed
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
                       size: 18,
                       color: colors.primaryAccent,
                     ),
@@ -708,7 +830,11 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
                   ),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: Icon(Icons.copy_rounded, size: 16, color: colors.textSecondary),
+                  icon: Icon(
+                    Icons.copy_rounded,
+                    size: 16,
+                    color: colors.textSecondary,
+                  ),
                   onPressed: () => _copyField(label, value),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -730,7 +856,11 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
           children: [
             Text(
               'Attached Files (${doc.files.length})',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: colors.textPrimary),
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+              ),
             ),
             TextButton.icon(
               onPressed: _addPage,
@@ -752,8 +882,12 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
             child: Row(
               children: [
                 Icon(
-                  file.mimeType.contains('pdf') ? Icons.picture_as_pdf_rounded : Icons.image_rounded,
-                  color: file.mimeType.contains('pdf') ? Colors.redAccent : colors.primaryAccent,
+                  file.mimeType.contains('pdf')
+                      ? Icons.picture_as_pdf_rounded
+                      : Icons.image_rounded,
+                  color: file.mimeType.contains('pdf')
+                      ? Colors.redAccent
+                      : colors.primaryAccent,
                   size: 28,
                 ),
                 const SizedBox(width: 12),
@@ -763,20 +897,30 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
                     children: [
                       Text(
                         file.originalFileName,
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: colors.textPrimary,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
                         'Page ${file.pageNumber} • ${(file.fileSize / 1024).toStringAsFixed(1)} KB',
-                        style: TextStyle(fontSize: 11, color: colors.textSecondary),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.visibility_rounded, color: colors.primaryAccent),
+                  icon: Icon(
+                    Icons.visibility_rounded,
+                    color: colors.primaryAccent,
+                  ),
                   onPressed: () => _openViewer(file),
                 ),
               ],
@@ -814,7 +958,11 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
                       color: colors.primaryAccent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.auto_awesome_rounded, color: colors.primaryAccent, size: 20),
+                    child: Icon(
+                      Icons.auto_awesome_rounded,
+                      color: colors.primaryAccent,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -822,12 +970,20 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _extraction?.extractionEngine ?? 'Offline Extraction Engine',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: colors.textPrimary),
+                          _extraction?.extractionEngine ??
+                              'Offline Extraction Engine',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: colors.textPrimary,
+                          ),
                         ),
                         Text(
                           'Language: ${_extraction?.language ?? "eng"} • Version: ${_extraction?.version ?? 1}',
-                          style: TextStyle(color: colors.textSecondary, fontSize: 11),
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 11,
+                          ),
                         ),
                       ],
                     ),
@@ -841,10 +997,18 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
                     child: OutlinedButton.icon(
                       onPressed: _isReprocessing ? null : _reprocessDocument,
                       icon: _isReprocessing
-                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : const Icon(Icons.refresh_rounded, size: 16),
-                      label: Text(_isReprocessing ? 'Processing...' : 'Re-run OCR'),
-                      style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 10)),
+                      label: Text(
+                        _isReprocessing ? 'Processing...' : 'Re-run OCR',
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -853,7 +1017,9 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
                       onPressed: fields.isEmpty
                           ? null
                           : () async {
-                              final changed = await context.push<bool>('/extraction-review/${widget.documentId}');
+                              final changed = await context.push<bool>(
+                                '/extraction-review/${widget.documentId}',
+                              );
                               if (changed == true) {
                                 _loadDocument();
                               }
@@ -886,7 +1052,11 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
             alignment: Alignment.center,
             child: Column(
               children: [
-                Icon(Icons.text_fields_rounded, size: 48, color: colors.textSecondary.withValues(alpha: 0.5)),
+                Icon(
+                  Icons.text_fields_rounded,
+                  size: 48,
+                  color: colors.textSecondary.withValues(alpha: 0.5),
+                ),
                 const SizedBox(height: 12),
                 Text(
                   'No structured fields recognized yet.',
@@ -907,17 +1077,30 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
             children: [
               Text(
                 'Saved Fields (${fields.where((f) => f.isSelected).length} of ${fields.length})',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: colors.textPrimary),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: colors.textPrimary,
+                ),
               ),
               TextButton.icon(
                 onPressed: () async {
-                  final changed = await context.push<bool>('/extraction-review/${widget.documentId}');
+                  final changed = await context.push<bool>(
+                    '/extraction-review/${widget.documentId}',
+                  );
                   if (changed == true) {
                     _loadDocument();
                   }
                 },
-                icon: Icon(Icons.tune_rounded, size: 14, color: colors.primaryAccent),
-                label: Text('Edit / Select', style: TextStyle(color: colors.primaryAccent, fontSize: 12)),
+                icon: Icon(
+                  Icons.tune_rounded,
+                  size: 14,
+                  color: colors.primaryAccent,
+                ),
+                label: Text(
+                  'Edit / Select',
+                  style: TextStyle(color: colors.primaryAccent, fontSize: 12),
+                ),
               ),
             ],
           ),
@@ -929,7 +1112,9 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
             Center(
               child: TextButton(
                 onPressed: () async {
-                  final changed = await context.push<bool>('/extraction-review/${widget.documentId}');
+                  final changed = await context.push<bool>(
+                    '/extraction-review/${widget.documentId}',
+                  );
                   if (changed == true) {
                     _loadDocument();
                   }
@@ -946,9 +1131,13 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
     );
   }
 
-  Widget _buildExtractedFieldCard(ExtractedFieldModel field, AppThemeColors colors) {
+  Widget _buildExtractedFieldCard(
+    ExtractedFieldModel field,
+    AppThemeColors colors,
+  ) {
     final value = field.plainValue ?? field.encryptedValue;
-    final isMasked = field.fieldName.toLowerCase().contains('aadhaar') ||
+    final isMasked =
+        field.fieldName.toLowerCase().contains('aadhaar') ||
         field.fieldName.toLowerCase().contains('pan') ||
         field.fieldName.toLowerCase().contains('number');
 
@@ -978,7 +1167,11 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
             children: [
               Text(
                 field.fieldName,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.textSecondary),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textSecondary,
+                ),
               ),
               const Spacer(),
               Container(
@@ -989,7 +1182,11 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
                 ),
                 child: Text(
                   '${field.confidenceCategory} (${(field.confidence * 100).toInt()}%)',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: badgeColor),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: badgeColor,
+                  ),
                 ),
               ),
               const SizedBox(width: 6),
@@ -1009,13 +1206,19 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
               Expanded(
                 child: SelectableText(
                   displayValue,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: colors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
+                  ),
                 ),
               ),
               if (isMasked)
                 IconButton(
                   icon: Icon(
-                    _revealDocumentNumber ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    _revealDocumentNumber
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
                     size: 18,
                     color: colors.primaryAccent,
                   ),
@@ -1025,7 +1228,11 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
                 ),
               const SizedBox(width: 10),
               IconButton(
-                icon: Icon(Icons.copy_rounded, size: 18, color: colors.primaryAccent),
+                icon: Icon(
+                  Icons.copy_rounded,
+                  size: 18,
+                  color: colors.primaryAccent,
+                ),
                 onPressed: () => _copyField(field.fieldName, value),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
@@ -1048,9 +1255,16 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.text_snippet_outlined, size: 54, color: colors.textSecondary.withValues(alpha: 0.4)),
+            Icon(
+              Icons.text_snippet_outlined,
+              size: 54,
+              color: colors.textSecondary.withValues(alpha: 0.4),
+            ),
             const SizedBox(height: 12),
-            Text('No extracted text available.', style: TextStyle(color: colors.textSecondary)),
+            Text(
+              'No extracted text available.',
+              style: TextStyle(color: colors.textSecondary),
+            ),
             const SizedBox(height: 10),
             ElevatedButton.icon(
               onPressed: _reprocessDocument,
@@ -1088,7 +1302,9 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
                         )
                       : null,
                   contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 onChanged: (val) => setState(() => _searchQuery = val.trim()),
               ),
@@ -1098,19 +1314,32 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
                   IconButton(
                     icon: const Icon(Icons.text_decrease_rounded, size: 18),
                     tooltip: 'Decrease font size',
-                    onPressed: _fontSize > 10 ? () => setState(() => _fontSize -= 2) : null,
+                    onPressed: _fontSize > 10
+                        ? () => setState(() => _fontSize -= 2)
+                        : null,
                   ),
-                  Text('${_fontSize.toInt()}pt', style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+                  Text(
+                    '${_fontSize.toInt()}pt',
+                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.text_increase_rounded, size: 18),
                     tooltip: 'Increase font size',
-                    onPressed: _fontSize < 24 ? () => setState(() => _fontSize += 2) : null,
+                    onPressed: _fontSize < 24
+                        ? () => setState(() => _fontSize += 2)
+                        : null,
                   ),
                   const Spacer(),
                   IconButton(
-                    icon: Icon(_isTextWrapped ? Icons.wrap_text_rounded : Icons.format_align_left_rounded, size: 18),
+                    icon: Icon(
+                      _isTextWrapped
+                          ? Icons.wrap_text_rounded
+                          : Icons.format_align_left_rounded,
+                      size: 18,
+                    ),
                     tooltip: _isTextWrapped ? 'Wrap text' : 'Unwrap text',
-                    onPressed: () => setState(() => _isTextWrapped = !_isTextWrapped),
+                    onPressed: () =>
+                        setState(() => _isTextWrapped = !_isTextWrapped),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton.icon(
@@ -1120,7 +1349,10 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
                     style: ElevatedButton.styleFrom(
                       backgroundColor: colors.primaryAccent,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                     ),
                   ),
                 ],
@@ -1145,7 +1377,11 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
     );
   }
 
-  Widget _buildHighlightedText(String text, String query, AppThemeColors colors) {
+  Widget _buildHighlightedText(
+    String text,
+    String query,
+    AppThemeColors colors,
+  ) {
     if (query.isEmpty) {
       return SelectableText(
         text,
@@ -1202,7 +1438,10 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
   Widget _buildActivityTab(AppThemeColors colors) {
     if (_activities.isEmpty) {
       return Center(
-        child: Text('No activity records for this document.', style: TextStyle(color: colors.textSecondary)),
+        child: Text(
+          'No activity records for this document.',
+          style: TextStyle(color: colors.textSecondary),
+        ),
       );
     }
 
@@ -1221,7 +1460,11 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
                 color: colors.primaryAccent.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.check_circle_outline_rounded, color: colors.primaryAccent, size: 16),
+              child: Icon(
+                Icons.check_circle_outline_rounded,
+                color: colors.primaryAccent,
+                size: 16,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1230,17 +1473,30 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
                 children: [
                   Text(
                     act.activityType.replaceAll('_', ' '),
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: colors.textPrimary),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: colors.textPrimary,
+                    ),
                   ),
                   if (act.details != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
-                      child: Text(act.details!, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+                      child: Text(
+                        act.details!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                        ),
+                      ),
                     ),
                   const SizedBox(height: 4),
                   Text(
                     DateFormatter.formatDateTimeDisplay(act.timestamp),
-                    style: TextStyle(fontSize: 10, color: colors.textSecondary.withValues(alpha: 0.7)),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: colors.textSecondary.withValues(alpha: 0.7),
+                    ),
                   ),
                 ],
               ),

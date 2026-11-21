@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vault/core/errors/exceptions.dart';
 import 'package:vault/core/security/encryption_service.dart';
@@ -17,7 +18,9 @@ void main() {
 
     test('Encrypt and decrypt roundtrip matches original plaintext', () async {
       final key = await encryptionService.generateRandomMasterKey();
-      final originalData = utf8.encode('Top Secret Vault Document Contents 2026');
+      final originalData = utf8.encode(
+        'Top Secret Vault Document Contents 2026',
+      );
       final plainBytes = Uint8List.fromList(originalData);
 
       final encrypted = await encryptionService.encryptBytes(plainBytes, key);
@@ -26,7 +29,10 @@ void main() {
 
       final decrypted = await encryptionService.decryptBytes(encrypted, key);
       expect(decrypted, equals(plainBytes));
-      expect(utf8.decode(decrypted), equals('Top Secret Vault Document Contents 2026'));
+      expect(
+        utf8.decode(decrypted),
+        equals('Top Secret Vault Document Contents 2026'),
+      );
     });
 
     test('Decryption fails when wrong key is provided', () async {
@@ -44,7 +50,9 @@ void main() {
 
     test('Decryption fails with FileCorruptedException or DecryptionFailedException when payload is tampered', () async {
       final key = await encryptionService.generateRandomMasterKey();
-      final plainBytes = Uint8List.fromList(utf8.encode('Protected Information'));
+      final plainBytes = Uint8List.fromList(
+        utf8.encode('Protected Information'),
+      );
 
       final encrypted = await encryptionService.encryptBytes(plainBytes, key);
       final tampered = Uint8List.fromList(encrypted);
@@ -75,8 +83,14 @@ void main() {
       final key = await encryptionService.generateRandomMasterKey();
       const rawString = 'PAN: ABCDE1234F, Aadhaar: 1234 5678 9012';
 
-      final encryptedBase64 = await encryptionService.encryptString(rawString, key);
-      final decrypted = await encryptionService.decryptString(encryptedBase64, key);
+      final encryptedBase64 = await encryptionService.encryptString(
+        rawString,
+        key,
+      );
+      final decrypted = await encryptionService.decryptString(
+        encryptedBase64,
+        key,
+      );
 
       expect(decrypted, equals(rawString));
     });
@@ -94,7 +108,10 @@ void main() {
       expect(pinService.isValidPinFormat('000000'), isTrue);
       expect(pinService.isValidPinFormat('987654'), isTrue);
 
-      expect(pinService.isValidPinFormat('1234'), isFalse); // 4 digits no longer allowed
+      expect(
+        pinService.isValidPinFormat('1234'),
+        isFalse,
+      ); // 4 digits no longer allowed
       expect(pinService.isValidPinFormat('12345'), isFalse); // 5 digits
       expect(pinService.isValidPinFormat('1234567'), isFalse); // 7 digits
       expect(pinService.isValidPinFormat('12a456'), isFalse); // alphanumeric
@@ -133,4 +150,3 @@ void main() {
     });
   });
 }
-

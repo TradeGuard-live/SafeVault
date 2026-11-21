@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../authentication/presentation/auth_providers.dart';
@@ -17,17 +18,15 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: colors.background,
-      appBar: AppBar(
-        title: const Text('Security Audit'),
-      ),
+      appBar: AppBar(title: const Text('Security Audit')),
       body: auditAsync.when(
         data: (audit) {
           final score = audit.overallScore;
           final scoreColor = score >= 80
               ? colors.success
               : score >= 50
-                  ? colors.warning
-                  : colors.error;
+              ? colors.warning
+              : colors.error;
 
           return ListView(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
@@ -38,7 +37,10 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: colors.cardBackground,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: scoreColor.withOpacity(0.35), width: 1.5),
+                  border: Border.all(
+                    color: scoreColor.withOpacity(0.35),
+                    width: 1.5,
+                  ),
                 ),
                 child: Column(
                   children: [
@@ -48,7 +50,10 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
                       decoration: BoxDecoration(
                         color: scoreColor.withOpacity(0.12),
                         shape: BoxShape.circle,
-                        border: Border.all(color: scoreColor.withOpacity(0.4), width: 3),
+                        border: Border.all(
+                          color: scoreColor.withOpacity(0.4),
+                          width: 3,
+                        ),
                       ),
                       child: Center(
                         child: Text(
@@ -66,9 +71,12 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
                       score >= 80
                           ? 'Vault Health: Excellent'
                           : score >= 50
-                              ? 'Vault Health: Needs Attention'
-                              : 'Vault Health: Vulnerable',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                          ? 'Vault Health: Needs Attention'
+                          : 'Vault Health: Vulnerable',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -132,18 +140,23 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: colors.cardBackground,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: colors.cardBorder,
-                    ),
+                    border: Border.all(color: colors.cardBorder),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.verified_user_rounded, color: colors.success, size: 28),
+                      Icon(
+                        Icons.verified_user_rounded,
+                        color: colors.success,
+                        size: 28,
+                      ),
                       const SizedBox(width: 14),
                       const Expanded(
                         child: Text(
                           'No security issues found. All your passwords are long, strong, and unique.',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
@@ -151,7 +164,12 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
                 )
               else
                 ...audit.issues.map((issue) {
-                  return _buildIssueCard(context, issue, passwordsAsync.valueOrNull ?? [], colors);
+                  return _buildIssueCard(
+                    context,
+                    issue,
+                    passwordsAsync.valueOrNull ?? [],
+                    colors,
+                  );
                 }),
 
               const SizedBox(height: 24),
@@ -162,15 +180,16 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: colors.cardBackground,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: colors.cardBorder,
-                  ),
+                  border: Border.all(color: colors.cardBorder),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.privacy_tip_outlined,
-                        color: colors.primaryAccent, size: 20),
+                    Icon(
+                      Icons.privacy_tip_outlined,
+                      color: colors.primaryAccent,
+                      size: 20,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -209,9 +228,7 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: colors.cardBackground,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: colors.cardBorder,
-        ),
+        border: Border.all(color: colors.cardBorder),
       ),
       child: Column(
         children: [
@@ -219,15 +236,16 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
           const SizedBox(height: 6),
           Text(
             count,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: color),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
           ),
           const SizedBox(height: 2),
           Text(
             title,
-            style: TextStyle(
-              fontSize: 11,
-              color: colors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 11, color: colors.textSecondary),
           ),
         ],
       ),
@@ -244,8 +262,8 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
     final color = isCritical
         ? colors.error
         : issue.severity == SecurityIssueSeverity.warning
-            ? colors.warning
-            : colors.primaryAccent;
+        ? colors.warning
+        : colors.primaryAccent;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -269,7 +287,10 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
               Expanded(
                 child: Text(
                   issue.title,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14.5,
+                  ),
                 ),
               ),
             ],
@@ -294,7 +315,10 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
               );
               final title = p?.title ?? 'Account';
               return ActionChip(
-                label: Text('Fix: $title', style: const TextStyle(fontSize: 11)),
+                label: Text(
+                  'Fix: $title',
+                  style: const TextStyle(fontSize: 11),
+                ),
                 avatar: const Icon(Icons.edit, size: 12),
                 onPressed: () => context.push('/edit-password/$id'),
               );
@@ -305,4 +329,3 @@ class PasswordSecurityDashboardScreen extends ConsumerWidget {
     );
   }
 }
-

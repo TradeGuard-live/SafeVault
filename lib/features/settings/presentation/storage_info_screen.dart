@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/storage/encrypted_file_storage.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
@@ -52,10 +53,15 @@ class _StorageInfoScreenState extends ConsumerState<StorageInfoScreen> {
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text('Storage Information', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          'Storage Information',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: colors.primaryAccent))
+          ? Center(
+              child: CircularProgressIndicator(color: colors.primaryAccent),
+            )
           : ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               children: [
@@ -75,7 +81,11 @@ class _StorageInfoScreenState extends ConsumerState<StorageInfoScreen> {
                   ),
                   child: Column(
                     children: [
-                      const Icon(Icons.pie_chart_outline_rounded, color: Colors.white, size: 40),
+                      const Icon(
+                        Icons.pie_chart_outline_rounded,
+                        color: Colors.white,
+                        size: 40,
+                      ),
                       const SizedBox(height: 12),
                       Text(
                         _breakdown?.formattedTotal ?? '0 B',
@@ -101,7 +111,8 @@ class _StorageInfoScreenState extends ConsumerState<StorageInfoScreen> {
                     icon: Icons.description_outlined,
                     color: colors.primaryAccent,
                     title: 'Encrypted Documents',
-                    subtitle: '${_breakdown?.encryptedFilesCount ?? 0} files in private storage',
+                    subtitle:
+                        '${_breakdown?.encryptedFilesCount ?? 0} files in private storage',
                     value: _breakdown?.formattedDocuments ?? '0 B',
                   ),
                   Divider(height: 1, color: colors.cardBorder),
@@ -133,7 +144,11 @@ class _StorageInfoScreenState extends ConsumerState<StorageInfoScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.security_rounded, color: colors.primaryAccent, size: 24),
+                      Icon(
+                        Icons.security_rounded,
+                        color: colors.primaryAccent,
+                        size: 24,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -157,7 +172,9 @@ class _StorageInfoScreenState extends ConsumerState<StorageInfoScreen> {
                   label: const Text('Purge Ephemeral Decryption Cache'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: colors.primaryAccent,
-                    side: BorderSide(color: colors.primaryAccent.withOpacity(0.5)),
+                    side: BorderSide(
+                      color: colors.primaryAccent.withOpacity(0.5),
+                    ),
                     minimumSize: const Size.fromHeight(50),
                   ),
                 ),
@@ -197,8 +214,18 @@ class _StorageInfoScreenState extends ConsumerState<StorageInfoScreen> {
         ),
         child: Icon(icon, color: color, size: 22),
       ),
-      title: Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: colors.textPrimary)),
-      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: colors.textSecondary)),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          color: colors.textPrimary,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(fontSize: 12, color: colors.textSecondary),
+      ),
       trailing: Text(
         value,
         style: TextStyle(
@@ -210,4 +237,3 @@ class _StorageInfoScreenState extends ConsumerState<StorageInfoScreen> {
     );
   }
 }
-

@@ -42,7 +42,9 @@ class PasswordGenerator {
 
   static String generate(PasswordGeneratorConfig config) {
     if (config.length < 12 || config.length > 64) {
-      throw ArgumentError('Password length must be between 12 and 64 characters.');
+      throw ArgumentError(
+        'Password length must be between 12 and 64 characters.',
+      );
     }
 
     final random = Random.secure();
@@ -51,11 +53,15 @@ class PasswordGenerator {
 
     if (config.includeUppercase) {
       pools.add(uppercaseChars);
-      guaranteedChars.add(uppercaseChars[random.nextInt(uppercaseChars.length)]);
+      guaranteedChars.add(
+        uppercaseChars[random.nextInt(uppercaseChars.length)],
+      );
     }
     if (config.includeLowercase) {
       pools.add(lowercaseChars);
-      guaranteedChars.add(lowercaseChars[random.nextInt(lowercaseChars.length)]);
+      guaranteedChars.add(
+        lowercaseChars[random.nextInt(lowercaseChars.length)],
+      );
     }
     if (config.includeNumbers) {
       pools.add(numberChars);
@@ -70,8 +76,12 @@ class PasswordGenerator {
       // Fallback to lowercase + uppercase if all disabled
       pools.add(lowercaseChars);
       pools.add(uppercaseChars);
-      guaranteedChars.add(lowercaseChars[random.nextInt(lowercaseChars.length)]);
-      guaranteedChars.add(uppercaseChars[random.nextInt(uppercaseChars.length)]);
+      guaranteedChars.add(
+        lowercaseChars[random.nextInt(lowercaseChars.length)],
+      );
+      guaranteedChars.add(
+        uppercaseChars[random.nextInt(uppercaseChars.length)],
+      );
     }
 
     final combinedPool = pools.join();
@@ -93,4 +103,3 @@ class PasswordGenerator {
     return result.join();
   }
 }
-

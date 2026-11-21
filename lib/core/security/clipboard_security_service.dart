@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../theme/app_colors.dart';
 
 /// Service providing ephemeral clipboard protection for sensitive credentials
@@ -38,7 +40,11 @@ class ClipboardSecurityService {
         SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.timer_outlined, color: AppColors.primaryTeal, size: 18),
+              const Icon(
+                Icons.timer_outlined,
+                color: AppColors.primaryTeal,
+                size: 18,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -81,4 +87,3 @@ class ClipboardSecurityService {
     }
   }
 }
-

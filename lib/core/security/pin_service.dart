@@ -1,5 +1,7 @@
 import 'dart:async';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import '../constants/app_constants.dart';
 import '../errors/exceptions.dart';
 
@@ -10,10 +12,11 @@ class PinService {
   static const String _keyLockoutExpiry = 'vault_pin_lockout_expiry';
 
   PinService({FlutterSecureStorage? storage})
-      : _storage = storage ??
-            const FlutterSecureStorage(
-              aOptions: AndroidOptions(resetOnError: false),
-            );
+    : _storage =
+          storage ??
+          const FlutterSecureStorage(
+            aOptions: AndroidOptions(resetOnError: false),
+          );
 
   /// Validates format of a user entered PIN (Mandatory 6 numeric digits).
   bool isValidPinFormat(String pin) {
@@ -74,7 +77,8 @@ class PinService {
     }
 
     if (lockoutSeconds > 0) {
-      final expiry = DateTime.now().millisecondsSinceEpoch + (lockoutSeconds * 1000);
+      final expiry =
+          DateTime.now().millisecondsSinceEpoch + (lockoutSeconds * 1000);
       await _storage.write(key: _keyLockoutExpiry, value: expiry.toString());
       throw PinLockedOutException(lockDurationSeconds: lockoutSeconds);
     }

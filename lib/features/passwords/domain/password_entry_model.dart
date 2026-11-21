@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:cryptography/cryptography.dart';
+
 import '../../../core/security/encryption_service.dart';
 
 class PasswordEntryModel {

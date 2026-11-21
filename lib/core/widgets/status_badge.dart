@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 
-enum ExpiryStatus {
-  valid,
-  expiringSoon,
-  expired,
-  none,
-}
+enum ExpiryStatus { valid, expiringSoon, expired, none }
 
 class StatusBadge extends StatelessWidget {
   final String label;
@@ -73,14 +69,18 @@ class StatusBadge extends StatelessWidget {
         break;
       case ExpiryStatus.expiringSoon:
         bg = backgroundColor ?? colors.warningContainer;
-        fg = textColor ?? (colors.isDark ? colors.warning : const Color(0xFFD97706));
+        fg =
+            textColor ??
+            (colors.isDark ? colors.warning : const Color(0xFFD97706));
         break;
       case ExpiryStatus.expired:
         bg = backgroundColor ?? colors.errorContainer;
         fg = textColor ?? colors.error;
         break;
       case ExpiryStatus.none:
-        bg = backgroundColor ?? (colors.isDark ? const Color(0x3394A3B8) : const Color(0x1594A3B8));
+        bg =
+            backgroundColor ??
+            (colors.isDark ? const Color(0x3394A3B8) : const Color(0x1594A3B8));
         fg = textColor ?? colors.textSecondary;
         break;
     }
@@ -90,10 +90,7 @@ class StatusBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: fg.withOpacity(0.2),
-          width: 0.8,
-        ),
+        border: Border.all(color: fg.withOpacity(0.2), width: 0.8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

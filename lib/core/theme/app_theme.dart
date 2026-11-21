@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import 'app_theme_colors.dart';
 import 'app_typography.dart';
 
@@ -20,8 +21,10 @@ class AppTheme {
   // Pre-configured Material 3 Theme instances for each of the 4 RupeeFlow themes
   static ThemeData get peachyTheme => _buildTheme(AppThemeColors.peachy);
   static ThemeData get lavenderTheme => _buildTheme(AppThemeColors.lavender);
-  static ThemeData get midnightMochiTheme => _buildTheme(AppThemeColors.midnightMochi);
-  static ThemeData get rupeeFlowDarkTheme => _buildTheme(AppThemeColors.rupeeFlowDark);
+  static ThemeData get midnightMochiTheme =>
+      _buildTheme(AppThemeColors.midnightMochi);
+  static ThemeData get rupeeFlowDarkTheme =>
+      _buildTheme(AppThemeColors.rupeeFlowDark);
 
   // Backward compatibility getters
   static ThemeData get darkTheme => rupeeFlowDarkTheme;
@@ -79,7 +82,9 @@ class AppTheme {
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           systemNavigationBarColor: colors.surface,
-          systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          systemNavigationBarIconBrightness: isDark
+              ? Brightness.light
+              : Brightness.dark,
         ),
       ),
       cardTheme: CardThemeData(
@@ -94,7 +99,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: colors.surfaceSecondary,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: colors.cardBorder),
@@ -123,10 +131,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -137,10 +142,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
       dividerTheme: DividerThemeData(
@@ -154,8 +156,14 @@ class AppTheme {
         unselectedItemColor: colors.textSecondary,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
-        selectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+        selectedLabelStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+        ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: colors.surfaceElevated,
@@ -169,10 +177,7 @@ class AppTheme {
           fontWeight: FontWeight.w700,
           color: colors.textPrimary,
         ),
-        contentTextStyle: TextStyle(
-          fontSize: 14,
-          color: colors.textSecondary,
-        ),
+        contentTextStyle: TextStyle(fontSize: 14, color: colors.textSecondary),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: colors.surfaceElevated,

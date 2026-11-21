@@ -15,7 +15,10 @@ class ClassifiedDocumentInfo {
 /// Local, offline document classifier using keyword density, regex patterns,
 /// and document structure recognition.
 class SmartDocumentClassifier {
-  static ClassifiedDocumentInfo classify(String text, {String? originalFileName}) {
+  static ClassifiedDocumentInfo classify(
+    String text, {
+    String? originalFileName,
+  }) {
     final upper = text.toUpperCase();
     final lowerName = originalFileName?.toLowerCase() ?? '';
 
@@ -93,7 +96,8 @@ class SmartDocumentClassifier {
             upper.contains('VEHICLE INSURANCE') ||
             upper.contains('PACKAGE POLICY') ||
             upper.contains('LIABILITY ONLY POLICY')) &&
-        (upper.contains('REGISTRATION NO') || upper.contains('INSURED VEHICLE'))) {
+        (upper.contains('REGISTRATION NO') ||
+            upper.contains('INSURED VEHICLE'))) {
       return const ClassifiedDocumentInfo(
         categoryId: 'vehicle_documents',
         documentType: 'Vehicle Insurance',
@@ -103,8 +107,11 @@ class SmartDocumentClassifier {
     }
 
     // 7. Personal Identity: Passport
-    if (upper.contains('PASSPORT') && (upper.contains('REPUBLIC OF INDIA') || upper.contains('EXTERNAL AFFAIRS')) ||
-        RegExp(r'\b[A-Z][0-9]{7,8}\b').hasMatch(upper) && upper.contains('NATIONALITY')) {
+    if (upper.contains('PASSPORT') &&
+            (upper.contains('REPUBLIC OF INDIA') ||
+                upper.contains('EXTERNAL AFFAIRS')) ||
+        RegExp(r'\b[A-Z][0-9]{7,8}\b').hasMatch(upper) &&
+            upper.contains('NATIONALITY')) {
       return const ClassifiedDocumentInfo(
         categoryId: 'personal_identity',
         documentType: 'Passport',
@@ -172,7 +179,9 @@ class SmartDocumentClassifier {
         upper.contains('UNIVERSITY') && upper.contains('PASSED')) {
       return ClassifiedDocumentInfo(
         categoryId: 'education',
-        documentType: upper.contains('MARK') ? 'Mark Sheet' : 'Degree Certificate',
+        documentType: upper.contains('MARK')
+            ? 'Mark Sheet'
+            : 'Degree Certificate',
         suggestedName: 'Academic Certificate',
         confidence: 0.82,
       );
@@ -206,17 +215,49 @@ class SmartDocumentClassifier {
 
     // Filename heuristics fallback
     if (lowerName.contains('pan')) {
-      return const ClassifiedDocumentInfo(categoryId: 'personal_identity', documentType: 'PAN Card', suggestedName: 'PAN Card', confidence: 0.6);
+      return const ClassifiedDocumentInfo(
+        categoryId: 'personal_identity',
+        documentType: 'PAN Card',
+        suggestedName: 'PAN Card',
+        confidence: 0.6,
+      );
     } else if (lowerName.contains('aadhaar') || lowerName.contains('aadhar')) {
-      return const ClassifiedDocumentInfo(categoryId: 'personal_identity', documentType: 'Aadhaar Card', suggestedName: 'Aadhaar Card', confidence: 0.6);
-    } else if (lowerName.contains('dl') || lowerName.contains('licence') || lowerName.contains('license')) {
-      return const ClassifiedDocumentInfo(categoryId: 'vehicle_documents', documentType: 'Driving Licence', suggestedName: 'Driving Licence', confidence: 0.6);
+      return const ClassifiedDocumentInfo(
+        categoryId: 'personal_identity',
+        documentType: 'Aadhaar Card',
+        suggestedName: 'Aadhaar Card',
+        confidence: 0.6,
+      );
+    } else if (lowerName.contains('dl') ||
+        lowerName.contains('licence') ||
+        lowerName.contains('license')) {
+      return const ClassifiedDocumentInfo(
+        categoryId: 'vehicle_documents',
+        documentType: 'Driving Licence',
+        suggestedName: 'Driving Licence',
+        confidence: 0.6,
+      );
     } else if (lowerName.contains('rc') || lowerName.contains('vehicle')) {
-      return const ClassifiedDocumentInfo(categoryId: 'vehicle_documents', documentType: 'Vehicle RC Book', suggestedName: 'Vehicle RC Book', confidence: 0.6);
+      return const ClassifiedDocumentInfo(
+        categoryId: 'vehicle_documents',
+        documentType: 'Vehicle RC Book',
+        suggestedName: 'Vehicle RC Book',
+        confidence: 0.6,
+      );
     } else if (lowerName.contains('puc')) {
-      return const ClassifiedDocumentInfo(categoryId: 'vehicle_documents', documentType: 'PUC Certificate', suggestedName: 'PUC Certificate', confidence: 0.6);
+      return const ClassifiedDocumentInfo(
+        categoryId: 'vehicle_documents',
+        documentType: 'PUC Certificate',
+        suggestedName: 'PUC Certificate',
+        confidence: 0.6,
+      );
     } else if (lowerName.contains('passport')) {
-      return const ClassifiedDocumentInfo(categoryId: 'personal_identity', documentType: 'Passport', suggestedName: 'Passport', confidence: 0.6);
+      return const ClassifiedDocumentInfo(
+        categoryId: 'personal_identity',
+        documentType: 'Passport',
+        suggestedName: 'Passport',
+        confidence: 0.6,
+      );
     }
 
     return const ClassifiedDocumentInfo(

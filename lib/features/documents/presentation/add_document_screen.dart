@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as p;
+
 import '../../../core/constants/category_constants.dart';
 import '../../../core/security/file_validator.dart';
 import '../../../core/services/native_saf_and_share_service.dart';
@@ -85,7 +87,8 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
     _notesController = TextEditingController(text: edit?.notes ?? '');
     _tagsController = TextEditingController(text: edit?.tags.join(', ') ?? '');
 
-    _selectedCategoryId = edit?.categoryId ??
+    _selectedCategoryId =
+        edit?.categoryId ??
         ocr?['categoryId'] ??
         widget.defaultCategoryId ??
         'personal_identity';
@@ -170,7 +173,9 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
     if (draft.isEmpty) {
       await ref.read(documentDraftRepositoryProvider).deleteDraft();
     } else {
-      await ref.read(documentDraftRepositoryProvider).saveDraft(draft, session.masterKey!);
+      await ref
+          .read(documentDraftRepositoryProvider)
+          .saveDraft(draft, session.masterKey!);
     }
   }
 
@@ -180,19 +185,23 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
     if (!session.isUnlocked || session.masterKey == null) return;
 
     try {
-      final draft = await ref.read(documentDraftRepositoryProvider).getDraft(session.masterKey!);
+      final draft = await ref
+          .read(documentDraftRepositoryProvider)
+          .getDraft(session.masterKey!);
       if (draft != null && draft.isNotEmpty && mounted) {
         setState(() {
           if (_nameController.text.isEmpty && draft.title.isNotEmpty) {
             _nameController.text = draft.title;
           }
-          if (_docNumberController.text.isEmpty && draft.documentNumber != null) {
+          if (_docNumberController.text.isEmpty &&
+              draft.documentNumber != null) {
             _docNumberController.text = draft.documentNumber!;
           }
           if (_ownerNameController.text.isEmpty && draft.ownerName != null) {
             _ownerNameController.text = draft.ownerName!;
           }
-          if (_authorityController.text.isEmpty && draft.issuingAuthority != null) {
+          if (_authorityController.text.isEmpty &&
+              draft.issuingAuthority != null) {
             _authorityController.text = draft.issuingAuthority!;
           }
           if (_notesController.text.isEmpty && draft.notes != null) {
@@ -255,7 +264,9 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
             child: const Text('Keep Draft'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Discard'),
           ),
@@ -276,9 +287,8 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
           _attachedFiles.clear();
           _hasRestoredDraft = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Draft discarded.')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Draft discarded.')));
       }
     }
   }
@@ -302,7 +312,9 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop('discard'),
-            style: TextButton.styleFrom(foregroundColor: Theme.of(ctx).colorScheme.error),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(ctx).colorScheme.error,
+            ),
             child: const Text('Discard'),
           ),
           FilledButton(
@@ -389,7 +401,9 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
 
   Future<void> _pickDate({required bool isIssueDate}) async {
     final now = DateTime.now();
-    final initial = isIssueDate ? (_issueDate ?? now) : (_expiryDate ?? now.add(const Duration(days: 365)));
+    final initial = isIssueDate
+        ? (_issueDate ?? now)
+        : (_expiryDate ?? now.add(const Duration(days: 365)));
 
     final picked = await showDatePicker(
       context: context,
@@ -464,12 +478,20 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
           documentId: widget.editDocument!.id,
           name: _nameController.text.trim(),
           categoryId: _selectedCategoryId,
-          documentNumber: _docNumberController.text.trim().isEmpty ? null : _docNumberController.text.trim(),
-          ownerName: _ownerNameController.text.trim().isEmpty ? null : _ownerNameController.text.trim(),
-          issuingAuthority: _authorityController.text.trim().isEmpty ? null : _authorityController.text.trim(),
+          documentNumber: _docNumberController.text.trim().isEmpty
+              ? null
+              : _docNumberController.text.trim(),
+          ownerName: _ownerNameController.text.trim().isEmpty
+              ? null
+              : _ownerNameController.text.trim(),
+          issuingAuthority: _authorityController.text.trim().isEmpty
+              ? null
+              : _authorityController.text.trim(),
           issueDate: _issueDate,
           expiryDate: _expiryDate,
-          notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+          notes: _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
           tags: tags,
           documentType: _selectedDocumentType,
           masterKey: session.masterKey!,
@@ -511,12 +533,20 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
         final newDoc = await repo.addDocument(
           name: _nameController.text.trim(),
           categoryId: _selectedCategoryId,
-          documentNumber: _docNumberController.text.trim().isEmpty ? null : _docNumberController.text.trim(),
-          ownerName: _ownerNameController.text.trim().isEmpty ? null : _ownerNameController.text.trim(),
-          issuingAuthority: _authorityController.text.trim().isEmpty ? null : _authorityController.text.trim(),
+          documentNumber: _docNumberController.text.trim().isEmpty
+              ? null
+              : _docNumberController.text.trim(),
+          ownerName: _ownerNameController.text.trim().isEmpty
+              ? null
+              : _ownerNameController.text.trim(),
+          issuingAuthority: _authorityController.text.trim().isEmpty
+              ? null
+              : _authorityController.text.trim(),
           issueDate: _issueDate,
           expiryDate: _expiryDate,
-          notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+          notes: _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
           tags: tags,
           documentType: _selectedDocumentType,
           files: encryptedFiles,
@@ -537,16 +567,17 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
               fileName: firstFile.originalFileName,
               mimeType: firstFile.mimeType,
             );
-            final formattedTxt = DocumentTextExtractor.generateFormattedTextRecord(
-              documentType: result.classification.documentType,
-              categoryName: _selectedCategoryId,
-              sourceFileName: firstFile.originalFileName,
-              fullText: result.fullText,
-              fields: result.fields,
-              engine: result.extractionEngine,
-              language: result.language,
-              pageCount: result.pageCount,
-            );
+            final formattedTxt =
+                DocumentTextExtractor.generateFormattedTextRecord(
+                  documentType: result.classification.documentType,
+                  categoryName: _selectedCategoryId,
+                  sourceFileName: firstFile.originalFileName,
+                  fullText: result.fullText,
+                  fields: result.fields,
+                  engine: result.extractionEngine,
+                  language: result.language,
+                  pageCount: result.pageCount,
+                );
             final encTxtPath = await repo.saveExtractedTxtFile(
               documentId: newDoc.id,
               textContent: formattedTxt,
@@ -564,7 +595,9 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
               masterKey: session.masterKey!,
             );
           } catch (ocrError) {
-            debugPrint('Auto text extraction during add document error: $ocrError');
+            debugPrint(
+              'Auto text extraction during add document error: $ocrError',
+            );
           }
         }
       }
@@ -616,263 +649,311 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
               if (_hasRestoredDraft) ...[
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: colors.primaryAccent.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colors.primaryAccent.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: colors.primaryAccent.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.restore_page_rounded, color: colors.primaryAccent, size: 20),
+                      Icon(
+                        Icons.restore_page_rounded,
+                        color: colors.primaryAccent,
+                        size: 20,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'Restored unsaved draft from your previous session.',
-                          style: TextStyle(fontSize: 12, color: colors.textPrimary, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.textPrimary,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                       TextButton(
                         onPressed: _discardDraft,
-                        child: Text('Discard', style: TextStyle(color: colors.error, fontSize: 12, fontWeight: FontWeight.bold)),
+                        child: Text(
+                          'Discard',
+                          style: TextStyle(
+                            color: colors.error,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ],
               // Name Field
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Document Name *',
-                hintText: 'e.g. My Aadhaar Card, Driving Licence',
-                prefixIcon: Icon(Icons.title_rounded),
-              ),
-              validator: (v) => v == null || v.trim().isEmpty ? 'Please enter a document name' : null,
-            ),
-            const SizedBox(height: 14),
-
-            // Category Dropdown
-            catsAsync.when(
-              data: (categories) {
-                return DropdownButtonFormField<String>(
-                  value: categories.any((c) => c.id == _selectedCategoryId)
-                      ? _selectedCategoryId
-                      : categories.first.id,
-                  decoration: const InputDecoration(
-                    labelText: 'Category',
-                    prefixIcon: Icon(Icons.category_outlined),
-                  ),
-                  items: categories.map((c) {
-                    return DropdownMenuItem(
-                      value: c.id,
-                      child: Text(c.name),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    if (val != null) setState(() => _selectedCategoryId = val);
-                  },
-                );
-              },
-              loading: () => const LinearProgressIndicator(),
-              error: (_, __) => const SizedBox.shrink(),
-            ),
-            const SizedBox(height: 14),
-
-            // Document Number
-            TextFormField(
-              controller: _docNumberController,
-              decoration: const InputDecoration(
-                labelText: 'Document Number (Encrypted at Rest)',
-                hintText: 'e.g. 1234 5678 9012, DL-1420110012345',
-                prefixIcon: Icon(Icons.tag_rounded),
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // Owner Name
-            TextFormField(
-              controller: _ownerNameController,
-              decoration: const InputDecoration(
-                labelText: 'Owner / Name on Document',
-                hintText: 'e.g. John Doe',
-                prefixIcon: Icon(Icons.person_outline_rounded),
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // Issuing Authority
-            TextFormField(
-              controller: _authorityController,
-              decoration: const InputDecoration(
-                labelText: 'Issuing Authority',
-                hintText: 'e.g. UIDAI, Transport Dept, Income Tax',
-                prefixIcon: Icon(Icons.account_balance_outlined),
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // Dates Row
-            Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () => _pickDate(isIssueDate: true),
-                    borderRadius: BorderRadius.circular(12),
-                    child: InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: 'Issue Date',
-                        prefixIcon: Icon(Icons.calendar_today_outlined, size: 18),
-                      ),
-                      child: Text(
-                        _issueDate != null ? DateFormatter.formatDisplay(_issueDate) : 'Select date',
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          color: _issueDate != null
-                              ? colors.textPrimary
-                              : colors.textTertiary,
-                        ),
-                      ),
-                    ),
-                  ),
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Document Name *',
+                  hintText: 'e.g. My Aadhaar Card, Driving Licence',
+                  prefixIcon: Icon(Icons.title_rounded),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: InkWell(
-                    onTap: () => _pickDate(isIssueDate: false),
-                    borderRadius: BorderRadius.circular(12),
-                    child: InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: 'Expiry Date',
-                        prefixIcon: Icon(Icons.event_busy_outlined, size: 18),
-                      ),
-                      child: Text(
-                        _expiryDate != null ? DateFormatter.formatDisplay(_expiryDate) : 'Select date',
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          color: _expiryDate != null
-                              ? colors.textPrimary
-                              : colors.textTertiary,
-                        ),
-                      ),
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Please enter a document name'
+                    : null,
+              ),
+              const SizedBox(height: 14),
+
+              // Category Dropdown
+              catsAsync.when(
+                data: (categories) {
+                  return DropdownButtonFormField<String>(
+                    value: categories.any((c) => c.id == _selectedCategoryId)
+                        ? _selectedCategoryId
+                        : categories.first.id,
+                    decoration: const InputDecoration(
+                      labelText: 'Category',
+                      prefixIcon: Icon(Icons.category_outlined),
                     ),
-                  ),
+                    items: categories.map((c) {
+                      return DropdownMenuItem(value: c.id, child: Text(c.name));
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _selectedCategoryId = val);
+                      }
+                    },
+                  );
+                },
+                loading: () => const LinearProgressIndicator(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+              const SizedBox(height: 14),
+
+              // Document Number
+              TextFormField(
+                controller: _docNumberController,
+                decoration: const InputDecoration(
+                  labelText: 'Document Number (Encrypted at Rest)',
+                  hintText: 'e.g. 1234 5678 9012, DL-1420110012345',
+                  prefixIcon: Icon(Icons.tag_rounded),
                 ),
-              ],
-            ),
-            const SizedBox(height: 14),
-
-            // Tags
-            TextFormField(
-              controller: _tagsController,
-              decoration: const InputDecoration(
-                labelText: 'Tags (comma separated)',
-                hintText: 'identity, official, renewed',
-                prefixIcon: Icon(Icons.tag_outlined),
               ),
-            ),
-            const SizedBox(height: 14),
+              const SizedBox(height: 14),
 
-            // Notes
-            TextFormField(
-              controller: _notesController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Secure Notes (Encrypted at Rest)',
-                hintText: 'Confidential remarks or details...',
-                prefixIcon: Icon(Icons.notes_outlined),
+              // Owner Name
+              TextFormField(
+                controller: _ownerNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Owner / Name on Document',
+                  hintText: 'e.g. John Doe',
+                  prefixIcon: Icon(Icons.person_outline_rounded),
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 14),
 
-            // Attached Files Section (only for new docs)
-            if (widget.editDocument == null) ...[
+              // Issuing Authority
+              TextFormField(
+                controller: _authorityController,
+                decoration: const InputDecoration(
+                  labelText: 'Issuing Authority',
+                  hintText: 'e.g. UIDAI, Transport Dept, Income Tax',
+                  prefixIcon: Icon(Icons.account_balance_outlined),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Dates Row
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Attached Pages (${_attachedFiles.length})',
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _pickDate(isIssueDate: true),
+                      borderRadius: BorderRadius.circular(12),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Issue Date',
+                          prefixIcon: Icon(
+                            Icons.calendar_today_outlined,
+                            size: 18,
+                          ),
+                        ),
+                        child: Text(
+                          _issueDate != null
+                              ? DateFormatter.formatDisplay(_issueDate)
+                              : 'Select date',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            color: _issueDate != null
+                                ? colors.textPrimary
+                                : colors.textTertiary,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                  TextButton.icon(
-                    onPressed: _pickAdditionalFile,
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Add File/Page'),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _pickDate(isIssueDate: false),
+                      borderRadius: BorderRadius.circular(12),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Expiry Date',
+                          prefixIcon: Icon(Icons.event_busy_outlined, size: 18),
+                        ),
+                        child: Text(
+                          _expiryDate != null
+                              ? DateFormatter.formatDisplay(_expiryDate)
+                              : 'Select date',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            color: _expiryDate != null
+                                ? colors.textPrimary
+                                : colors.textTertiary,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              if (_attachedFiles.isEmpty)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: colors.cardBackground,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colors.cardBorder),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'No files attached yet. Tap "+ Add File/Page" above.',
-                      style: TextStyle(fontSize: 13, color: colors.textTertiary),
+              const SizedBox(height: 14),
+
+              // Tags
+              TextFormField(
+                controller: _tagsController,
+                decoration: const InputDecoration(
+                  labelText: 'Tags (comma separated)',
+                  hintText: 'identity, official, renewed',
+                  prefixIcon: Icon(Icons.tag_outlined),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Notes
+              TextFormField(
+                controller: _notesController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Secure Notes (Encrypted at Rest)',
+                  hintText: 'Confidential remarks or details...',
+                  prefixIcon: Icon(Icons.notes_outlined),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Attached Files Section (only for new docs)
+              if (widget.editDocument == null) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Attached Pages (${_attachedFiles.length})',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                )
-              else
-                ..._attachedFiles.asMap().entries.map((entry) {
-                  final idx = entry.key;
-                  final item = entry.value;
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
+                    TextButton.icon(
+                      onPressed: _pickAdditionalFile,
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('Add File/Page'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (_attachedFiles.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: colors.cardBackground,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: colors.cardBorder),
                     ),
-                    child: ListTile(
-                      dense: true,
-                      leading: Icon(Icons.attachment_rounded, color: colors.primaryAccent),
-                      title: Text(
-                        'Page ${idx + 1}: ${item['name']}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 18),
-                        onPressed: () {
-                          setState(() {
-                            _attachedFiles.removeAt(idx);
-                          });
-                        },
+                    child: Center(
+                      child: Text(
+                        'No files attached yet. Tap "+ Add File/Page" above.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: colors.textTertiary,
+                        ),
                       ),
                     ),
-                  );
-                }),
+                  )
+                else
+                  ..._attachedFiles.asMap().entries.map((entry) {
+                    final idx = entry.key;
+                    final item = entry.value;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: colors.cardBackground,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colors.cardBorder),
+                      ),
+                      child: ListTile(
+                        dense: true,
+                        leading: Icon(
+                          Icons.attachment_rounded,
+                          color: colors.primaryAccent,
+                        ),
+                        title: Text(
+                          'Page ${idx + 1}: ${item['name']}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                          onPressed: () {
+                            setState(() {
+                              _attachedFiles.removeAt(idx);
+                            });
+                          },
+                        ),
+                      ),
+                    );
+                  }),
+                const SizedBox(height: 24),
+              ],
+
+              // Save Button
+              ElevatedButton(
+                onPressed: _isSaving ? null : _saveDocument,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        widget.editDocument != null
+                            ? 'Update Metadata'
+                            : 'Encrypt & Save Document',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
               const SizedBox(height: 24),
             ],
-
-            // Save Button
-            ElevatedButton(
-              onPressed: _isSaving ? null : _saveDocument,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
-              ),
-              child: _isSaving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : Text(
-                      widget.editDocument != null ? 'Update Metadata' : 'Encrypt & Save Document',
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                    ),
-            ),
-            const SizedBox(height: 24),
-          ],
+          ),
         ),
       ),
-    ),
     );
   }
 }

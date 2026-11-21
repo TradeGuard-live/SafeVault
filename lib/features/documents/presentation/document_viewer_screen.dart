@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pdfx/pdfx.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/widgets/error_dialog.dart';
@@ -24,7 +26,8 @@ class DocumentViewerScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<DocumentViewerScreen> createState() => _DocumentViewerScreenState();
+  ConsumerState<DocumentViewerScreen> createState() =>
+      _DocumentViewerScreenState();
 }
 
 class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
@@ -95,7 +98,8 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Decryption failed: Data may be corrupted or tampered.';
+          _errorMessage =
+              'Decryption failed: Data may be corrupted or tampered.';
         });
       }
     }
@@ -115,7 +119,11 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
           children: [
             Text(
               widget.documentName,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
             Text(
               widget.fileName,
@@ -129,7 +137,10 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
               child: Padding(
                 padding: const EdgeInsets.only(right: 16.0),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white12,
                     borderRadius: BorderRadius.circular(12),
@@ -159,43 +170,46 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                 ),
               )
             : _errorMessage != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.lock_clock_outlined, size: 48, color: colors.error),
-                          const SizedBox(height: 16),
-                          Text(
-                            _errorMessage!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.white, fontSize: 14),
-                          ),
-                        ],
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.lock_clock_outlined,
+                        size: 48,
+                        color: colors.error,
                       ),
-                    ),
-                  )
-                : widget.mimeType == 'application/pdf' && _pdfController != null
-                    ? PdfView(
-                        controller: _pdfController!,
-                        onPageChanged: (page) {
-                          setState(() => _pdfCurrentPage = page);
-                        },
-                      )
-                    : InteractiveViewer(
-                        panEnabled: true,
-                        minScale: 0.8,
-                        maxScale: 4.0,
-                        child: Center(
-                          child: Image.memory(
-                            _decryptedBytes!,
-                            fit: BoxFit.contain,
-                          ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
                         ),
                       ),
+                    ],
+                  ),
+                ),
+              )
+            : widget.mimeType == 'application/pdf' && _pdfController != null
+            ? PdfView(
+                controller: _pdfController!,
+                onPageChanged: (page) {
+                  setState(() => _pdfCurrentPage = page);
+                },
+              )
+            : InteractiveViewer(
+                panEnabled: true,
+                minScale: 0.8,
+                maxScale: 4.0,
+                child: Center(
+                  child: Image.memory(_decryptedBytes!, fit: BoxFit.contain),
+                ),
+              ),
       ),
     );
   }
 }
-

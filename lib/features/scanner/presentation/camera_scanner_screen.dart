@@ -1,10 +1,12 @@
 import 'dart:io';
+
 import 'package:camera/camera.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
+
 import '../../../core/security/file_validator.dart';
 import '../../../core/services/native_saf_and_share_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -18,7 +20,8 @@ class CameraScannerScreen extends StatefulWidget {
   State<CameraScannerScreen> createState() => _CameraScannerScreenState();
 }
 
-class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsBindingObserver {
+class _CameraScannerScreenState extends State<CameraScannerScreen>
+    with WidgetsBindingObserver {
   CameraController? _controller;
   List<CameraDescription> _cameras = [];
   int _selectedCameraIndex = 0;
@@ -109,7 +112,11 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
   }
 
   Future<void> _capturePhoto() async {
-    if (_controller == null || !_controller!.value.isInitialized || _isCapturing) return;
+    if (_controller == null ||
+        !_controller!.value.isInitialized ||
+        _isCapturing) {
+      return;
+    }
 
     setState(() => _isCapturing = true);
     HapticFeedback.mediumImpact();
@@ -123,7 +130,11 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
     } catch (e) {
       setState(() => _isCapturing = false);
       if (mounted) {
-        ErrorDialog.show(context, title: 'Capture Failed', message: e.toString());
+        ErrorDialog.show(
+          context,
+          title: 'Capture Failed',
+          message: e.toString(),
+        );
       }
     }
   }
@@ -164,7 +175,11 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
       }
     } catch (e) {
       if (mounted) {
-        ErrorDialog.show(context, title: 'Import Failed', message: e.toString());
+        ErrorDialog.show(
+          context,
+          title: 'Import Failed',
+          message: e.toString(),
+        );
       }
     }
   }
@@ -186,21 +201,31 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
       appBar: AppBar(
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text('Document Scanner', style: TextStyle(color: Colors.white, fontSize: 18)),
+        title: const Text(
+          'Document Scanner',
+          style: TextStyle(color: Colors.white, fontSize: 18),
+        ),
         actions: [
           IconButton(
             icon: Icon(
               _flashMode == FlashMode.torch
                   ? Icons.flash_on
-                  : (_flashMode == FlashMode.auto ? Icons.flash_auto : Icons.flash_off),
-              color: _flashMode != FlashMode.off ? colors.primaryAccent : Colors.white,
+                  : (_flashMode == FlashMode.auto
+                        ? Icons.flash_auto
+                        : Icons.flash_off),
+              color: _flashMode != FlashMode.off
+                  ? colors.primaryAccent
+                  : Colors.white,
             ),
             tooltip: 'Flash',
             onPressed: _toggleFlash,
           ),
           if (_cameras.length > 1)
             IconButton(
-              icon: const Icon(Icons.flip_camera_android_rounded, color: Colors.white),
+              icon: const Icon(
+                Icons.flip_camera_android_rounded,
+                color: Colors.white,
+              ),
               tooltip: 'Switch Camera',
               onPressed: _switchCamera,
             ),
@@ -224,7 +249,10 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
                     // Document Frame Guideline Overlay
                     Center(
                       child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 32,
+                        ),
                         decoration: BoxDecoration(
                           border: Border.all(
                             color: colors.primaryAccent.withOpacity(0.85),
@@ -242,7 +270,10 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
                       right: 0,
                       child: Center(
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.black54,
                             borderRadius: BorderRadius.circular(20),
@@ -297,7 +328,11 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
                                 color: Colors.black87,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.close, size: 14, color: Colors.white),
+                              child: const Icon(
+                                Icons.close,
+                                size: 14,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
@@ -317,7 +352,11 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
                 children: [
                   // Pick from Gallery
                   IconButton(
-                    icon: const Icon(Icons.photo_library_outlined, color: Colors.white, size: 28),
+                    icon: const Icon(
+                      Icons.photo_library_outlined,
+                      color: Colors.white,
+                      size: 28,
+                    ),
                     tooltip: 'Gallery',
                     onPressed: _pickFromGallery,
                   ),
@@ -336,9 +375,15 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
                       child: Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: _isCapturing ? colors.warning : colors.primaryAccent,
+                          color: _isCapturing
+                              ? colors.warning
+                              : colors.primaryAccent,
                         ),
-                        child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 32),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          color: Colors.white,
+                          size: 32,
+                        ),
                       ),
                     ),
                   ),
@@ -350,8 +395,13 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
                       style: ElevatedButton.styleFrom(
                         backgroundColor: colors.primaryAccent,
                         foregroundColor: colors.onPrimaryAccent,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -377,11 +427,19 @@ class _CameraScannerScreenState extends State<CameraScannerScreen> with WidgetsB
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.no_photography_outlined, size: 56, color: Colors.white54),
+          const Icon(
+            Icons.no_photography_outlined,
+            size: 56,
+            color: Colors.white54,
+          ),
           const SizedBox(height: 14),
           const Text(
             'Hardware Camera Unavailable',
-            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 6),
           const Text(

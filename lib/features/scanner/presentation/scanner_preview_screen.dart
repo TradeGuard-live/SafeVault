@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_colors.dart';
 import '../../../core/widgets/error_dialog.dart';
@@ -38,10 +40,7 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
       final file = File(path);
       if (await file.exists()) {
         final bytes = await file.readAsBytes();
-        _pages.add(ScannerPage(
-          originalPath: path,
-          currentBytes: bytes,
-        ));
+        _pages.add(ScannerPage(originalPath: path, currentBytes: bytes));
       }
     }
     if (mounted) setState(() {});
@@ -132,7 +131,11 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
     } catch (e) {
       setState(() => _isProcessing = false);
       if (mounted) {
-        ErrorDialog.show(context, title: 'PDF Compilation Error', message: e.toString());
+        ErrorDialog.show(
+          context,
+          title: 'PDF Compilation Error',
+          message: e.toString(),
+        );
       }
     }
   }
@@ -162,7 +165,11 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
     } catch (e) {
       setState(() => _isProcessing = false);
       if (mounted) {
-        ErrorDialog.show(context, title: 'Image Export Error', message: e.toString());
+        ErrorDialog.show(
+          context,
+          title: 'Image Export Error',
+          message: e.toString(),
+        );
       }
     }
   }
@@ -174,7 +181,9 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
     if (_pages.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('Review Scans')),
-        body: Center(child: CircularProgressIndicator(color: colors.primaryAccent)),
+        body: Center(
+          child: CircularProgressIndicator(color: colors.primaryAccent),
+        ),
       );
     }
 
@@ -251,13 +260,33 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildFilterChip('Original', ImageFilterType.original, currentPage.filter, colors),
+                    _buildFilterChip(
+                      'Original',
+                      ImageFilterType.original,
+                      currentPage.filter,
+                      colors,
+                    ),
                     const SizedBox(width: 8),
-                    _buildFilterChip('Grayscale', ImageFilterType.grayscale, currentPage.filter, colors),
+                    _buildFilterChip(
+                      'Grayscale',
+                      ImageFilterType.grayscale,
+                      currentPage.filter,
+                      colors,
+                    ),
                     const SizedBox(width: 8),
-                    _buildFilterChip('High Contrast', ImageFilterType.highContrast, currentPage.filter, colors),
+                    _buildFilterChip(
+                      'High Contrast',
+                      ImageFilterType.highContrast,
+                      currentPage.filter,
+                      colors,
+                    ),
                     const SizedBox(width: 8),
-                    _buildFilterChip('B&W Doc', ImageFilterType.documentBw, currentPage.filter, colors),
+                    _buildFilterChip(
+                      'B&W Doc',
+                      ImageFilterType.documentBw,
+                      currentPage.filter,
+                      colors,
+                    ),
                   ],
                 ),
               ),
@@ -279,7 +308,9 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
                         height: 8,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(4),
-                          color: isCurrent ? colors.primaryAccent : colors.textTertiary,
+                          color: isCurrent
+                              ? colors.primaryAccent
+                              : colors.textTertiary,
                         ),
                       ),
                     );
@@ -292,11 +323,7 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: colors.surface,
-                border: Border(
-                  top: BorderSide(
-                    color: colors.cardBorder,
-                  ),
-                ),
+                border: Border(top: BorderSide(color: colors.cardBorder)),
               ),
               child: Row(
                 children: [
@@ -312,7 +339,11 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
                     child: ElevatedButton.icon(
                       onPressed: _saveAsPdf,
                       icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
-                      label: Text(_pages.length > 1 ? 'Save as PDF (${_pages.length}p)' : 'Save as PDF'),
+                      label: Text(
+                        _pages.length > 1
+                            ? 'Save as PDF (${_pages.length}p)'
+                            : 'Save as PDF',
+                      ),
                     ),
                   ),
                 ],
@@ -324,7 +355,12 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label, ImageFilterType type, ImageFilterType activeType, AppThemeColors colors) {
+  Widget _buildFilterChip(
+    String label,
+    ImageFilterType type,
+    ImageFilterType activeType,
+    AppThemeColors colors,
+  ) {
     final isSelected = type == activeType;
 
     return ChoiceChip(
@@ -334,9 +370,7 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
       backgroundColor: colors.cardBackground,
       selectedColor: colors.primaryAccent.withOpacity(0.2),
       labelStyle: TextStyle(
-        color: isSelected
-            ? colors.primaryAccent
-            : colors.textSecondary,
+        color: isSelected ? colors.primaryAccent : colors.textSecondary,
         fontSize: 12,
         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
       ),
@@ -349,4 +383,3 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
     );
   }
 }
-

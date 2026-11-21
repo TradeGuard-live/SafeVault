@@ -36,40 +36,58 @@ void main() {
       final peachyTheme = AppTheme.themeFor('peachy', Brightness.light);
       expect(peachyTheme.brightness, equals(Brightness.light));
       expect(peachyTheme.extension<AppThemeColors>(), isNotNull);
-      expect(peachyTheme.scaffoldBackgroundColor, equals(const Color(0xFFFFF8F1)));
+      expect(
+        peachyTheme.scaffoldBackgroundColor,
+        equals(const Color(0xFFFFF8F1)),
+      );
 
       final lavenderTheme = AppTheme.themeFor('lavender', Brightness.light);
       expect(lavenderTheme.brightness, equals(Brightness.light));
-      expect(lavenderTheme.scaffoldBackgroundColor, equals(const Color(0xFFF7F3FC)));
+      expect(
+        lavenderTheme.scaffoldBackgroundColor,
+        equals(const Color(0xFFF7F3FC)),
+      );
 
-      final midnightTheme = AppTheme.themeFor('midnight_mochi', Brightness.dark);
+      final midnightTheme = AppTheme.themeFor(
+        'midnight_mochi',
+        Brightness.dark,
+      );
       expect(midnightTheme.brightness, equals(Brightness.dark));
-      expect(midnightTheme.scaffoldBackgroundColor, equals(const Color(0xFF100E19)));
+      expect(
+        midnightTheme.scaffoldBackgroundColor,
+        equals(const Color(0xFF100E19)),
+      );
 
       final darkTheme = AppTheme.themeFor('rupeeflow_dark', Brightness.dark);
       expect(darkTheme.brightness, equals(Brightness.dark));
-      expect(darkTheme.scaffoldBackgroundColor, equals(const Color(0xFF0A0E17)));
+      expect(
+        darkTheme.scaffoldBackgroundColor,
+        equals(const Color(0xFF0A0E17)),
+      );
     });
 
-    test('All theme presets have non-null gradients, shadows, and status colors', () {
-      final allThemes = [
-        AppThemeColors.rupeeFlowDark,
-        AppThemeColors.peachy,
-        AppThemeColors.lavender,
-        AppThemeColors.midnightMochi,
-      ];
+    test(
+      'All theme presets have non-null gradients, shadows, and status colors',
+      () {
+        final allThemes = [
+          AppThemeColors.rupeeFlowDark,
+          AppThemeColors.peachy,
+          AppThemeColors.lavender,
+          AppThemeColors.midnightMochi,
+        ];
 
-      for (final t in allThemes) {
-        expect(t.heroGradient.colors.length, greaterThanOrEqualTo(2));
-        expect(t.cardGradient.colors.length, greaterThanOrEqualTo(2));
-        expect(t.cardShadow.length, greaterThanOrEqualTo(1));
-        expect(t.floatingShadow.length, greaterThanOrEqualTo(1));
-        expect(t.success, isNotNull);
-        expect(t.error, isNotNull);
-        expect(t.warning, isNotNull);
-        expect(t.info, isNotNull);
-      }
-    });
+        for (final t in allThemes) {
+          expect(t.heroGradient.colors.length, greaterThanOrEqualTo(2));
+          expect(t.cardGradient.colors.length, greaterThanOrEqualTo(2));
+          expect(t.cardShadow.length, greaterThanOrEqualTo(1));
+          expect(t.floatingShadow.length, greaterThanOrEqualTo(1));
+          expect(t.success, isNotNull);
+          expect(t.error, isNotNull);
+          expect(t.warning, isNotNull);
+          expect(t.info, isNotNull);
+        }
+      },
+    );
 
     testWidgets('RupeeBunnyMascot renders in all 7 poses', (tester) async {
       for (final pose in MascotPose.values) {
@@ -77,11 +95,7 @@ void main() {
           MaterialApp(
             home: Scaffold(
               body: Center(
-                child: RupeeBunnyMascot(
-                  pose: pose,
-                  size: 100,
-                  animated: false,
-                ),
+                child: RupeeBunnyMascot(pose: pose, size: 100, animated: false),
               ),
             ),
           ),
@@ -93,4 +107,3 @@ void main() {
     });
   });
 }
-

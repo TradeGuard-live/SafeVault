@@ -438,7 +438,8 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
       textSecondary: textSecondary ?? this.textSecondary,
       textTertiary: textTertiary ?? this.textTertiary,
       primaryAccent: primaryAccent ?? this.primaryAccent,
-      primaryAccentContainer: primaryAccentContainer ?? this.primaryAccentContainer,
+      primaryAccentContainer:
+          primaryAccentContainer ?? this.primaryAccentContainer,
       onPrimaryAccent: onPrimaryAccent ?? this.onPrimaryAccent,
       success: success ?? this.success,
       successContainer: successContainer ?? this.successContainer,
@@ -465,7 +466,10 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
   }
 
   @override
-  ThemeExtension<AppThemeColors> lerp(ThemeExtension<AppThemeColors>? other, double t) {
+  ThemeExtension<AppThemeColors> lerp(
+    ThemeExtension<AppThemeColors>? other,
+    double t,
+  ) {
     if (other is! AppThemeColors) return this;
     return AppThemeColors(
       id: t < 0.5 ? id : other.id,
@@ -474,31 +478,50 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
       isDark: t < 0.5 ? isDark : other.isDark,
       background: Color.lerp(background, other.background, t) ?? background,
       surface: Color.lerp(surface, other.surface, t) ?? surface,
-      surfaceSecondary: Color.lerp(surfaceSecondary, other.surfaceSecondary, t) ?? surfaceSecondary,
-      surfaceElevated: Color.lerp(surfaceElevated, other.surfaceElevated, t) ?? surfaceElevated,
+      surfaceSecondary:
+          Color.lerp(surfaceSecondary, other.surfaceSecondary, t) ??
+          surfaceSecondary,
+      surfaceElevated:
+          Color.lerp(surfaceElevated, other.surfaceElevated, t) ??
+          surfaceElevated,
       cardBorder: Color.lerp(cardBorder, other.cardBorder, t) ?? cardBorder,
       divider: Color.lerp(divider, other.divider, t) ?? divider,
       textPrimary: Color.lerp(textPrimary, other.textPrimary, t) ?? textPrimary,
-      textSecondary: Color.lerp(textSecondary, other.textSecondary, t) ?? textSecondary,
-      textTertiary: Color.lerp(textTertiary, other.textTertiary, t) ?? textTertiary,
-      primaryAccent: Color.lerp(primaryAccent, other.primaryAccent, t) ?? primaryAccent,
-      primaryAccentContainer: Color.lerp(primaryAccentContainer, other.primaryAccentContainer, t) ?? primaryAccentContainer,
-      onPrimaryAccent: Color.lerp(onPrimaryAccent, other.onPrimaryAccent, t) ?? onPrimaryAccent,
+      textSecondary:
+          Color.lerp(textSecondary, other.textSecondary, t) ?? textSecondary,
+      textTertiary:
+          Color.lerp(textTertiary, other.textTertiary, t) ?? textTertiary,
+      primaryAccent:
+          Color.lerp(primaryAccent, other.primaryAccent, t) ?? primaryAccent,
+      primaryAccentContainer:
+          Color.lerp(primaryAccentContainer, other.primaryAccentContainer, t) ??
+          primaryAccentContainer,
+      onPrimaryAccent:
+          Color.lerp(onPrimaryAccent, other.onPrimaryAccent, t) ??
+          onPrimaryAccent,
       success: Color.lerp(success, other.success, t) ?? success,
-      successContainer: Color.lerp(successContainer, other.successContainer, t) ?? successContainer,
+      successContainer:
+          Color.lerp(successContainer, other.successContainer, t) ??
+          successContainer,
       onSuccess: Color.lerp(onSuccess, other.onSuccess, t) ?? onSuccess,
       error: Color.lerp(error, other.error, t) ?? error,
-      errorContainer: Color.lerp(errorContainer, other.errorContainer, t) ?? errorContainer,
+      errorContainer:
+          Color.lerp(errorContainer, other.errorContainer, t) ?? errorContainer,
       onError: Color.lerp(onError, other.onError, t) ?? onError,
       warning: Color.lerp(warning, other.warning, t) ?? warning,
-      warningContainer: Color.lerp(warningContainer, other.warningContainer, t) ?? warningContainer,
+      warningContainer:
+          Color.lerp(warningContainer, other.warningContainer, t) ??
+          warningContainer,
       onWarning: Color.lerp(onWarning, other.onWarning, t) ?? onWarning,
       info: Color.lerp(info, other.info, t) ?? info,
-      infoContainer: Color.lerp(infoContainer, other.infoContainer, t) ?? infoContainer,
-      primaryPeach: Color.lerp(primaryPeach, other.primaryPeach, t) ?? primaryPeach,
+      infoContainer:
+          Color.lerp(infoContainer, other.infoContainer, t) ?? infoContainer,
+      primaryPeach:
+          Color.lerp(primaryPeach, other.primaryPeach, t) ?? primaryPeach,
       deepPeach: Color.lerp(deepPeach, other.deepPeach, t) ?? deepPeach,
       accentPink: Color.lerp(accentPink, other.accentPink, t) ?? accentPink,
-      softLavender: Color.lerp(softLavender, other.softLavender, t) ?? softLavender,
+      softLavender:
+          Color.lerp(softLavender, other.softLavender, t) ?? softLavender,
       mint: Color.lerp(mint, other.mint, t) ?? mint,
       warmYellow: Color.lerp(warmYellow, other.warmYellow, t) ?? warmYellow,
       heroGradient: t < 0.5 ? heroGradient : other.heroGradient,
