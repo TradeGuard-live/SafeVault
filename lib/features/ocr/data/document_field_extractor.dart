@@ -146,7 +146,7 @@ class DocumentFieldExtractor {
 
     // 2. Registration Date
     final regDateMatch = RegExp(
-      r'(?:REG\.?\s*DATE|DATE OF REG|DT OF REG)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})',
+      r'(?:REGISTRATION\s*DATE|REG\.?\s*DATE|DATE OF REG|DT OF REG)[\s:]*(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})',
     ).firstMatch(upper);
     if (regDateMatch != null) {
       fields.add(
@@ -162,7 +162,7 @@ class DocumentFieldExtractor {
 
     // 3. Chassis Number
     final chassisMatch = RegExp(
-      r'(?:CHASSIS(?:\s*NO)?|CH\.NO|VIN)[\s:]*([A-HJ-NPR-Z0-9]{10,21})',
+      r'(?:CHASSIS\s*NUMBER|CHASSIS(?:\s*NO)?|CH\.NO|VIN)[\s:]*([A-HJ-NPR-Z0-9]{10,21})',
     ).firstMatch(upper);
     if (chassisMatch != null) {
       fields.add(
@@ -178,7 +178,7 @@ class DocumentFieldExtractor {
 
     // 4. Engine Number
     final engineMatch = RegExp(
-      r'(?:ENGINE(?:\s*NO)?|ENG\.NO|MOTOR NO)[\s:]*([A-Z0-9]{6,18})',
+      r'(?:ENGINE\s*NUMBER|ENGINE(?:\s*NO)?|ENG\.NO|MOTOR NO)[\s:]*([A-Z0-9]{6,18})',
     ).firstMatch(upper);
     if (engineMatch != null) {
       fields.add(
@@ -194,23 +194,27 @@ class DocumentFieldExtractor {
 
     // 5. Owner Name
     String? ownerName;
-    for (int i = 0; i < lines.length; i++) {
-      final line = lines[i].toUpperCase();
-      if ((line.contains('OWNER NAME') ||
-              line.contains('NAME OF OWNER') ||
-              line.contains('REG OWNER') ||
-              line.contains('REGISTERED OWNER')) &&
-          i + 1 < lines.length) {
-        ownerName = _cleanName(lines[i + 1]);
-        break;
-      }
-    }
     final ownerSameLine = RegExp(
       r'(?:REGISTERED OWNER|OWNER NAME|NAME OF OWNER)[\s:]*([A-Za-z ]{3,35})',
       caseSensitive: false,
     ).firstMatch(fullText);
-    if (ownerSameLine != null && (ownerName == null || ownerName.isEmpty)) {
+    if (ownerSameLine != null && _isValidName(ownerSameLine.group(1)!)) {
       ownerName = _cleanName(ownerSameLine.group(1)!);
+    } else {
+      for (int i = 0; i < lines.length; i++) {
+        final line = lines[i].toUpperCase();
+        if ((line.contains('OWNER NAME') ||
+                line.contains('NAME OF OWNER') ||
+                line.contains('REG OWNER') ||
+                line.contains('REGISTERED OWNER')) &&
+            i + 1 < lines.length) {
+          final candidate = _cleanName(lines[i + 1]);
+          if (_isValidName(candidate)) {
+            ownerName = candidate;
+            break;
+          }
+        }
+      }
     }
     if (ownerName != null && ownerName.isNotEmpty) {
       fields.add(
@@ -294,14 +298,23 @@ class DocumentFieldExtractor {
 
     // 9. Maker / Manufacturer
     final makerMatch = RegExp(
-      r'(?:MAKER|MANUFACTURER|MFG)[\s:]*([A-Za-z0-9 \.\-]{3,30})',
+      r'(?:MAKER|MANUFACTURER|MFG|VEHICLE MANUFACTURER)[\s:]*([A-Za-z0-9 \.\-]{3,30})',
       caseSensitive: false,
     ).firstMatch(fullText);
     if (makerMatch != null) {
+      final makerVal = makerMatch.group(1)!.trim();
       fields.add(
         RawExtractedField(
           fieldName: 'Maker / Manufacturer',
-          value: makerMatch.group(1)!.trim(),
+          value: makerVal,
+          confidence: 0.88,
+          confidenceCategory: 'High',
+        ),
+      );
+      fields.add(
+        RawExtractedField(
+          fieldName: 'Vehicle Manufacturer',
+          value: makerVal,
           confidence: 0.88,
           confidenceCategory: 'High',
         ),
@@ -310,14 +323,23 @@ class DocumentFieldExtractor {
 
     // 10. Model Name
     final modelMatch = RegExp(
-      r'(?:MODEL|COMMERCIAL NAME)[\s:]*([A-Za-z0-9 \.\-\+]{2,30})',
+      r'(?:MODEL\s*NAME|MODEL|COMMERCIAL NAME|VEHICLE MODEL)[\s:]*([A-Za-z0-9 \.\-\+]{2,30})',
       caseSensitive: false,
     ).firstMatch(fullText);
     if (modelMatch != null) {
+      final modelVal = modelMatch.group(1)!.trim();
       fields.add(
         RawExtractedField(
           fieldName: 'Model Name',
-          value: modelMatch.group(1)!.trim(),
+          value: modelVal,
+          confidence: 0.86,
+          confidenceCategory: 'High',
+        ),
+      );
+      fields.add(
+        RawExtractedField(
+          fieldName: 'Vehicle Model',
+          value: modelVal,
           confidence: 0.86,
           confidenceCategory: 'High',
         ),
@@ -374,10 +396,19 @@ class DocumentFieldExtractor {
       caseSensitive: false,
     ).firstMatch(fullText);
     if (colorMatch != null) {
+      final colorVal = colorMatch.group(1)!.trim();
       fields.add(
         RawExtractedField(
           fieldName: 'Color',
-          value: colorMatch.group(1)!.trim(),
+          value: colorVal,
+          confidence: 0.85,
+          confidenceCategory: 'High',
+        ),
+      );
+      fields.add(
+        RawExtractedField(
+          fieldName: 'Colour',
+          value: colorVal,
           confidence: 0.85,
           confidenceCategory: 'High',
         ),
@@ -463,10 +494,19 @@ class DocumentFieldExtractor {
       r'(?:CUBIC CAPACITY|C\.C|CC|DISPLACEMENT)[\s:]*([0-9]{3,5}(?:\s*CC)?)',
     ).firstMatch(upper);
     if (ccMatch != null) {
+      final ccVal = ccMatch.group(1)!;
       fields.add(
         RawExtractedField(
           fieldName: 'Cubic Capacity (CC)',
-          value: ccMatch.group(1)!,
+          value: ccVal,
+          confidence: 0.90,
+          confidenceCategory: 'High',
+        ),
+      );
+      fields.add(
+        RawExtractedField(
+          fieldName: 'Cubic Capacity',
+          value: ccVal,
           confidence: 0.90,
           confidenceCategory: 'High',
         ),

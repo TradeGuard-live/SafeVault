@@ -82,6 +82,8 @@ class NativeSafAndShareService {
     }
   }
 
+  bool _isPicking = false;
+
   /// Launches the native Android Storage Access Framework picker (`ACTION_OPEN_DOCUMENT`).
   /// Displays the full Android system picker: Recent, Images, Documents, Downloads,
   /// Gallery, My Files, Drive, etc.
@@ -92,6 +94,14 @@ class NativeSafAndShareService {
     if (!Platform.isAndroid) {
       return [];
     }
+
+    if (_isPicking) {
+      debugPrint(
+        'NativeSafAndShareService: File picker is already in progress.',
+      );
+      return [];
+    }
+    _isPicking = true;
 
     _session?.beginSystemActivity('SAF_OPEN_DOCUMENT');
     try {
@@ -115,6 +125,7 @@ class NativeSafAndShareService {
       debugPrint('NativeSafAndShareService: pickDocuments failed: $e');
       return [];
     } finally {
+      _isPicking = false;
       Future.microtask(() {
         _session?.endSystemActivity();
       });

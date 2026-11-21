@@ -1,19 +1,22 @@
 # SAFEVAULT — USER GUIDE & PRODUCT MANUAL
 
-**Welcome to SafeVault** — your private, offline-first personal document, banking, and password safe. SafeVault is built with zero-knowledge architecture, meaning your sensitive data never leaves your device, is never uploaded to the cloud, and is protected with military-grade AES-256-GCM encryption.
+**Welcome to SafeVault** — your private, offline-first personal document, banking, and password safe. SafeVault is built with zero-knowledge architecture: your sensitive data never leaves your device, is never uploaded to the cloud, and is protected with military-grade AES-256-GCM encryption backed by your phone's hardware security chip.
 
 ---
 
 ## 1. GETTING STARTED
 
 ### Initial Setup & Security Enrollment
-When you launch SafeVault for the first time, you will set up your **Mandatory Two-Factor Authentication (2FA)**:
-1. **Enroll Biometrics**: Scan your fingerprint or face using your phone's built-in biometric sensor. SafeVault links this directly with your phone's hardware security chip (Android Keystore / Knox / StrongBox).
-2. **Choose a 6-Digit Vault PIN**: Enter a memorable 6-digit numeric PIN. This PIN is combined with your biometric key using an advanced cryptographic splitting algorithm ($K = S_{bio} \oplus S_{pin}$) to generate your vault's Master Encryption Key.
-3. **Confirmation**: Re-enter your 6-digit PIN to confirm. Your vault is now initialized and ready to protect your documents.
+When you launch SafeVault for the first time, you set up your **Mandatory Two-Factor Authentication (2FA)**:
+1. **Enroll Biometrics**: Scan your fingerprint or face. SafeVault connects directly to your phone's hardware security chip (Android Keystore / Knox / StrongBox) to create a hardware-protected cryptographic key share ($S_{bio}$).
+2. **Choose a 6-Digit Vault PIN**: Enter a memorable 6-digit numeric PIN. SafeVault uses PBKDF2 with 100,000 iterations to derive your PIN key share ($S_{pin}$).
+3. **Confirmation**: Re-enter your 6-digit PIN to confirm. SafeVault reconstructs your Master Encryption Key ($K_{master} = S_{bio} \oplus S_{pin}$) and initializes your secure vault.
 
 > [!IMPORTANT]
 > **Keep your 6-Digit PIN Safe**: Because SafeVault is 100% offline with zero cloud backdoors, no one (not even SafeVault developers) can reset your PIN if you forget it.
+
+### Biometric Enrollment Protection
+If you add a new fingerprint or change device biometric credentials in your phone's Android Settings, SafeVault's hardware Keystore key detects this change immediately (`setInvalidatedByBiometricEnrollment(true)`) to protect against unauthorized access by a third party with device access.
 
 ---
 
@@ -46,8 +49,8 @@ You can add documents in two ways:
 
 ### Document Details & Expiry Tracking
 When saving a document, you can specify:
-- **Title & Category** (e.g., Personal Identity, Vehicle, Financial, Education, Property, Medical).
-- **Document Number & Holder Name** (automatically encrypted).
+- **Title & Category** (Personal Identity, Vehicle, Financial, Education, Property, Medical, Certificates, Others).
+- **Document Number & Holder Name** (automatically encrypted at rest).
 - **Issue Date & Expiry Date**: SafeVault calculates the remaining days and alerts you before important documents expire (e.g., Driving Licence, Vehicle Insurance, PUC, Passport).
 - **Tags & Encrypted Notes**.
 
@@ -59,14 +62,14 @@ SafeVault features an advanced, **100% on-device Optical Character Recognition (
 
 ### Supported Document Schemas
 When you add or view a document, SafeVault can automatically detect and extract fields across **12 specialized categories**:
-1. **Vehicle RC Book (28 Fields)**: Registration Number, Chassis Number, Engine Number, Owner Name, Vehicle Class, Maker/Model, Fuel Type, Seating Capacity, Fitness Date, Tax Status, RTO Authority, and PUC Validity.
-2. **Driving Licence**: DL Number, Expiry Dates, Authorized Vehicle Classes (e.g. LMV, MCWG), Date of Birth, Holder Name, and Issuing Authority.
+1. **Vehicle RC Book (14 Mandatory Fields & 28 Extended Attributes)**: Registration Number, Chassis Number, Engine Number, Owner Name, Vehicle Class, Maker/Manufacturer, Model Name, Fuel Type, Seating Capacity, Cubic Capacity, Colour, Registration Date, Insurance Details, and PUC Validity.
+2. **Driving Licence**: DL Number, Expiry Dates (Transport & Non-Transport), Authorized Vehicle Classes (e.g. LMV, MCWG), Date of Birth, Holder Name, and Issuing Authority.
 3. **Aadhaar Card**: Automatically detects the 12-digit number and formats it with privacy masking (`XXXX XXXX 1234`), Name, DOB, and Gender.
 4. **PAN Card**: 10-digit Permanent Account Number, Name, Father's Name, and Date of Birth.
 5. **PUC Certificate**: Emission test dates, validity, CO%, and Hydrocarbon levels.
 6. **Vehicle Insurance**: Policy Number, Insurer Company, Policy Period, IDV, and Premium.
 7. **Passport**: Passport Number, Nationality, Issue/Expiry Dates, Place of Birth.
-8. **Bank Documents**: Account Number, IFSC Code, Account Holder Name, Bank Name, and Branch. *(Strict security automatically discards any detected card PINs or CVVs)*.
+8. **Bank Documents**: Account Number, IFSC Code, Account Holder Name, Bank Name, and Branch. *(Strict security automatically discards any detected card PINs, CVVs, or OTPs)*.
 9. **Academic / Degree Certificates**: Student Name, Degree, University / Board, Roll Number, and CGPA.
 10. **Property / Rent Agreements**: Lessor / Owner Name, Lessee / Tenant Name, Property Address, Term, Monthly Rent, and Security Deposit.
 11. **Medical Reports**: Patient Name, Age / Gender, Doctor, Hospital / Clinic, Test Name, and Patient UHID.
@@ -89,8 +92,8 @@ After OCR analysis, SafeVault presents the **Extraction Review Screen**:
 To protect against shoulder surfing and casual eavesdropping:
 - Document numbers, passwords, and bank account numbers are displayed by default with masking bullets (`••••••••`).
 - Tap the **Reveal (Eye)** icon to view the unmasked text.
-- SafeVault will ask you to quickly authenticate with 2FA.
-- Once authenticated, the secret is displayed **directly on the same screen** without interrupting your flow.
+- SafeVault will ask you to authenticate.
+- Once authenticated, the secret is displayed **directly on the same screen** without jumping to the dashboard or losing your place.
 - **60-Second Auto-Hide**: After 60 seconds of inactivity, the secret will automatically revert to its masked state for your safety.
 
 ---
@@ -130,4 +133,3 @@ Open the **Settings** tab to customize your protection:
 - **Change Vault PIN**: Authenticate with your existing credentials to set a new 6-digit PIN. SafeVault re-encrypts your key shares safely without data loss.
 - **Screen Protection**: SafeVault automatically blocks screenshots and task switcher previews (`FLAG_SECURE`).
 - **Complete Air-Gap**: SafeVault has zero network permissions (`android.permission.INTERNET` is not included in the app). Your data never touches the cloud.
-

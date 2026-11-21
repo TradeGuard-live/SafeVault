@@ -45,8 +45,7 @@ class BiometricException extends VaultSecurityException {
 
 class BiometricEnrollmentChangedException extends BiometricException {
   const BiometricEnrollmentChangedException([
-    super.message =
-        'Android Keystore invalidated the biometric key because device biometrics were modified in system settings. In a zero-knowledge 2-factor vault, access cannot be restored without the invalidated biometric key.',
+    super.message = 'Android Keystore invalidated the biometric key because device biometrics were modified in system settings. In a zero-knowledge 2-factor vault, access cannot be restored without the invalidated biometric key.',
     super.cause,
   ]);
 }

@@ -119,19 +119,25 @@ lib/
 
 ---
 
-## 🚀 Building & Testing
+## 🚀 Environment, Building & Testing
+
+### SDK & Build Requirements
+- **Flutter SDK**: 3.47.6 (channel stable)
+- **Dart SDK**: 3.13.5 (environment: `^3.13.5`)
+- **Android Target**: Compile SDK 34, Target SDK 34, Min SDK 26 (Android 8.0+)
+- **Gradle**: 8.4 / AGP 8.3.2
 
 ### Run Tests
 ```bash
 flutter test
 ```
-All 63 automated tests pass (100% success rate).
+All automated tests pass (100% success rate across cryptography, key derivation, 2FA, SAF, OCR schemas, and security gates).
 
 ### Static Analysis
 ```bash
 flutter analyze
 ```
-0 issues found.
+0 issues found (clean static analysis with sound null safety).
 
 ### Build Hardened Release APK
 ```bash
@@ -143,7 +149,9 @@ Output: `build/app/outputs/flutter-apk/app-release.apk`
 
 ---
 
-## 📜 Documentation
-- [DOCUMENT_IMPORT_AND_OCR_REPORT.md](DOCUMENT_IMPORT_AND_OCR_REPORT.md) — Comprehensive technical report on file formats, OCR engines, field extraction, SAF, and sharing architecture.
-- [SECURITY_AUDIT_REPORT.md](SECURITY_AUDIT_REPORT.md) — 27-section comprehensive defensive security audit report.
-- [SECURITY_REMEDIATION_LOG.md](SECURITY_REMEDIATION_LOG.md) — Detailed log of all security remediations.
+## 📜 Official Audit & Security Deliverables
+- [SAFEVAULT_AUDIT.md](SAFEVAULT_AUDIT.md) — Comprehensive defensive audit across 16 structured dimensions (P0-P3 classifications).
+- [SAFEVAULT_FIX_REPORT.md](SAFEVAULT_FIX_REPORT.md) — Exhaustive technical implementation details of all architectural remediations.
+- [SAFEVAULT_SECURITY_REPORT.md](SAFEVAULT_SECURITY_REPORT.md) — Cryptographic architecture, Android Keystore StrongBox integration, and penetration audit.
+- [SAFEVAULT_TEST_REPORT.md](SAFEVAULT_TEST_REPORT.md) — Full automated test suite and physical hardware verification matrix.
+- [SAFEVAULT_USER_GUIDE.md](SAFEVAULT_USER_GUIDE.md) — User onboarding, feature walkthrough, and privacy manual.

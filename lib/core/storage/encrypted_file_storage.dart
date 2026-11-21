@@ -50,6 +50,11 @@ class EncryptedFileStorage {
     required Uint8List plainBytes,
     required SecretKey masterKey,
   }) async {
+    if (plainBytes.length > AppConstants.maxFileSizeBytes) {
+      throw StorageException(
+        'File size (${plainBytes.length} bytes) exceeds maximum permitted size of 50 MB.',
+      );
+    }
     try {
       final encryptedBytes = await _encryptionService.encryptBytes(
         plainBytes,
@@ -66,6 +71,7 @@ class EncryptedFileStorage {
 
       return finalPath;
     } catch (e) {
+      if (e is StorageException) rethrow;
       throw StorageException('Failed to securely store document file.', e);
     }
   }
@@ -75,6 +81,11 @@ class EncryptedFileStorage {
     required Uint8List thumbnailBytes,
     required SecretKey masterKey,
   }) async {
+    if (thumbnailBytes.length > AppConstants.maxFileSizeBytes) {
+      throw StorageException(
+        'Thumbnail size exceeds maximum permitted size of 50 MB.',
+      );
+    }
     try {
       final encryptedBytes = await _encryptionService.encryptBytes(
         thumbnailBytes,
@@ -134,13 +145,15 @@ class EncryptedFileStorage {
     return tempFile;
   }
 
-  /// Securely deletes a file from disk by overwriting with zeros before unlinking.
+  /// Defensively overwrites file content with zero bytes before unlinking.
+  /// Note: On modern NAND flash memory with wear-leveling controllers, user-space
+  /// zero-overwriting cannot guarantee physical block erasure. It serves as a
+  /// defense-in-depth measure to prevent memory buffer remnants.
   Future<void> securelyDeleteFile(String filePath) async {
     try {
       final file = File(filePath);
       if (await file.exists()) {
         final length = await file.length();
-        // Overwrite with zeros to prevent flash memory remnants
         if (length > 0) {
           final zeros = Uint8List(length > 4096 ? 4096 : length);
           final raf = await file.open(mode: FileMode.write);
@@ -164,6 +177,52 @@ class EncryptedFileStorage {
         if (await f.exists()) await f.delete();
       } catch (_) {}
     }
+  }
+
+  /// Scans storage directories on startup and cleans up dangling temporary files (.tmp)
+  /// caused by process interruptions or crashes.
+  Future<void> recoverFromCrashes() async {
+    try {
+      final filesDir = await _filesDirectory;
+      if (await filesDir.exists()) {
+        await for (final entity in filesDir.list()) {
+          if (entity is File && entity.path.endsWith('.tmp')) {
+            try {
+              await entity.delete();
+            } catch (_) {}
+          }
+        }
+      }
+      final thumbsDir = await _thumbnailsDirectory;
+      if (await thumbsDir.exists()) {
+        await for (final entity in thumbsDir.list()) {
+          if (entity is File && entity.path.endsWith('.tmp')) {
+            try {
+              await entity.delete();
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  /// Detects encrypted files on disk that are not referenced in the active database.
+  Future<List<String>> findOrphanedEncryptedFiles(
+    List<String> validFilePaths,
+  ) async {
+    final orphaned = <String>[];
+    final validSet = validFilePaths.toSet();
+    final filesDir = await _filesDirectory;
+    if (await filesDir.exists()) {
+      await for (final entity in filesDir.list()) {
+        if (entity is File && entity.path.endsWith('.enc')) {
+          if (!validSet.contains(entity.path)) {
+            orphaned.add(entity.path);
+          }
+        }
+      }
+    }
+    return orphaned;
   }
 
   /// Wipes all ephemeral decrypted files in the temporary directory.
