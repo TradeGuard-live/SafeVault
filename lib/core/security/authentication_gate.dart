@@ -28,6 +28,8 @@ enum VaultActionType {
   deleteDocument,
   restoreDocument,
   permanentlyDeleteDocument,
+  viewDocumentPreview,
+  viewAttachedFile,
   custom,
 }
 
@@ -225,6 +227,10 @@ class AuthenticationGate extends ChangeNotifier {
         return 'Authorize Restoration';
       case VaultActionType.permanentlyDeleteDocument:
         return 'Confirm Permanent Destruction';
+      case VaultActionType.viewDocumentPreview:
+        return 'Unlock Document Preview';
+      case VaultActionType.viewAttachedFile:
+        return 'Unlock Attached File';
       case VaultActionType.custom:
         return 'Biometric Authentication';
     }
@@ -275,6 +281,10 @@ class AuthenticationGate extends ChangeNotifier {
         return 'Confirm with biometrics to restore document$name from trash.';
       case VaultActionType.permanentlyDeleteDocument:
         return 'Confirm with biometrics to permanently delete and overwrite document$name.';
+      case VaultActionType.viewDocumentPreview:
+        return 'Confirm with biometrics to decrypt and view document preview$name.';
+      case VaultActionType.viewAttachedFile:
+        return 'Confirm with biometrics to decrypt and view attached file$name.';
       case VaultActionType.custom:
         return 'Confirm with biometrics to proceed.';
     }

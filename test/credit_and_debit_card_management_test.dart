@@ -808,110 +808,119 @@ void main() {
       },
     );
 
-    test('16. Full Card Number AES-256-GCM encryption, decryption, and formatting', () async {
-      final masterKey = await encService.generateRandomMasterKey();
+    test(
+      '16. Full Card Number AES-256-GCM encryption, decryption, and formatting',
+      () async {
+        final masterKey = await encService.generateRandomMasterKey();
 
-      final card = await PaymentCardModel.createEncrypted(
-        id: 'full-pan-1',
-        cardNickname: 'Corporate Amex',
-        cardholderName: 'Elena Gilbert',
-        fullCardNumber: '378282246310005', // 15-digit Amex
-        bankName: 'American Express',
-        cardType: CardType.credit,
-        network: CardNetwork.amex,
-        startMonth: 4,
-        startYear: 2024,
-        expiryMonth: 4,
-        expiryYear: 2029,
-        masterKey: masterKey,
-        encryptionService: encService,
-      );
+        final card = await PaymentCardModel.createEncrypted(
+          id: 'full-pan-1',
+          cardNickname: 'Corporate Amex',
+          cardholderName: 'Elena Gilbert',
+          fullCardNumber: '378282246310005', // 15-digit Amex
+          bankName: 'American Express',
+          cardType: CardType.credit,
+          network: CardNetwork.amex,
+          startMonth: 4,
+          startYear: 2024,
+          expiryMonth: 4,
+          expiryYear: 2029,
+          masterKey: masterKey,
+          encryptionService: encService,
+        );
 
-      // Ciphertext must be encrypted
-      expect(card.cardNumberEnc, isNotNull);
-      expect(card.cardNumberEnc, isNot(contains('378282246310005')));
-      // Last 4 digits automatically extracted
-      expect(card.lastFourDigits, equals('0005'));
-      expect(card.maskedCardNumber, equals('•••• •••• •••• 0005'));
+        // Ciphertext must be encrypted
+        expect(card.cardNumberEnc, isNotNull);
+        expect(card.cardNumberEnc, isNot(contains('378282246310005')));
+        // Last 4 digits automatically extracted
+        expect(card.lastFourDigits, equals('0005'));
+        expect(card.maskedCardNumber, equals('•••• •••• •••• 0005'));
 
-      // Decryption roundtrip
-      final decrypted = await card.decrypt(
-        masterKey: masterKey,
-        encryptionService: encService,
-      );
+        // Decryption roundtrip
+        final decrypted = await card.decrypt(
+          masterKey: masterKey,
+          encryptionService: encService,
+        );
 
-      expect(decrypted.decryptedCardNumber, equals('378282246310005'));
-      // Amex 4-6-5 formatting
-      expect(decrypted.formattedFullCardNumber, equals('3782 822463 10005'));
-      // Standard 16-digit Visa/Mastercard test
-      final visaCard = await PaymentCardModel.createEncrypted(
-        id: 'full-pan-2',
-        cardNickname: 'Personal Visa',
-        fullCardNumber: '4111222233334444',
-        bankName: 'HDFC Bank',
-        cardType: CardType.debit,
-        network: CardNetwork.visa,
-        expiryMonth: 12,
-        expiryYear: 2028,
-        masterKey: masterKey,
-        encryptionService: encService,
-      );
-      final decryptedVisa = await visaCard.decrypt(
-        masterKey: masterKey,
-        encryptionService: encService,
-      );
-      expect(decryptedVisa.formattedFullCardNumber, equals('4111 2222 3333 4444'));
-    });
+        expect(decrypted.decryptedCardNumber, equals('378282246310005'));
+        // Amex 4-6-5 formatting
+        expect(decrypted.formattedFullCardNumber, equals('3782 822463 10005'));
+        // Standard 16-digit Visa/Mastercard test
+        final visaCard = await PaymentCardModel.createEncrypted(
+          id: 'full-pan-2',
+          cardNickname: 'Personal Visa',
+          fullCardNumber: '4111222233334444',
+          bankName: 'HDFC Bank',
+          cardType: CardType.debit,
+          network: CardNetwork.visa,
+          expiryMonth: 12,
+          expiryYear: 2028,
+          masterKey: masterKey,
+          encryptionService: encService,
+        );
+        final decryptedVisa = await visaCard.decrypt(
+          masterKey: masterKey,
+          encryptionService: encService,
+        );
+        expect(
+          decryptedVisa.formattedFullCardNumber,
+          equals('4111 2222 3333 4444'),
+        );
+      },
+    );
 
-    test('17. Start Date (Valid From) formatting, persistence, and optionality', () async {
-      final masterKey = await encService.generateRandomMasterKey();
+    test(
+      '17. Start Date (Valid From) formatting, persistence, and optionality',
+      () async {
+        final masterKey = await encService.generateRandomMasterKey();
 
-      // Card with start date
-      final cardWithStart = await PaymentCardModel.createEncrypted(
-        id: 'start-card-1',
-        cardNickname: 'RuPay Card',
-        fullCardNumber: '6071123456789999',
-        bankName: 'PNB',
-        cardType: CardType.debit,
-        network: CardNetwork.rupay,
-        startMonth: 1,
-        startYear: 2023,
-        expiryMonth: 1,
-        expiryYear: 2028,
-        masterKey: masterKey,
-        encryptionService: encService,
-      );
+        // Card with start date
+        final cardWithStart = await PaymentCardModel.createEncrypted(
+          id: 'start-card-1',
+          cardNickname: 'RuPay Card',
+          fullCardNumber: '6071123456789999',
+          bankName: 'PNB',
+          cardType: CardType.debit,
+          network: CardNetwork.rupay,
+          startMonth: 1,
+          startYear: 2023,
+          expiryMonth: 1,
+          expiryYear: 2028,
+          masterKey: masterKey,
+          encryptionService: encService,
+        );
 
-      expect(cardWithStart.formattedStartDate, equals('01/23'));
-      expect(cardWithStart.formattedExpiry, equals('01/28'));
+        expect(cardWithStart.formattedStartDate, equals('01/23'));
+        expect(cardWithStart.formattedExpiry, equals('01/28'));
 
-      // Card without start date (optional)
-      final cardWithoutStart = await PaymentCardModel.createEncrypted(
-        id: 'start-card-2',
-        cardNickname: 'Basic Card',
-        fullCardNumber: '5123456789012345',
-        bankName: 'SBI',
-        cardType: CardType.credit,
-        network: CardNetwork.mastercard,
-        expiryMonth: 8,
-        expiryYear: 2027,
-        masterKey: masterKey,
-        encryptionService: encService,
-      );
+        // Card without start date (optional)
+        final cardWithoutStart = await PaymentCardModel.createEncrypted(
+          id: 'start-card-2',
+          cardNickname: 'Basic Card',
+          fullCardNumber: '5123456789012345',
+          bankName: 'SBI',
+          cardType: CardType.credit,
+          network: CardNetwork.mastercard,
+          expiryMonth: 8,
+          expiryYear: 2027,
+          masterKey: masterKey,
+          encryptionService: encService,
+        );
 
-      expect(cardWithoutStart.formattedStartDate, isNull);
-      expect(cardWithoutStart.startMonth, isNull);
-      expect(cardWithoutStart.startYear, isNull);
+        expect(cardWithoutStart.formattedStartDate, isNull);
+        expect(cardWithoutStart.startMonth, isNull);
+        expect(cardWithoutStart.startYear, isNull);
 
-      // Verify persistence roundtrip via map
-      final map = cardWithStart.toMap();
-      expect(map['start_month'], equals(1));
-      expect(map['start_year'], equals(2023));
-      expect(map['card_number_enc'], isNotNull);
+        // Verify persistence roundtrip via map
+        final map = cardWithStart.toMap();
+        expect(map['start_month'], equals(1));
+        expect(map['start_year'], equals(2023));
+        expect(map['card_number_enc'], isNotNull);
 
-      final fromMap = PaymentCardModel.fromMap(map);
-      expect(fromMap.formattedStartDate, equals('01/23'));
-      expect(fromMap.cardNumberEnc, equals(cardWithStart.cardNumberEnc));
-    });
+        final fromMap = PaymentCardModel.fromMap(map);
+        expect(fromMap.formattedStartDate, equals('01/23'));
+        expect(fromMap.cardNumberEnc, equals(cardWithStart.cardNumberEnc));
+      },
+    );
   });
 }

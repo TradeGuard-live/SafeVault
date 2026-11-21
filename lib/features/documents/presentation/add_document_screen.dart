@@ -658,9 +658,10 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
 
       ref.invalidate(activeDocumentsProvider);
       ref.invalidate(expiringDocumentsProvider);
+      ref.invalidate(favoriteDocumentsProvider);
 
       if (mounted) {
-        context.pop();
+        context.pop(true);
       }
     } catch (e) {
       if (mounted) {

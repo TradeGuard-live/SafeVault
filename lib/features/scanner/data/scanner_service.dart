@@ -98,18 +98,41 @@ class ScannerService {
     return Uint8List.fromList(img.encodeJpg(resized, quality: 75));
   }
 
-  /// Compiles multiple scanned pages into a standard PDF document.
+  /// Compiles multiple scanned pages into a standard PDF document edge-to-edge without white bars.
   Future<Uint8List> compileToPdf(List<Uint8List> pageImages) async {
     final pdf = pw.Document();
 
     for (final pageBytes in pageImages) {
       final image = pw.MemoryImage(pageBytes);
+
+      // Dynamically size PDF page to match exact image aspect ratio
+      // to completely eliminate top/bottom and side white bars
+      double pageW = 595.27559; // Standard A4 width in PDF points
+      double pageH = 841.88976;
+
+      final imgW = image.width?.toDouble();
+      final imgH = image.height?.toDouble();
+
+      if (imgW != null && imgH != null && imgW > 0 && imgH > 0) {
+        pageH = pageW * (imgH / imgW);
+      } else {
+        final decoded = img.decodeImage(pageBytes);
+        if (decoded != null && decoded.width > 0 && decoded.height > 0) {
+          pageH = pageW * (decoded.height / decoded.width);
+        }
+      }
+
+      final pageFormat = PdfPageFormat(pageW, pageH, marginAll: 0.0);
+
       pdf.addPage(
         pw.Page(
-          pageFormat: PdfPageFormat.a4,
+          pageFormat: pageFormat,
           margin: pw.EdgeInsets.zero,
           build: (pw.Context context) {
-            return pw.Center(child: pw.Image(image, fit: pw.BoxFit.contain));
+            return pw.FullPage(
+              ignoreMargins: true,
+              child: pw.Image(image, fit: pw.BoxFit.fill),
+            );
           },
         ),
       );
