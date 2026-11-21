@@ -134,7 +134,8 @@ class _IncomingSharePreviewScreenState
     });
 
     // Validate category before any encryption work.
-    final knownCategories = ref.read(categoriesProvider).valueOrNull ?? const [];
+    final knownCategories =
+        ref.read(categoriesProvider).valueOrNull ?? const [];
     if (knownCategories.isNotEmpty &&
         !knownCategories.any((c) => c.id == itemState.selectedCategoryId)) {
       if (mounted) {
@@ -278,7 +279,9 @@ class _IncomingSharePreviewScreenState
       // Compensating cleanup for orphan encrypted file if DB insert failed.
       if (encryptedPath != null) {
         try {
-          await ref.read(storageServiceProvider).securelyDeleteFile(encryptedPath);
+          await ref
+              .read(storageServiceProvider)
+              .securelyDeleteFile(encryptedPath);
         } catch (_) {}
       }
       if (mounted) {

@@ -255,17 +255,16 @@ class _BankAccountDetailsScreenState
               final verified = await ref
                   .read(authenticationGateProvider)
                   .authenticateForAction(
-                context,
-                action: PendingVaultAction(
-                  type: VaultActionType.editBankAccount,
-                  targetId: account.id,
-                  targetName: account.bankName,
-                  returnRoute: '/bank-account/${account.id}',
-                ),
-                title: 'Authorize Bank Account Edit',
-                reason:
-                    'Confirm with biometrics before editing these bank details.',
-              );
+                    context,
+                    action: PendingVaultAction(
+                      type: VaultActionType.editBankAccount,
+                      targetId: account.id,
+                      targetName: account.bankName,
+                      returnRoute: '/bank-account/${account.id}',
+                    ),
+                    title: 'Authorize Bank Account Edit',
+                    reason: 'Confirm with biometrics before editing these bank details.',
+                  );
               if (!verified) return;
               if (context.mounted) {
                 await context.push('/edit-bank-account/${account.id}');
@@ -383,9 +382,7 @@ class _BankAccountDetailsScreenState
                                 : Icons.visibility_rounded,
                             size: 16,
                           ),
-                          label: Text(
-                            _isDetailsRevealed ? 'Hide' : 'Reveal',
-                          ),
+                          label: Text(_isDetailsRevealed ? 'Hide' : 'Reveal'),
                           style: TextButton.styleFrom(
                             foregroundColor: colors.primaryAccent,
                             visualDensity: VisualDensity.compact,

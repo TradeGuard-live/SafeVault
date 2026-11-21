@@ -247,16 +247,17 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
               final verified = await ref
                   .read(authenticationGateProvider)
                   .authenticateForAction(
-                context,
-                action: PendingVaultAction(
-                  type: VaultActionType.editPassword,
-                  targetId: entry.id,
-                  targetName: entry.title,
-                  returnRoute: '/password/${entry.id}',
-                ),
-                title: 'Authorize Password Edit',
-                reason: 'Confirm with biometrics before editing this password.',
-              );
+                    context,
+                    action: PendingVaultAction(
+                      type: VaultActionType.editPassword,
+                      targetId: entry.id,
+                      targetName: entry.title,
+                      returnRoute: '/password/${entry.id}',
+                    ),
+                    title: 'Authorize Password Edit',
+                    reason:
+                        'Confirm with biometrics before editing this password.',
+                  );
               if (!verified) return;
               if (context.mounted) {
                 await context.push('/edit-password/${entry.id}');
@@ -401,9 +402,7 @@ class _PasswordDetailsScreenState extends ConsumerState<PasswordDetailsScreen> {
                                 : Icons.visibility_rounded,
                             size: 16,
                           ),
-                          label: Text(
-                            _isPasswordRevealed ? 'Hide' : 'Reveal',
-                          ),
+                          label: Text(_isPasswordRevealed ? 'Hide' : 'Reveal'),
                           style: TextButton.styleFrom(
                             foregroundColor: colors.primaryAccent,
                             visualDensity: VisualDensity.compact,

@@ -83,8 +83,7 @@ class _InitialSecuritySetupScreenState
         ErrorDialog.show(
           context,
           title: 'Biometrics Required',
-          message:
-              'Biometric hardware and at least one enrolled fingerprint/face is required to create the vault. Please enroll a biometric in Android Settings, then retry.',
+          message: 'Biometric hardware and at least one enrolled fingerprint/face is required to create the vault. Please enroll a biometric in Android Settings, then retry.',
         );
       }
       return;
@@ -102,7 +101,9 @@ class _InitialSecuritySetupScreenState
           setState(() => _currentStep = SetupStep.biometricsNotice);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Biometric authentication cancelled. Setup aborted.'),
+              content: Text(
+                'Biometric authentication cancelled. Setup aborted.',
+              ),
             ),
           );
         }
@@ -328,11 +329,7 @@ class _InitialSecuritySetupScreenState
             ),
             child: Text(
               'Biometric hardware or enrollment is unavailable. Enroll a fingerprint or face in Android Settings, then tap Re-check.',
-              style: TextStyle(
-                fontSize: 12,
-                color: colors.error,
-                height: 1.35,
-              ),
+              style: TextStyle(fontSize: 12, color: colors.error, height: 1.35),
             ),
           ),
           const SizedBox(height: 12),

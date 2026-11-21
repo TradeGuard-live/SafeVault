@@ -29,8 +29,7 @@ class TrashScreen extends ConsumerWidget {
         returnRoute: '/settings',
       ),
       title: 'Authorize Restoration',
-      reason:
-          'Confirm with biometrics to restore "${doc.name}" from trash.',
+      reason: 'Confirm with biometrics to restore "${doc.name}" from trash.',
     );
     if (!verified || !context.mounted) return;
 
@@ -70,8 +69,7 @@ class TrashScreen extends ConsumerWidget {
           returnRoute: '/settings',
         ),
         title: 'Confirm Permanent Destruction',
-        reason:
-            'Confirm with biometrics to permanently destroy "${doc.name}".',
+        reason: 'Confirm with biometrics to permanently destroy "${doc.name}".',
       );
       if (!verified || !context.mounted) return;
 

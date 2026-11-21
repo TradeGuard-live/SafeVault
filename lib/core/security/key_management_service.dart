@@ -145,7 +145,10 @@ class KeyManagementService {
       // 5. Wrap S_pin with PIN KEK (PBKDF2 100k rounds)
       final salt = _generateRandomBytes(AppConstants.pbkdf2SaltLength);
       final pinKek = await _deriveKeyFromPin(pin, salt);
-      final wrappedSharePin = await _encryptionService.encryptBytes(sPin, pinKek);
+      final wrappedSharePin = await _encryptionService.encryptBytes(
+        sPin,
+        pinKek,
+      );
 
       // 6. Write securely to storage
       await _secureStorage.write(
@@ -311,7 +314,9 @@ class KeyManagementService {
         bioShare: Uint8List.fromList(bioShareCopy),
         pin: currentPin,
       );
-      final vmkBytes = Uint8List.fromList(await currentMasterKey.extractBytes());
+      final vmkBytes = Uint8List.fromList(
+        await currentMasterKey.extractBytes(),
+      );
 
       // 2. Keep the existing S_bio; only S_pin changes: newS_pin = VMK ⊕ S_bio
       final newSPin = _xorBytes(vmkBytes, bioShareCopy);

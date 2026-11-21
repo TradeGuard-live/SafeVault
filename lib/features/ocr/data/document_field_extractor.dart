@@ -51,8 +51,12 @@ class DocumentFieldExtractor {
     int pageCount = 1,
   }) {
     final fields = <RawExtractedField>[];
-    final upper = fullText.toUpperCase();
-    final lines = fullText
+    // OCR commonly inserts non-breaking spaces, typographic dashes and uneven
+    // whitespace. Normalising those layout artefacts lets the extractors be
+    // tolerant without changing the actual document values.
+    final normalizedText = _normalizeOcrText(fullText);
+    final upper = normalizedText.toUpperCase();
+    final lines = normalizedText
         .split('\n')
         .map((l) => l.trim())
         .where((l) => l.isNotEmpty)
@@ -60,32 +64,32 @@ class DocumentFieldExtractor {
 
     switch (documentType) {
       case 'Vehicle RC Book':
-        _extractVehicleRcFields(fullText, upper, lines, fields);
+        _extractVehicleRcFields(normalizedText, upper, lines, fields);
         break;
       case 'Driving Licence':
-        _extractDrivingLicenceFields(fullText, upper, lines, fields);
+        _extractDrivingLicenceFields(normalizedText, upper, lines, fields);
         break;
       case 'Aadhaar Card':
-        _extractAadhaarFields(fullText, upper, lines, fields);
+        _extractAadhaarFields(normalizedText, upper, lines, fields);
         break;
       case 'PAN Card':
-        _extractPanFields(fullText, upper, lines, fields);
+        _extractPanFields(normalizedText, upper, lines, fields);
         break;
       case 'PUC Certificate':
-        _extractPucFields(fullText, upper, lines, fields);
+        _extractPucFields(normalizedText, upper, lines, fields);
         break;
       case 'Vehicle Insurance':
       case 'Vehicle Insurance Policy':
-        _extractVehicleInsuranceFields(fullText, upper, lines, fields);
+        _extractVehicleInsuranceFields(normalizedText, upper, lines, fields);
         break;
       case 'Passport':
-        _extractPassportFields(fullText, upper, lines, fields);
+        _extractPassportFields(normalizedText, upper, lines, fields);
         break;
       case 'Bank Document':
       case 'Bank Statement':
       case 'Bank Passbook':
       case 'Cheque':
-        _extractBankDocumentFields(fullText, upper, lines, fields);
+        _extractBankDocumentFields(normalizedText, upper, lines, fields);
         break;
       case 'Academic Certificate':
       case 'Degree Certificate':
@@ -95,7 +99,12 @@ class DocumentFieldExtractor {
       case 'College Certificates':
       case 'Degree Certificates':
       case 'Mark Sheets':
-        _extractEducationCertificateFields(fullText, upper, lines, fields);
+        _extractEducationCertificateFields(
+          normalizedText,
+          upper,
+          lines,
+          fields,
+        );
         break;
       case 'Property Documents':
       case 'Property Document':
@@ -103,21 +112,21 @@ class DocumentFieldExtractor {
       case 'Rent Agreement':
       case 'Ownership Documents':
       case 'Ownership Document':
-        _extractPropertyFields(fullText, upper, lines, fields);
+        _extractPropertyFields(normalizedText, upper, lines, fields);
         break;
       case 'Medical Reports':
       case 'Medical Report':
       case 'Medical Document':
       case 'Health Insurance':
       case 'Vaccination Certificates':
-        _extractMedicalFields(fullText, upper, lines, fields);
+        _extractMedicalFields(normalizedText, upper, lines, fields);
         break;
       default:
-        _extractGenericFields(fullText, upper, lines, fields);
+        _extractGenericFields(normalizedText, upper, lines, fields);
         break;
     }
 
-    return fields;
+    return _deduplicateFields(fields);
   }
 
   // =========================================================================
@@ -130,16 +139,15 @@ class DocumentFieldExtractor {
     List<RawExtractedField> fields,
   ) {
     // 1. Registration Number
-    final regMatch = RegExp(r'\b([A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4})\b')
-        .firstMatch(upper);
-    if (regMatch != null) {
+    final registrationNumber = _findVehicleRegistration(upper);
+    if (registrationNumber != null) {
       fields.add(
         RawExtractedField(
           fieldName: 'Registration Number',
-          value: regMatch.group(1)!,
+          value: registrationNumber,
           confidence: 0.98,
           confidenceCategory: 'High',
-          sourceSnippet: regMatch.group(1),
+          sourceSnippet: registrationNumber,
         ),
       );
     }
@@ -867,19 +875,16 @@ class DocumentFieldExtractor {
     List<RawExtractedField> fields,
   ) {
     // 1. Aadhaar Number (Masked preference)
-    final aadhaarMatch = RegExp(r'\b(\d{4}\s\d{4}\s\d{4})\b')
-        .firstMatch(fullText);
-    if (aadhaarMatch != null) {
-      final fullNumber = aadhaarMatch.group(1)!;
-      final parts = fullNumber.split(' ');
-      final masked = 'XXXX XXXX ${parts.last}';
+    final aadhaarNumber = _findAadhaarNumber(fullText);
+    if (aadhaarNumber != null) {
+      final masked = 'XXXX XXXX ${aadhaarNumber.substring(8)}';
       fields.add(
         RawExtractedField(
           fieldName: 'Aadhaar Number',
           value: masked,
           confidence: 0.99,
           confidenceCategory: 'High',
-          sourceSnippet: fullNumber,
+          sourceSnippet: aadhaarNumber,
         ),
       );
     }
@@ -1131,13 +1136,12 @@ class DocumentFieldExtractor {
     }
 
     // 2. Vehicle Registration Number
-    final regMatch = RegExp(r'\b([A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4})\b')
-        .firstMatch(upper);
-    if (regMatch != null) {
+    final registrationNumber = _findVehicleRegistration(upper);
+    if (registrationNumber != null) {
       fields.add(
         RawExtractedField(
           fieldName: 'Vehicle Registration Number',
-          value: regMatch.group(1)!,
+          value: registrationNumber,
           confidence: 0.98,
           confidenceCategory: 'High',
         ),
@@ -1278,13 +1282,12 @@ class DocumentFieldExtractor {
     }
 
     // 4. Vehicle Registration Number
-    final regMatch = RegExp(r'\b([A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4})\b')
-        .firstMatch(upper);
-    if (regMatch != null) {
+    final registrationNumber = _findVehicleRegistration(upper);
+    if (registrationNumber != null) {
       fields.add(
         RawExtractedField(
           fieldName: 'Vehicle Registration Number',
-          value: regMatch.group(1)!,
+          value: registrationNumber,
           confidence: 0.96,
           confidenceCategory: 'High',
         ),
@@ -1375,24 +1378,38 @@ class DocumentFieldExtractor {
       );
     }
 
-    // 2. Type & Country Code
-    fields.add(
-      const RawExtractedField(
-        fieldName: 'Passport Type',
-        value: 'P (Personal)',
-        confidence: 0.95,
-        confidenceCategory: 'High',
-      ),
-    );
+    // 2. Type & Country Code. These must come from the document itself: a
+    // passport can be non-Indian even when it is imported into this app.
+    final typeMatch = RegExp(
+      r'(?:^|\n)\s*TYPE\s*[:\-]\s*([A-Z])\b',
+      caseSensitive: false,
+    ).firstMatch(fullText);
+    if (typeMatch != null) {
+      final type = typeMatch.group(1)!.toUpperCase();
+      fields.add(
+        RawExtractedField(
+          fieldName: 'Passport Type',
+          value: type == 'P' ? 'P (Personal)' : type,
+          confidence: 0.94,
+          confidenceCategory: 'High',
+        ),
+      );
+    }
 
-    fields.add(
-      const RawExtractedField(
-        fieldName: 'Country Code',
-        value: 'IND',
-        confidence: 0.95,
-        confidenceCategory: 'High',
-      ),
-    );
+    final countryMatch = RegExp(
+      r'(?:COUNTRY\s*CODE|COUNTRY)\s*[:\-]\s*([A-Z]{3})\b',
+      caseSensitive: false,
+    ).firstMatch(fullText);
+    if (countryMatch != null) {
+      fields.add(
+        RawExtractedField(
+          fieldName: 'Country Code',
+          value: countryMatch.group(1)!.toUpperCase(),
+          confidence: 0.94,
+          confidenceCategory: 'High',
+        ),
+      );
+    }
 
     // 3. Surname & Given Names
     final surnameMatch = RegExp(
@@ -1426,14 +1443,20 @@ class DocumentFieldExtractor {
     }
 
     // 4. Nationality
-    fields.add(
-      const RawExtractedField(
-        fieldName: 'Nationality',
-        value: 'INDIAN',
-        confidence: 0.98,
-        confidenceCategory: 'High',
-      ),
-    );
+    final nationalityMatch = RegExp(
+      r'(?:NATIONALITY)\s*[:\-]\s*([A-Za-z ]{3,30})',
+      caseSensitive: false,
+    ).firstMatch(fullText);
+    if (nationalityMatch != null) {
+      fields.add(
+        RawExtractedField(
+          fieldName: 'Nationality',
+          value: nationalityMatch.group(1)!.trim().toUpperCase(),
+          confidence: 0.94,
+          confidenceCategory: 'High',
+        ),
+      );
+    }
 
     // 5. Sex
     final sexMatch = RegExp(r'\b(SEX|GENDER)[\s:]*([MF])\b').firstMatch(upper);
@@ -1448,39 +1471,46 @@ class DocumentFieldExtractor {
       );
     }
 
-    // 6. Dates
-    final dates = RegExp(r'\b(\d{2}[\/\.-]\d{2}[\/\.-]\d{4})\b')
-        .allMatches(upper)
-        .toList();
-    if (dates.isNotEmpty) {
+    // 6. Dates. Prefer their labels rather than assuming the first three
+    // dates on a page are DOB, issue and expiry. That assumption frequently
+    // turns a travel date or visa date into an identity field.
+    final dobMatch = _findLabeledDate(fullText, ['DOB', 'DATE OF BIRTH']);
+    if (dobMatch != null) {
       fields.add(
         RawExtractedField(
           fieldName: 'Date of Birth',
-          value: dates[0].group(1)!,
-          confidence: 0.88,
+          value: dobMatch,
+          confidence: 0.94,
           confidenceCategory: 'High',
         ),
       );
-      if (dates.length >= 2) {
-        fields.add(
-          RawExtractedField(
-            fieldName: 'Date of Issue',
-            value: dates[1].group(1)!,
-            confidence: 0.88,
-            confidenceCategory: 'High',
-          ),
-        );
-      }
-      if (dates.length >= 3) {
-        fields.add(
-          RawExtractedField(
-            fieldName: 'Date of Expiry',
-            value: dates.last.group(1)!,
-            confidence: 0.94,
-            confidenceCategory: 'High',
-          ),
-        );
-      }
+    }
+    final issueDate = _findLabeledDate(fullText, ['DOI', 'DATE OF ISSUE']);
+    if (issueDate != null) {
+      fields.add(
+        RawExtractedField(
+          fieldName: 'Date of Issue',
+          value: issueDate,
+          confidence: 0.94,
+          confidenceCategory: 'High',
+        ),
+      );
+    }
+    final expiryDate = _findLabeledDate(fullText, [
+      'DOE',
+      'DATE OF EXPIRY',
+      'EXPIRY DATE',
+      'VALID UNTIL',
+    ]);
+    if (expiryDate != null) {
+      fields.add(
+        RawExtractedField(
+          fieldName: 'Date of Expiry',
+          value: expiryDate,
+          confidence: 0.96,
+          confidenceCategory: 'High',
+        ),
+      );
     }
 
     // 7. Place of Issue / Place of Birth
@@ -2119,6 +2149,81 @@ class DocumentFieldExtractor {
   // =========================================================================
   // HELPER METHODS
   // =========================================================================
+  static String _normalizeOcrText(String text) {
+    return text
+        .replaceAll('\r\n', '\n')
+        .replaceAll('\r', '\n')
+        .replaceAll('\u00A0', ' ')
+        .replaceAll(RegExp('[\u2010-\u2015\u2212]'), '-')
+        .replaceAll('\u200B', '')
+        .replaceAll(RegExp(r'[ \t]+'), ' ');
+  }
+
+  /// OCR often puts a space or a hyphen between number-plate groups. Keep the
+  /// detector flexible, but only return a canonical value after every group
+  /// matches the Indian registration-number shape.
+  static String? _findVehicleRegistration(String text) {
+    final match = RegExp(
+      r'(?<![A-Z0-9])([A-Z]{2}[ \t-]*[0-9]{1,2}[ \t-]*[A-Z]{1,3}[ \t-]*[0-9]{4})(?![A-Z0-9])',
+    ).firstMatch(text.toUpperCase());
+    return match?.group(1)?.replaceAll(RegExp(r'[\s-]'), '');
+  }
+
+  /// Supports printed, hyphenated and tightly grouped Aadhaar numbers. The
+  /// digit boundaries prevent taking the first twelve digits of a VID or a
+  /// longer account number.
+  static String? _findAadhaarNumber(String text) {
+    final match = RegExp(r'(?<!\d)(\d{4}[ \t-]*\d{4}[ \t-]*\d{4})(?!\d)')
+        .firstMatch(text);
+    final digits = match?.group(1)?.replaceAll(RegExp(r'\D'), '');
+    return digits != null && digits.length == 12 ? digits : null;
+  }
+
+  static String? _findLabeledDate(String text, List<String> labels) {
+    final escapedLabels = labels.map(RegExp.escape).join('|');
+    final match = RegExp(
+      '(?:$escapedLabels)\\b\\s*(?:[:=-]\\s*)?(\\d{1,2}\\s*[/.\\-]\\s*\\d{1,2}\\s*[/.\\-]\\s*\\d{4})',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (match == null) return null;
+
+    final value = match.group(1)!.replaceAll(RegExp(r'\s+'), '');
+    return _isRealDate(value) ? value : null;
+  }
+
+  static bool _isRealDate(String value) {
+    final match = RegExp(r'^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$')
+        .firstMatch(value);
+    if (match == null) return false;
+    final day = int.tryParse(match.group(1)!);
+    final month = int.tryParse(match.group(2)!);
+    final year = int.tryParse(match.group(3)!);
+    if (day == null ||
+        month == null ||
+        year == null ||
+        year < 1900 ||
+        year > 2100) {
+      return false;
+    }
+    final date = DateTime(year, month, day);
+    return date.year == year && date.month == month && date.day == day;
+  }
+
+  static List<RawExtractedField> _deduplicateFields(
+    List<RawExtractedField> fields,
+  ) {
+    final byName = <String, RawExtractedField>{};
+    for (final field in fields) {
+      final key = field.fieldName.trim().toLowerCase();
+      if (key.isEmpty || field.value.trim().isEmpty) continue;
+      final existing = byName[key];
+      if (existing == null || field.confidence > existing.confidence) {
+        byName[key] = field;
+      }
+    }
+    return byName.values.toList(growable: false);
+  }
+
   static String _cleanName(String raw) {
     return raw
         .replaceAll(
@@ -2128,7 +2233,7 @@ class DocumentFieldExtractor {
           ),
           '',
         )
-        .replaceAll(RegExp(r'[^A-Za-z \.]'), '')
+        .replaceAll(RegExp(r'[^A-Za-z\u0900-\u097F\u0A80-\u0AFF \.]'), '')
         .trim();
   }
 
@@ -2136,7 +2241,7 @@ class DocumentFieldExtractor {
     final clean = s.trim();
     return clean.length >= 3 &&
         clean.length <= 40 &&
-        RegExp(r'^[A-Za-z \.]+$').hasMatch(clean);
+        RegExp(r'^[A-Za-z\u0900-\u097F\u0A80-\u0AFF \.]+$').hasMatch(clean);
   }
 
   /// Avoid presenting arbitrary OCR prose as a person's name. This is stricter

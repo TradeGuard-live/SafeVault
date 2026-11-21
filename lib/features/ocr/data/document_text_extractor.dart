@@ -115,7 +115,7 @@ class DocumentTextExtractor {
               startPageIndex: i,
               endPageIndex: i,
             );
-            if (pageText.trim().length > 15) {
+            if (_isUsableSearchableText(pageText)) {
               pageTexts[pageNum] = pageText.trim();
               hasSearchable = true;
             }
@@ -155,7 +155,10 @@ class DocumentTextExtractor {
             if (pageImage != null && pageImage.bytes.isNotEmpty) {
               final renderedPath = '${tempDir.path}/ocr_page_${_uuid.v4()}.png';
               final renderedFile = File(renderedPath);
-              await renderedFile.writeAsBytes(pageImage.bytes, flush: true);
+              await _writeOcrReadyImage(
+                imageBytes: pageImage.bytes,
+                outputFile: renderedFile,
+              );
 
               final ocrText = await _ocrService.recognizeText(
                 imagePath: renderedPath,
@@ -236,22 +239,12 @@ class DocumentTextExtractor {
     required String language,
   }) async {
     final tempDir = await getTemporaryDirectory();
-    final tempImagePath = '${tempDir.path}/ocr_img_${_uuid.v4()}.jpg';
+    final tempImagePath = '${tempDir.path}/ocr_img_${_uuid.v4()}.png';
     final tempImageFile = File(tempImagePath);
 
     String ocrText = '';
     try {
-      // Decode image to check EXIF rotation and optimize contrast for OCR
-      final decoded = img.decodeImage(bytes);
-      if (decoded != null) {
-        // Fix orientation based on EXIF
-        final oriented = img.bakeOrientation(decoded);
-        // Save optimized copy strictly for OCR processing
-        final processedJpg = img.encodeJpg(oriented, quality: 90);
-        await tempImageFile.writeAsBytes(processedJpg, flush: true);
-      } else {
-        await tempImageFile.writeAsBytes(bytes, flush: true);
-      }
+      await _writeOcrReadyImage(imageBytes: bytes, outputFile: tempImageFile);
 
       ocrText = await _ocrService.recognizeText(
         imagePath: tempImagePath,
@@ -286,6 +279,58 @@ class DocumentTextExtractor {
       classification: classification,
       fields: fields,
     );
+  }
+
+  /// Reject PDF text layers that are present but clearly unusable (for
+  /// example, glyph names or isolated punctuation). Those pages need the same
+  /// rendered-image OCR fallback as a scanned page; a length check alone is
+  /// not enough to tell the difference.
+  static bool _isUsableSearchableText(String text) {
+    final trimmed = text.trim();
+    if (trimmed.length < 16) return false;
+
+    final visibleCharacters = trimmed.replaceAll(RegExp(r'\s+'), '');
+    if (visibleCharacters.isEmpty) return false;
+
+    final alphaNumericCount = RegExp(r'[A-Za-z0-9]').allMatches(trimmed).length;
+    return alphaNumericCount >= 12 &&
+        alphaNumericCount / visibleCharacters.length >= 0.45;
+  }
+
+  /// Makes camera captures and rendered PDF pages easier for Tesseract to
+  /// read. The original never leaves the vault pipeline: this is a temporary,
+  /// local-only OCR copy that is deleted by the caller.
+  static Future<void> _writeOcrReadyImage({
+    required Uint8List imageBytes,
+    required File outputFile,
+  }) async {
+    final decoded = img.decodeImage(imageBytes);
+    if (decoded == null) {
+      await outputFile.writeAsBytes(imageBytes, flush: true);
+      return;
+    }
+
+    var prepared = img.bakeOrientation(decoded);
+    final longestEdge = prepared.width > prepared.height
+        ? prepared.width
+        : prepared.height;
+
+    // Small phone photos frequently contain characters below Tesseract's
+    // useful resolution. Enlarge modestly, but never repeatedly or without a
+    // cap because oversized pages can exhaust a low-memory device.
+    if (longestEdge > 0 && longestEdge < 1800) {
+      final scale = (1800 / longestEdge).clamp(1.0, 2.5);
+      prepared = img.copyResize(
+        prepared,
+        width: (prepared.width * scale).round(),
+        height: (prepared.height * scale).round(),
+        interpolation: img.Interpolation.cubic,
+      );
+    }
+
+    img.grayscale(prepared);
+    img.contrast(prepared, contrast: 135);
+    await outputFile.writeAsBytes(img.encodePng(prepared), flush: true);
   }
 
   // =========================================================================

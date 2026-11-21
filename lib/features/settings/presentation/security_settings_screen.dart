@@ -100,7 +100,9 @@ class _SecuritySettingsScreenState
                 if (!pinRegex.hasMatch(currentPin)) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Current PIN must be exactly 6 numeric digits.'),
+                      content: Text(
+                        'Current PIN must be exactly 6 numeric digits.',
+                      ),
                     ),
                   );
                   return;
@@ -108,7 +110,9 @@ class _SecuritySettingsScreenState
                 if (!pinRegex.hasMatch(newPin)) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('New PIN must be exactly 6 numeric digits.'),
+                      content: Text(
+                        'New PIN must be exactly 6 numeric digits.',
+                      ),
                     ),
                   );
                   return;
@@ -138,7 +142,9 @@ class _SecuritySettingsScreenState
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Biometric authentication cancelled. PIN not changed.'),
+                content: Text(
+                  'Biometric authentication cancelled. PIN not changed.',
+                ),
               ),
             );
           }

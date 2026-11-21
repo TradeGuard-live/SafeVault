@@ -34,7 +34,9 @@ void main() {
   });
 
   group('Category integrity', () {
-    final validIds = CategoryConstants.defaultCategories.map((c) => c.id).toSet();
+    final validIds = CategoryConstants.defaultCategories
+        .map((c) => c.id)
+        .toSet();
 
     test('classifier category ids belong to default categories', () {
       final samples = <String>[

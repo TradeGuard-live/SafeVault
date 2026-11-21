@@ -265,13 +265,13 @@ class _ScannerPreviewScreenState extends State<ScannerPreviewScreen> {
               onPressed: _isProcessing
                   ? null
                   : () {
-                setState(() {
-                  _pages.removeAt(_currentPageIndex);
-                  if (_currentPageIndex >= _pages.length) {
-                    _currentPageIndex = _pages.length - 1;
-                  }
-                });
-              },
+                      setState(() {
+                        _pages.removeAt(_currentPageIndex);
+                        if (_currentPageIndex >= _pages.length) {
+                          _currentPageIndex = _pages.length - 1;
+                        }
+                      });
+                    },
             ),
         ],
       ),

@@ -472,14 +472,14 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
 
     // Validate the selected category before any encryption/file work so we
     // never create orphan encrypted files for an invalid category.
-    final knownCategories = ref.read(categoriesProvider).valueOrNull ?? const [];
+    final knownCategories =
+        ref.read(categoriesProvider).valueOrNull ?? const [];
     if (knownCategories.isNotEmpty &&
         !knownCategories.any((c) => c.id == _selectedCategoryId)) {
       ErrorDialog.show(
         context,
         title: 'Invalid Category',
-        message:
-            'The selected category is no longer available. Please choose another category.',
+        message: 'The selected category is no longer available. Please choose another category.',
       );
       return;
     }

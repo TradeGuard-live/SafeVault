@@ -1,5 +1,3 @@
-import 'package:intl/intl.dart';
-
 class OcrExtractionResult {
   final String rawText;
   final String? suggestedName;
@@ -43,7 +41,7 @@ class OcrExtractor {
     // 1. Identify Document Type & Category
     if (upper.contains('INCOME TAX') ||
         upper.contains('PERMANENT ACCOUNT NUMBER') ||
-        upper.contains('PAN')) {
+        RegExp(r'\bPAN\b').hasMatch(upper)) {
       name = 'PAN Card';
       categoryId = 'personal_identity';
       docType = 'PAN Card';
@@ -61,11 +59,7 @@ class OcrExtractor {
       docType = 'Aadhaar Card';
       authority = 'UIDAI';
 
-      final aadharMatch = RegExp(r'\b\d{4}\s\d{4}\s\d{4}\b')
-          .firstMatch(rawText);
-      if (aadharMatch != null) {
-        docNumber = aadharMatch.group(0);
-      }
+      docNumber = _findAadhaarNumber(rawText);
     } else if ((upper.contains('MOTOR INSURANCE') ||
             upper.contains('VEHICLE INSURANCE') ||
             upper.contains('PACKAGE POLICY') ||
@@ -87,10 +81,10 @@ class OcrExtractor {
       docType = 'Driving Licence';
       authority = 'Transport Department';
 
-      final dlMatch = RegExp(r'\b[A-Z]{2}[0-9]{2}\s?[0-9]{11}\b')
+      final dlMatch = RegExp(r'\b[A-Z]{2}[ \t-]*[0-9]{2}[ \t-]*[0-9]{11}\b')
           .firstMatch(upper);
       if (dlMatch != null) {
-        docNumber = dlMatch.group(0);
+        docNumber = dlMatch.group(0)!.replaceAll(RegExp(r'[\s-]'), '');
       }
     } else if (upper.contains('POLLUTION UNDER CONTROL') ||
         upper.contains('PUC CERTIFICATE') ||
@@ -148,71 +142,42 @@ class OcrExtractor {
 
     // 2. Generic Vehicle Number matching if doc is vehicle related
     if (categoryId == 'vehicle_documents' && docNumber == null) {
-      final regMatch = RegExp(
-        r'\b[A-Z]{2}[-\s]?[0-9]{1,2}[-\s]?[A-Z]{1,3}[-\s]?[0-9]{4}\b',
-      ).firstMatch(upper);
-      if (regMatch != null) {
-        docNumber = regMatch.group(0);
-      }
+      docNumber = _findVehicleRegistration(upper);
     }
 
-    // 3. Extract Dates (DD/MM/YYYY or YYYY-MM-DD)
-    final dateMatches = RegExp(r'\b(\d{1,2})[/\-\.](\d{1,2})[/\-\.](\d{4})\b')
+    // 3. Extract dates. Both common Indian (DD/MM/YYYY) and ISO
+    // (YYYY-MM-DD) notation occur in imported statements and certificates.
+    final dateMatches = RegExp(r'\b(\d{1,4})[/\-\.](\d{1,2})[/\-\.](\d{1,4})\b')
         .allMatches(rawText);
     final List<DateTime> extractedDates = [];
     for (final m in dateMatches) {
-      final day = int.tryParse(m.group(1) ?? '');
-      final month = int.tryParse(m.group(2) ?? '');
-      final year = int.tryParse(m.group(3) ?? '');
-      if (day != null &&
-          month != null &&
-          year != null &&
-          month >= 1 &&
-          month <= 12 &&
-          day >= 1 &&
-          day <= 31 &&
-          year >= 1950 &&
-          year <= 2060) {
-        try {
-          extractedDates.add(DateTime(year, month, day));
-        } catch (_) {}
-      }
+      final parsed = _parseDateMatch(m);
+      if (parsed != null) extractedDates.add(parsed);
     }
 
-    // Sort dates
-    extractedDates.sort();
-
-    // 4. Distinguish Issue Date vs Expiry Date
-    final now = DateTime.now();
-    for (final date in extractedDates) {
-      if (date.isAfter(now)) {
-        expiryDate ??= date; // Future date is likely expiry
-      } else {
-        issueDate ??= date; // Past date is likely issue or DOB
-      }
-    }
-
-    // Look specifically for "Valid Upto" or "Expiry" lines
+    // 4. Prefer explicit labels. A DOB is usually an old date, so choosing
+    // the earliest past date as an issue date makes otherwise good OCR look
+    // incorrect in the review screen.
     final lines = rawText.split('\n');
     for (final line in lines) {
       final lineUpper = line.toUpperCase();
+      final lineDateMatch = RegExp(
+        r'\b(\d{1,4})[/\-\.](\d{1,2})[/\-\.](\d{1,4})\b',
+      ).firstMatch(line);
+      final parsed = lineDateMatch == null
+          ? null
+          : _parseDateMatch(lineDateMatch);
       if (lineUpper.contains('VALID UPTO') ||
           lineUpper.contains('VALID TILL') ||
           lineUpper.contains('EXPIRY') ||
           lineUpper.contains('EXP DATE')) {
-        final lineDateMatch = RegExp(
-          r'\b(\d{1,2})[/\-\.](\d{1,2})[/\-\.](\d{4})\b',
-        ).firstMatch(line);
-        if (lineDateMatch != null) {
-          final d = int.tryParse(lineDateMatch.group(1) ?? '');
-          final m = int.tryParse(lineDateMatch.group(2) ?? '');
-          final y = int.tryParse(lineDateMatch.group(3) ?? '');
-          if (d != null && m != null && y != null) {
-            try {
-              expiryDate = DateTime(y, m, d);
-            } catch (_) {}
-          }
-        }
+        if (parsed != null) expiryDate = parsed;
+      }
+      if (lineUpper.contains('ISSUE DATE') ||
+          lineUpper.contains('DATE OF ISSUE') ||
+          lineUpper.contains('ISSUED ON') ||
+          RegExp(r'\bDOI\b').hasMatch(lineUpper)) {
+        if (parsed != null) issueDate = parsed;
       }
       if (lineUpper.contains('NAME') &&
           !lineUpper.contains('FATHER') &&
@@ -229,6 +194,17 @@ class OcrExtractor {
       }
     }
 
+    // Fall back only when a document did not provide a semantic date label.
+    extractedDates.sort();
+    final now = DateTime.now();
+    for (final date in extractedDates) {
+      if (date.isAfter(now)) {
+        expiryDate ??= date;
+      } else {
+        issueDate ??= date;
+      }
+    }
+
     return OcrExtractionResult(
       rawText: rawText,
       suggestedName: name,
@@ -240,5 +216,44 @@ class OcrExtractor {
       suggestedIssueDate: issueDate,
       suggestedExpiryDate: expiryDate,
     );
+  }
+
+  static String? _findAadhaarNumber(String text) {
+    final match = RegExp(r'(?<!\d)(\d{4}[ \t-]*\d{4}[ \t-]*\d{4})(?!\d)')
+        .firstMatch(text);
+    final digits = match?.group(1)?.replaceAll(RegExp(r'\D'), '');
+    if (digits == null || digits.length != 12) return null;
+    return '${digits.substring(0, 4)} ${digits.substring(4, 8)} ${digits.substring(8)}';
+  }
+
+  static String? _findVehicleRegistration(String text) {
+    final match = RegExp(
+      r'(?<![A-Z0-9])([A-Z]{2}[ \t-]*[0-9]{1,2}[ \t-]*[A-Z]{1,3}[ \t-]*[0-9]{4})(?![A-Z0-9])',
+    ).firstMatch(text.toUpperCase());
+    return match?.group(1)?.replaceAll(RegExp(r'[\s-]'), '');
+  }
+
+  static DateTime? _parseDateMatch(RegExpMatch match) {
+    final first = int.tryParse(match.group(1) ?? '');
+    final second = int.tryParse(match.group(2) ?? '');
+    final third = int.tryParse(match.group(3) ?? '');
+    if (first == null || second == null || third == null) return null;
+
+    final isIso = (match.group(1)?.length ?? 0) == 4;
+    final year = isIso ? first : third;
+    final month = second;
+    final day = isIso ? third : first;
+    if (year < 1950 ||
+        year > 2060 ||
+        month < 1 ||
+        month > 12 ||
+        day < 1 ||
+        day > 31) {
+      return null;
+    }
+    final date = DateTime(year, month, day);
+    return date.year == year && date.month == month && date.day == day
+        ? date
+        : null;
   }
 }
