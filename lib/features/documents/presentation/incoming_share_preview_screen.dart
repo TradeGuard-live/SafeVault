@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pdfx/pdfx.dart' as pfx;
 
 import '../../../core/constants/category_constants.dart';
+import '../../../core/errors/exceptions.dart';
 import '../../../core/routes/app_router.dart';
 import '../../../core/services/native_saf_and_share_service.dart';
 import '../../../core/theme/app_colors.dart';
@@ -132,16 +133,34 @@ class _IncomingSharePreviewScreenState
       itemState.errorMessage = null;
     });
 
+    // Validate category before any encryption work.
+    final knownCategories = ref.read(categoriesProvider).valueOrNull ?? const [];
+    if (knownCategories.isNotEmpty &&
+        !knownCategories.any((c) => c.id == itemState.selectedCategoryId)) {
+      if (mounted) {
+        setState(() {
+          itemState.status = 'failed';
+          itemState.errorMessage = 'Selected category is no longer available.';
+        });
+      }
+      return;
+    }
+
+    String? encryptedPath;
     try {
       final repo = ref.read(documentRepositoryProvider);
       final storage = ref.read(storageServiceProvider);
       final rawFile = File(itemState.item.path);
+      if (!await rawFile.exists()) {
+        throw Exception('Source file no longer exists: ${rawFile.path}');
+      }
       final fileBytes = await rawFile.readAsBytes();
 
       // 1. Encrypt and save original file
-      final encryptedPath = await storage.saveEncryptedFile(
+      if (!session.isUnlocked) throw const VaultLockedException();
+      encryptedPath = await storage.saveEncryptedFile(
         plainBytes: fileBytes,
-        masterKey: session.masterKey!,
+        masterKey: session.getMasterKeyOrThrow(),
       );
 
       final docFile = DocumentFileModel(
@@ -156,13 +175,14 @@ class _IncomingSharePreviewScreenState
       );
 
       // 2. Create document record
+      if (!session.isUnlocked) throw const VaultLockedException();
       final newDoc = await repo.addDocument(
         name: itemState.customName.trim().isEmpty
             ? itemState.item.name
             : itemState.customName.trim(),
         categoryId: itemState.selectedCategoryId,
         files: [docFile],
-        masterKey: session.masterKey!,
+        masterKey: session.getMasterKeyOrThrow(),
       );
       _importedDocuments.add(newDoc);
 
@@ -190,23 +210,25 @@ class _IncomingSharePreviewScreenState
           pageCount: extractionResult.pageCount,
         );
 
+        if (!session.isUnlocked) throw const VaultLockedException();
         // Save encrypted TXT companion record
         final encTxtPath = await repo.saveExtractedTxtFile(
           documentId: newDoc.id,
           textContent: formattedTxt,
-          masterKey: session.masterKey!,
+          masterKey: session.getMasterKeyOrThrow(),
         );
 
         // Save structured database extraction
         await repo.saveExtraction(
           documentId: newDoc.id,
+          documentType: extractionResult.classification.documentType,
           extractedText: extractionResult.fullText,
           fields: extractionResult.fields,
           engine: extractionResult.extractionEngine,
           language: extractionResult.language,
           pageCount: extractionResult.pageCount,
           encryptedTxtFilePath: encTxtPath,
-          masterKey: session.masterKey!,
+          masterKey: session.getMasterKeyOrThrow(),
         );
 
         // Update document with recognized metadata
@@ -232,10 +254,11 @@ class _IncomingSharePreviewScreenState
               )
               .map((f) => f.value)
               .firstOrNull,
-          masterKey: session.masterKey!,
+          masterKey: session.getMasterKeyOrThrow(),
         );
       } catch (ocrError) {
         debugPrint('OCR extraction failed during import: $ocrError');
+        await repo.updateExtractionStatus(newDoc.id, 'failed');
         // Document itself remains safely stored
       }
 
@@ -252,6 +275,12 @@ class _IncomingSharePreviewScreenState
         }
       }
     } catch (e) {
+      // Compensating cleanup for orphan encrypted file if DB insert failed.
+      if (encryptedPath != null) {
+        try {
+          await ref.read(storageServiceProvider).securelyDeleteFile(encryptedPath);
+        } catch (_) {}
+      }
       if (mounted) {
         setState(() {
           itemState.status = 'failed';

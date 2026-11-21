@@ -20,22 +20,6 @@ class SecuritySettingsScreen extends ConsumerStatefulWidget {
 class _SecuritySettingsScreenState
     extends ConsumerState<SecuritySettingsScreen> {
   Future<void> _showChangePinDialog() async {
-    // 1. Mandatory 2FA Verification before sensitive PIN change via AuthenticationGate
-    final gate = ref.read(authenticationGateProvider);
-    final verified = await gate.authenticateForAction(
-      context,
-      action: PendingVaultAction(
-        type: VaultActionType.custom,
-        targetName: 'Change App PIN',
-        returnRoute: '/settings',
-      ),
-      title: 'Authorize PIN Change',
-      reason:
-          'Factor 1: Verify your identity with biometrics before changing PIN',
-    );
-
-    if (!verified || !mounted) return;
-
     final currentPinController = TextEditingController();
     final newPinController = TextEditingController();
     final confirmPinController = TextEditingController();
@@ -109,15 +93,27 @@ class _SecuritySettingsScreenState
                 foregroundColor: Colors.white,
               ),
               onPressed: () {
-                if (newPinController.text.length != 6) {
+                final currentPin = currentPinController.text.trim();
+                final newPin = newPinController.text.trim();
+                final confirmPin = confirmPinController.text.trim();
+                final pinRegex = RegExp(r'^\d{6}$');
+                if (!pinRegex.hasMatch(currentPin)) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('PIN must be exactly 6 numeric digits.'),
+                      content: Text('Current PIN must be exactly 6 numeric digits.'),
                     ),
                   );
                   return;
                 }
-                if (newPinController.text != confirmPinController.text) {
+                if (!pinRegex.hasMatch(newPin)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('New PIN must be exactly 6 numeric digits.'),
+                    ),
+                  );
+                  return;
+                }
+                if (newPin != confirmPin) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('New PINs do not match.')),
                   );
@@ -134,6 +130,24 @@ class _SecuritySettingsScreenState
 
     if (changed == true && mounted) {
       try {
+        final bioService = ref.read(biometricServiceProvider);
+        final verified = await bioService.authenticate(
+          reason: 'Authenticate to change your vault PIN',
+        );
+        if (!verified) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Biometric authentication cancelled. PIN not changed.'),
+              ),
+            );
+          }
+          currentPinController.dispose();
+          newPinController.dispose();
+          confirmPinController.dispose();
+          return;
+        }
+
         final keyService = ref.read(keyManagementServiceProvider);
         final bioShare = await keyService.startTwoFactorBiometricUnlock();
 
@@ -156,7 +170,15 @@ class _SecuritySettingsScreenState
             message: e.toString(),
           );
         }
+      } finally {
+        currentPinController.dispose();
+        newPinController.dispose();
+        confirmPinController.dispose();
       }
+    } else {
+      currentPinController.dispose();
+      newPinController.dispose();
+      confirmPinController.dispose();
     }
   }
 

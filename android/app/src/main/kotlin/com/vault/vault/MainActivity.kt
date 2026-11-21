@@ -60,6 +60,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     private var safChannel: MethodChannel? = null
     private val pendingIncomingShares = mutableListOf<Map<String, Any>>()
+    private val processedIncomingShareUris = mutableSetOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -345,6 +346,7 @@ class MainActivity : FlutterFragmentActivity() {
             }
             startActivityForResult(intent, REQUEST_CODE_CREATE_DOC)
         } catch (e: Exception) {
+            pendingCreateBytes?.fill(0)
             safCreateResult = null
             pendingCreateBytes = null
             result.error("SAF_CREATE_ERROR", "Failed to launch file creator: ${e.message}", null)
@@ -487,13 +489,26 @@ class MainActivity : FlutterFragmentActivity() {
 
         if (incomingUris.isEmpty()) return
 
+        // Deduplicate intents/URIs that Android may redeliver.
+        val newUris = incomingUris.filter { uri ->
+            val key = uri.toString()
+            if (processedIncomingShareUris.contains(key)) false else {
+                processedIncomingShareUris.add(key)
+                true
+            }
+        }
+        if (newUris.isEmpty()) return
+
         // Stage files to secure temporary cache
-        val staged = stageUrisToCache(incomingUris, prefix = "incoming_share")
+        val staged = stageUrisToCache(newUris, prefix = "incoming_share")
         if (staged.isNotEmpty()) {
             pendingIncomingShares.addAll(staged)
             if (isNew) {
                 safChannel?.invokeMethod("onIncomingShareReceived", staged)
             }
+        } else {
+            // Roll back dedup markers if staging produced nothing.
+            newUris.forEach { processedIncomingShareUris.remove(it.toString()) }
         }
     }
 
@@ -570,6 +585,18 @@ class MainActivity : FlutterFragmentActivity() {
                         return@use
                     }
 
+                    // Enforce MIME/signature consistency to prevent type confusion.
+                    val mimeLower = mimeType.lowercase()
+                    val signatureMatchesMime = when {
+                        isPdf -> mimeLower.contains("pdf")
+                        isJpeg -> mimeLower.contains("jpeg") || mimeLower.contains("jpg")
+                        isPng -> mimeLower.contains("png")
+                        else -> false
+                    }
+                    if (!signatureMatchesMime) {
+                        return@use
+                    }
+
                     FileOutputStream(targetFile).use { outputStream ->
                         outputStream.write(header, 0, headerBytesRead)
                         var bytesWritten = headerBytesRead.toLong()
@@ -611,6 +638,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     private fun clearIncomingStaging() {
         pendingIncomingShares.clear()
+        processedIncomingShareUris.clear()
         try {
             val stagingDir = File(cacheDir, "staging")
             if (stagingDir.exists()) {
@@ -682,9 +710,13 @@ class MainActivity : FlutterFragmentActivity() {
                 safCreateResult = null
                 pendingCreateBytes = null
 
-                if (currentResult == null) return
+                if (currentResult == null) {
+                    bytesToWrite?.fill(0)
+                    return
+                }
 
                 if (resultCode != Activity.RESULT_OK || data == null || data.data == null || bytesToWrite == null) {
+                    bytesToWrite?.fill(0)
                     currentResult.success(false)
                     return
                 }
@@ -695,8 +727,10 @@ class MainActivity : FlutterFragmentActivity() {
                         outputStream.write(bytesToWrite)
                         outputStream.flush()
                     }
+                    bytesToWrite.fill(0)
                     currentResult.success(true)
                 } catch (e: Exception) {
+                    bytesToWrite.fill(0)
                     currentResult.error("SAF_WRITE_ERROR", "Failed to write file to storage: ${e.message}", null)
                 }
             }

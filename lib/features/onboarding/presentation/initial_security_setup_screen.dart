@@ -24,6 +24,7 @@ class _InitialSecuritySetupScreenState
   String _firstEnteredPin = '';
   String _confirmedPin = '';
   bool _biometricsAvailableOnDevice = false;
+  bool _biometricsEnrolled = false;
   String? _errorMessage;
 
   @override
@@ -35,9 +36,13 @@ class _InitialSecuritySetupScreenState
   Future<void> _checkBiometrics() async {
     final bioService = ref.read(biometricServiceProvider);
     final available = await bioService.isBiometricsAvailable();
+    final enrolled = available
+        ? (await bioService.getAvailableBiometrics()).isNotEmpty
+        : false;
     if (mounted) {
       setState(() {
         _biometricsAvailableOnDevice = available;
+        _biometricsEnrolled = enrolled;
       });
     }
   }
@@ -69,9 +74,41 @@ class _InitialSecuritySetupScreenState
   }
 
   Future<void> _finalizeSetup() async {
+    await _checkBiometrics();
+    if (!mounted) return;
+
+    if (!_biometricsAvailableOnDevice || !_biometricsEnrolled) {
+      setState(() => _currentStep = SetupStep.biometricsNotice);
+      if (mounted) {
+        ErrorDialog.show(
+          context,
+          title: 'Biometrics Required',
+          message:
+              'Biometric hardware and at least one enrolled fingerprint/face is required to create the vault. Please enroll a biometric in Android Settings, then retry.',
+        );
+      }
+      return;
+    }
+
     setState(() => _currentStep = SetupStep.finalizing);
 
     try {
+      final bioService = ref.read(biometricServiceProvider);
+      final verified = await bioService.authenticate(
+        reason: 'Authenticate to create your vault biometric key',
+      );
+      if (!verified) {
+        if (mounted) {
+          setState(() => _currentStep = SetupStep.biometricsNotice);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Biometric authentication cancelled. Setup aborted.'),
+            ),
+          );
+        }
+        return;
+      }
+
       final keyService = ref.read(keyManagementServiceProvider);
       final session = ref.read(vaultSessionProvider);
 
@@ -91,7 +128,7 @@ class _InitialSecuritySetupScreenState
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _currentStep = SetupStep.createPin);
+        setState(() => _currentStep = SetupStep.biometricsNotice);
         ErrorDialog.show(
           context,
           title: 'Setup Error',
@@ -281,19 +318,49 @@ class _InitialSecuritySetupScreenState
           ),
         ),
         const Spacer(),
-        ElevatedButton.icon(
-          onPressed: _finalizeSetup,
-          icon: const Icon(Icons.security_rounded, size: 20),
-          label: const Text('Complete 2FA Setup'),
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size.fromHeight(52),
-            backgroundColor: colors.primaryAccent,
-            foregroundColor: colors.onPrimaryAccent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+        if (!_biometricsAvailableOnDevice || !_biometricsEnrolled) ...[
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colors.errorContainer,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.error.withOpacity(0.3)),
+            ),
+            child: Text(
+              'Biometric hardware or enrollment is unavailable. Enroll a fingerprint or face in Android Settings, then tap Re-check.',
+              style: TextStyle(
+                fontSize: 12,
+                color: colors.error,
+                height: 1.35,
+              ),
             ),
           ),
-        ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _checkBiometrics,
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Re-check Biometrics'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ] else ...[
+          ElevatedButton.icon(
+            onPressed: _finalizeSetup,
+            icon: const Icon(Icons.security_rounded, size: 20),
+            label: const Text('Complete 2FA Setup'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+              backgroundColor: colors.primaryAccent,
+              foregroundColor: colors.onPrimaryAccent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
         const SizedBox(height: 16),
       ],
     );

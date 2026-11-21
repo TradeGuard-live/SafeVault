@@ -123,45 +123,59 @@ class KeyManagementService {
 
     // 4. Wrap S_bio with hardware Keystore key or host fallback
     Uint8List wrappedShareBio;
-    if (_keystoreService.isSupported) {
-      await _keystoreService.generateBiometricKey();
-      wrappedShareBio = await _keystoreService.wrapBiometricShare(sBio);
-      await _secureStorage.delete(key: _keyBioKek);
-    } else {
-      final bioKekBytes = _generateRandomBytes(
-        AppConstants.masterKeyLengthBytes,
-      );
-      final bioKek = SecretKey(bioKekBytes);
-      wrappedShareBio = Uint8List.fromList(
-        await _encryptionService.encryptBytes(sBio, bioKek),
-      );
+    try {
+      if (_keystoreService.isSupported) {
+        await _keystoreService.generateBiometricKey();
+        wrappedShareBio = await _keystoreService.wrapBiometricShare(sBio);
+        await _secureStorage.delete(key: _keyBioKek);
+      } else {
+        final bioKekBytes = _generateRandomBytes(
+          AppConstants.masterKeyLengthBytes,
+        );
+        final bioKek = SecretKey(bioKekBytes);
+        wrappedShareBio = Uint8List.fromList(
+          await _encryptionService.encryptBytes(sBio, bioKek),
+        );
+        await _secureStorage.write(
+          key: _keyBioKek,
+          value: base64Encode(bioKekBytes),
+        );
+      }
+
+      // 5. Wrap S_pin with PIN KEK (PBKDF2 100k rounds)
+      final salt = _generateRandomBytes(AppConstants.pbkdf2SaltLength);
+      final pinKek = await _deriveKeyFromPin(pin, salt);
+      final wrappedSharePin = await _encryptionService.encryptBytes(sPin, pinKek);
+
+      // 6. Write securely to storage
       await _secureStorage.write(
-        key: _keyBioKek,
-        value: base64Encode(bioKekBytes),
+        key: _keyWrappedShareBio,
+        value: base64Encode(wrappedShareBio),
       );
+      await _secureStorage.write(key: _keyPinSalt, value: base64Encode(salt));
+      await _secureStorage.write(
+        key: _keyWrappedSharePin,
+        value: base64Encode(wrappedSharePin),
+      );
+      await _secureStorage.write(key: _key2FaConfigured, value: 'true');
+      await _secureStorage.write(key: _keyVaultInitialized, value: 'true');
+    } catch (e) {
+      // Compensating cleanup: remove partially written keys so a retry can
+      // start from a consistent state.
+      await _secureStorage.delete(key: _keyWrappedShareBio);
+      await _secureStorage.delete(key: _keyPinSalt);
+      await _secureStorage.delete(key: _keyWrappedSharePin);
+      await _secureStorage.delete(key: _key2FaConfigured);
+      await _secureStorage.delete(key: _keyVaultInitialized);
+      if (_keystoreService.isSupported) {
+        await _keystoreService.deleteBiometricKey();
+      }
+      rethrow;
+    } finally {
+      // Wipe intermediate sensitive buffers
+      sBio.fillRange(0, sBio.length, 0);
+      sPin.fillRange(0, sPin.length, 0);
     }
-
-    // 5. Wrap S_pin with PIN KEK (PBKDF2 100k rounds)
-    final salt = _generateRandomBytes(AppConstants.pbkdf2SaltLength);
-    final pinKek = await _deriveKeyFromPin(pin, salt);
-    final wrappedSharePin = await _encryptionService.encryptBytes(sPin, pinKek);
-
-    // 6. Write securely to storage
-    await _secureStorage.write(
-      key: _keyWrappedShareBio,
-      value: base64Encode(wrappedShareBio),
-    );
-    await _secureStorage.write(key: _keyPinSalt, value: base64Encode(salt));
-    await _secureStorage.write(
-      key: _keyWrappedSharePin,
-      value: base64Encode(wrappedSharePin),
-    );
-    await _secureStorage.write(key: _key2FaConfigured, value: 'true');
-    await _secureStorage.write(key: _keyVaultInitialized, value: 'true');
-
-    // Wipe intermediate sensitive buffers
-    sBio.fillRange(0, sBio.length, 0);
-    sPin.fillRange(0, sPin.length, 0);
 
     return masterKey;
   }
@@ -279,66 +293,70 @@ class KeyManagementService {
 
   /// Changes the six-digit PIN in the 2FA system without re-encrypting vault documents.
   /// Requires the currently verified S_bio and current PIN to prove authorization.
+  /// The biometric share (S_bio) is preserved, so the Android Keystore key is
+  /// not regenerated and cannot be orphaned by a partial failure.
   Future<void> changeSixDigitPin2FA({
     required Uint8List bioShare,
     required String currentPin,
     required String newPin,
   }) async {
     _validatePinFormat(newPin);
+    _validatePinFormat(currentPin);
 
-    // 1. Reconstruct current Master Key to prove validity
-    final currentMasterKey = await completeTwoFactorPinUnlock(
-      bioShare: Uint8List.fromList(bioShare),
-      pin: currentPin,
-    );
-    final vmkBytes = Uint8List.fromList(await currentMasterKey.extractBytes());
+    final bioShareCopy = Uint8List.fromList(bioShare);
 
-    // 2. Generate fresh S_bio and compute new S_pin
-    final newSBio = _generateRandomBytes(AppConstants.masterKeyLengthBytes);
-    final newSPin = _xorBytes(vmkBytes, newSBio);
+    try {
+      // 1. Reconstruct current Master Key to prove validity
+      final currentMasterKey = await completeTwoFactorPinUnlock(
+        bioShare: Uint8List.fromList(bioShareCopy),
+        pin: currentPin,
+      );
+      final vmkBytes = Uint8List.fromList(await currentMasterKey.extractBytes());
 
-    // 3. Re-wrap S_bio with hardware Keystore key or host fallback
-    Uint8List wrappedBio;
-    if (_keystoreService.isSupported) {
-      await _keystoreService.generateBiometricKey();
-      wrappedBio = await _keystoreService.wrapBiometricShare(newSBio);
-      await _secureStorage.delete(key: _keyBioKek);
-    } else {
-      final bioKekBytes = _generateRandomBytes(
-        AppConstants.masterKeyLengthBytes,
+      // 2. Keep the existing S_bio; only S_pin changes: newS_pin = VMK ⊕ S_bio
+      final newSPin = _xorBytes(vmkBytes, bioShareCopy);
+
+      // 3. Wrap new S_pin with new PIN KEK
+      final newSalt = _generateRandomBytes(AppConstants.pbkdf2SaltLength);
+      final newPinKek = await _deriveKeyFromPin(newPin, newSalt);
+      final wrappedPin = await _encryptionService.encryptBytes(
+        newSPin,
+        newPinKek,
       );
-      final bioKek = SecretKey(bioKekBytes);
-      wrappedBio = Uint8List.fromList(
-        await _encryptionService.encryptBytes(newSBio, bioKek),
-      );
-      await _secureStorage.write(
-        key: _keyBioKek,
-        value: base64Encode(bioKekBytes),
-      );
+
+      // Preserve old values for rollback on partial failure.
+      final oldSalt = await _secureStorage.read(key: _keyPinSalt);
+      final oldWrappedPin = await _secureStorage.read(key: _keyWrappedSharePin);
+
+      try {
+        await _secureStorage.write(
+          key: _keyPinSalt,
+          value: base64Encode(newSalt),
+        );
+        await _secureStorage.write(
+          key: _keyWrappedSharePin,
+          value: base64Encode(wrappedPin),
+        );
+      } catch (e) {
+        // Roll back to the previous PIN wrapping if a write fails.
+        if (oldSalt != null) {
+          await _secureStorage.write(key: _keyPinSalt, value: oldSalt);
+        }
+        if (oldWrappedPin != null) {
+          await _secureStorage.write(
+            key: _keyWrappedSharePin,
+            value: oldWrappedPin,
+          );
+        }
+        rethrow;
+      }
+
+      // Zero memory
+      newSPin.fillRange(0, newSPin.length, 0);
+      vmkBytes.fillRange(0, vmkBytes.length, 0);
+    } finally {
+      bioShareCopy.fillRange(0, bioShareCopy.length, 0);
     }
-
-    // 4. Wrap new S_pin with new PIN KEK
-    final newSalt = _generateRandomBytes(AppConstants.pbkdf2SaltLength);
-    final newPinKek = await _deriveKeyFromPin(newPin, newSalt);
-    final wrappedPin = await _encryptionService.encryptBytes(
-      newSPin,
-      newPinKek,
-    );
-
-    // 5. Update storage
-    await _secureStorage.write(
-      key: _keyWrappedShareBio,
-      value: base64Encode(wrappedBio),
-    );
-    await _secureStorage.write(key: _keyPinSalt, value: base64Encode(newSalt));
-    await _secureStorage.write(
-      key: _keyWrappedSharePin,
-      value: base64Encode(wrappedPin),
-    );
-
-    // Zero memory
-    newSBio.fillRange(0, newSBio.length, 0);
-    newSPin.fillRange(0, newSPin.length, 0);
   }
 
   /// Migrates a legacy vault (v1 single-factor/optional bio) to Mandatory 2FA.

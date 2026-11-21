@@ -49,10 +49,14 @@ final pendingIncomingShareProvider = StateProvider<List<SafFileItem>>(
 );
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final session = ref.watch(vaultSessionProvider);
+  // Read, rather than watch, the session. Watching would recreate the GoRouter
+  // (and reset navigation to /splash) every time VaultSession notifies its
+  // listeners. refreshListenable re-runs redirects without replacing the router.
+  final session = ref.read(vaultSessionProvider);
 
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: '/splash',
+    refreshListenable: session,
     redirect: (context, state) {
       final loc = state.uri.toString();
       final isAuthFlow =
@@ -405,4 +409,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+
+  ref.onDispose(router.dispose);
+  return router;
 });

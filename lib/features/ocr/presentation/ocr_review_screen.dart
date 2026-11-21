@@ -29,6 +29,8 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
   String _selectedLanguage = 'eng';
   bool _isProcessing = true;
   String _rawExtractedText = '';
+  String? _errorMessage;
+  int _requestId = 0;
 
   late TextEditingController _nameController;
   late TextEditingController _docNumberController;
@@ -60,26 +62,46 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
   }
 
   Future<void> _runOcrExtraction() async {
-    setState(() => _isProcessing = true);
+    final currentRequest = ++_requestId;
+    if (mounted) {
+      setState(() {
+        _isProcessing = true;
+        _errorMessage = null;
+      });
+    }
 
-    final text = await _ocrService.recognizeText(
-      imagePath: widget.imagePath,
-      language: _selectedLanguage,
-    );
+    try {
+      final text = await _ocrService.recognizeText(
+        imagePath: widget.imagePath,
+        language: _selectedLanguage,
+      );
 
-    final result = _ocrService.parseMetadata(text);
+      // Discard stale results from an earlier language selection.
+      if (currentRequest != _requestId) return;
 
-    setState(() {
-      _rawExtractedText = text;
-      _nameController.text = result.suggestedName ?? '';
-      _docNumberController.text = result.suggestedNumber ?? '';
-      _ownerController.text = result.suggestedOwner ?? '';
-      _authorityController.text = result.suggestedAuthority ?? '';
-      _selectedCategory = result.suggestedCategoryId ?? 'personal_identity';
-      _issueDate = result.suggestedIssueDate;
-      _expiryDate = result.suggestedExpiryDate;
-      _isProcessing = false;
-    });
+      final result = _ocrService.parseMetadata(text);
+
+      if (!mounted || currentRequest != _requestId) return;
+      setState(() {
+        _rawExtractedText = text;
+        _nameController.text = result.suggestedName ?? '';
+        _docNumberController.text = result.suggestedNumber ?? '';
+        _ownerController.text = result.suggestedOwner ?? '';
+        _authorityController.text = result.suggestedAuthority ?? '';
+        _selectedCategory = result.suggestedCategoryId ?? 'personal_identity';
+        _issueDate = result.suggestedIssueDate;
+        _expiryDate = result.suggestedExpiryDate;
+        _isProcessing = false;
+        _errorMessage = null;
+      });
+    } catch (e) {
+      if (!mounted || currentRequest != _requestId) return;
+      setState(() {
+        _isProcessing = false;
+        _errorMessage =
+            'OCR failed: ${e.toString()}. You can retry or save the document without extracted data.';
+      });
+    }
   }
 
   void _proceedToSave() {
@@ -179,10 +201,61 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                     child: Image.file(
                       File(widget.imagePath),
                       fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.broken_image_outlined,
+                              color: colors.textTertiary,
+                              size: 36,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Preview unavailable',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
+
+                if (_errorMessage != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colors.errorContainer,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.error.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _errorMessage!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.error,
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: _isProcessing ? null : _runOcrExtraction,
+                          icon: const Icon(Icons.refresh_rounded, size: 16),
+                          label: const Text('Retry OCR'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 // Security & Privacy Disclaimer
                 Container(

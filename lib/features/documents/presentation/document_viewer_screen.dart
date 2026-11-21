@@ -62,39 +62,60 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
   Future<void> _decryptAndLoad() async {
     final session = ref.read(vaultSessionProvider);
     if (!session.isUnlocked || session.masterKey == null) {
-      context.go('/pin-unlock');
+      if (mounted) context.go('/pin-unlock');
       return;
     }
 
+    Uint8List? bytes;
     try {
       final storage = ref.read(storageServiceProvider);
-      final bytes = await storage.readDecryptedFile(
+      if (widget.encryptedFilePath.isEmpty) {
+        throw Exception('No encrypted file path provided.');
+      }
+      bytes = await storage.readDecryptedFile(
         filePath: widget.encryptedFilePath,
-        masterKey: session.masterKey!,
+        masterKey: session.getMasterKeyOrThrow(),
       );
+
+      if (bytes.isEmpty) {
+        throw Exception('Decrypted file is empty.');
+      }
 
       if (widget.mimeType == 'application/pdf') {
         final pdf = await PdfDocument.openData(bytes);
-        final controller = PdfController(document: PdfDocument.openData(bytes));
+        // Reuse the same PdfDocument instance instead of opening it twice.
+        final controller = PdfController(document: Future.value(pdf));
 
-        if (mounted) {
-          setState(() {
-            _decryptedBytes = bytes;
-            _pdfDocument = pdf;
-            _pdfController = controller;
-            _pdfTotalPages = pdf.pagesCount;
-            _isLoading = false;
-          });
+        if (!mounted) {
+          // Loading completed after disposal: close resources.
+          controller.dispose();
+          pdf.close();
+          bytes.fillRange(0, bytes.length, 0);
+          return;
         }
+        setState(() {
+          _decryptedBytes = bytes;
+          _pdfDocument = pdf;
+          _pdfController = controller;
+          _pdfTotalPages = pdf.pagesCount;
+          _isLoading = false;
+        });
       } else {
-        if (mounted) {
-          setState(() {
-            _decryptedBytes = bytes;
-            _isLoading = false;
-          });
+        if (!mounted) {
+          bytes.fillRange(0, bytes.length, 0);
+          return;
         }
+        setState(() {
+          _decryptedBytes = bytes;
+          _isLoading = false;
+        });
       }
     } catch (e) {
+      if (bytes != null) {
+        try {
+          bytes.fillRange(0, bytes.length, 0);
+        } catch (_) {}
+      }
       if (mounted) {
         setState(() {
           _isLoading = false;

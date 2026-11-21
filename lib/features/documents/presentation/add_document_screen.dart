@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../core/constants/category_constants.dart';
+import '../../../core/errors/exceptions.dart';
 import '../../../core/security/file_validator.dart';
 import '../../../core/services/native_saf_and_share_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -469,6 +470,20 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
       return;
     }
 
+    // Validate the selected category before any encryption/file work so we
+    // never create orphan encrypted files for an invalid category.
+    final knownCategories = ref.read(categoriesProvider).valueOrNull ?? const [];
+    if (knownCategories.isNotEmpty &&
+        !knownCategories.any((c) => c.id == _selectedCategoryId)) {
+      ErrorDialog.show(
+        context,
+        title: 'Invalid Category',
+        message:
+            'The selected category is no longer available. Please choose another category.',
+      );
+      return;
+    }
+
     setState(() => _isSaving = true);
 
     try {
@@ -508,106 +523,133 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
       } else {
         // Create new document & encrypt files
         final List<DocumentFileModel> encryptedFiles = [];
-        for (int i = 0; i < _attachedFiles.length; i++) {
-          final fileInfo = _attachedFiles[i];
-          final rawFile = File(fileInfo['path'] as String);
-          final plainBytes = await rawFile.readAsBytes();
+        final List<String> encryptedPaths = [];
+        try {
+          for (int i = 0; i < _attachedFiles.length; i++) {
+            if (!session.isUnlocked) throw const VaultLockedException();
+            final masterKey = session.getMasterKeyOrThrow();
 
-          final encPath = await storage.saveEncryptedFile(
-            plainBytes: plainBytes,
-            masterKey: session.masterKey!,
-          );
+            final fileInfo = _attachedFiles[i];
+            final rawFile = File(fileInfo['path'] as String);
+            if (!await rawFile.exists()) {
+              throw Exception('Source file no longer exists: ${rawFile.path}');
+            }
+            final plainBytes = await rawFile.readAsBytes();
 
-          // Securely wipe ephemeral scanner/OCR temp files from cache
-          final rawPath = fileInfo['path'] as String;
-          final fileName = p.basename(rawPath);
-          if (fileName.startsWith('scan_') || fileName.startsWith('ocr_')) {
-            await storage.securelyDeleteFile(rawPath);
-          }
-
-          encryptedFiles.add(
-            DocumentFileModel(
-              id: '',
-              documentId: '',
-              encryptedFilePath: encPath,
-              originalFileName: fileInfo['name'] as String,
-              mimeType: fileInfo['mimeType'] as String,
-              fileSize: plainBytes.length,
-              pageNumber: i + 1,
-              createdAt: DateTime.now(),
-            ),
-          );
-        }
-
-        final newDoc = await repo.addDocument(
-          name: _nameController.text.trim(),
-          categoryId: _selectedCategoryId,
-          documentNumber: _docNumberController.text.trim().isEmpty
-              ? null
-              : _docNumberController.text.trim(),
-          ownerName: _ownerNameController.text.trim().isEmpty
-              ? null
-              : _ownerNameController.text.trim(),
-          issuingAuthority: _authorityController.text.trim().isEmpty
-              ? null
-              : _authorityController.text.trim(),
-          issueDate: _issueDate,
-          expiryDate: _expiryDate,
-          notes: _notesController.text.trim().isEmpty
-              ? null
-              : _notesController.text.trim(),
-          tags: tags,
-          documentType: _selectedDocumentType,
-          files: encryptedFiles,
-          masterKey: session.masterKey!,
-        );
-
-        // Automatic Text Extraction Pipeline (Offline)
-        if (encryptedFiles.isNotEmpty) {
-          try {
-            final firstFile = encryptedFiles.first;
-            final plainBytes = await storage.readDecryptedFile(
-              filePath: firstFile.encryptedFilePath,
-              masterKey: session.masterKey!,
+            final encPath = await storage.saveEncryptedFile(
+              plainBytes: plainBytes,
+              masterKey: masterKey,
             );
-            final extractor = DocumentTextExtractor();
-            final result = await extractor.processDocumentBytes(
-              bytes: plainBytes,
-              fileName: firstFile.originalFileName,
-              mimeType: firstFile.mimeType,
-            );
-            final formattedTxt =
-                DocumentTextExtractor.generateFormattedTextRecord(
-                  documentType: result.classification.documentType,
-                  categoryName: _selectedCategoryId,
-                  sourceFileName: firstFile.originalFileName,
-                  fullText: result.fullText,
-                  fields: result.fields,
-                  engine: result.extractionEngine,
-                  language: result.language,
-                  pageCount: result.pageCount,
-                );
-            final encTxtPath = await repo.saveExtractedTxtFile(
-              documentId: newDoc.id,
-              textContent: formattedTxt,
-              masterKey: session.masterKey!,
-            );
-            await repo.saveExtraction(
-              documentId: newDoc.id,
-              documentType: result.classification.documentType,
-              extractedText: result.fullText,
-              fields: result.fields,
-              engine: result.extractionEngine,
-              language: result.language,
-              pageCount: result.pageCount,
-              encryptedTxtFilePath: encTxtPath,
-              masterKey: session.masterKey!,
-            );
-          } catch (ocrError) {
-            debugPrint(
-              'Auto text extraction during add document error: $ocrError',
+            encryptedPaths.add(encPath);
+
+            encryptedFiles.add(
+              DocumentFileModel(
+                id: '',
+                documentId: '',
+                encryptedFilePath: encPath,
+                originalFileName: fileInfo['name'] as String,
+                mimeType: fileInfo['mimeType'] as String,
+                fileSize: plainBytes.length,
+                pageNumber: i + 1,
+                createdAt: DateTime.now(),
+              ),
             );
           }
+
+          if (!session.isUnlocked) throw const VaultLockedException();
+          final masterKey = session.getMasterKeyOrThrow();
+
+          final newDoc = await repo.addDocument(
+            name: _nameController.text.trim(),
+            categoryId: _selectedCategoryId,
+            documentNumber: _docNumberController.text.trim().isEmpty
+                ? null
+                : _docNumberController.text.trim(),
+            ownerName: _ownerNameController.text.trim().isEmpty
+                ? null
+                : _ownerNameController.text.trim(),
+            issuingAuthority: _authorityController.text.trim().isEmpty
+                ? null
+                : _authorityController.text.trim(),
+            issueDate: _issueDate,
+            expiryDate: _expiryDate,
+            notes: _notesController.text.trim().isEmpty
+                ? null
+                : _notesController.text.trim(),
+            tags: tags,
+            documentType: _selectedDocumentType,
+            files: encryptedFiles,
+            masterKey: masterKey,
+          );
+
+          // Automatic Text Extraction Pipeline (Offline)
+          if (encryptedFiles.isNotEmpty) {
+            try {
+              final firstFile = encryptedFiles.first;
+              final plainBytes = await storage.readDecryptedFile(
+                filePath: firstFile.encryptedFilePath,
+                masterKey: session.getMasterKeyOrThrow(),
+              );
+              final extractor = DocumentTextExtractor();
+              final result = await extractor.processDocumentBytes(
+                bytes: plainBytes,
+                fileName: firstFile.originalFileName,
+                mimeType: firstFile.mimeType,
+              );
+              final formattedTxt =
+                  DocumentTextExtractor.generateFormattedTextRecord(
+                    documentType: result.classification.documentType,
+                    categoryName: _selectedCategoryId,
+                    sourceFileName: firstFile.originalFileName,
+                    fullText: result.fullText,
+                    fields: result.fields,
+                    engine: result.extractionEngine,
+                    language: result.language,
+                    pageCount: result.pageCount,
+                  );
+              final encTxtPath = await repo.saveExtractedTxtFile(
+                documentId: newDoc.id,
+                textContent: formattedTxt,
+                masterKey: session.getMasterKeyOrThrow(),
+              );
+              await repo.saveExtraction(
+                documentId: newDoc.id,
+                documentType: result.classification.documentType,
+                extractedText: result.fullText,
+                fields: result.fields,
+                engine: result.extractionEngine,
+                language: result.language,
+                pageCount: result.pageCount,
+                encryptedTxtFilePath: encTxtPath,
+                masterKey: session.getMasterKeyOrThrow(),
+              );
+            } catch (ocrError) {
+              debugPrint(
+                'Auto text extraction during add document error: $ocrError',
+              );
+              // Keep the document with an honest extraction-failed status.
+              await repo.updateExtractionStatus(newDoc.id, 'failed');
+            }
+          }
+
+          // Only now that DB document creation succeeded, securely wipe raw
+          // scan/OCR temp inputs.
+          for (int i = 0; i < _attachedFiles.length; i++) {
+            final rawPath = _attachedFiles[i]['path'] as String;
+            final fileName = p.basename(rawPath);
+            if (fileName.startsWith('scan_') || fileName.startsWith('ocr_')) {
+              await storage.securelyDeleteFile(rawPath);
+            }
+          }
+        } catch (e) {
+          // Compensating cleanup: remove orphan encrypted files if DB insert
+          // or any later step failed.
+          for (final path in encryptedPaths) {
+            try {
+              await storage.securelyDeleteFile(path);
+            } catch (_) {}
+          }
+          rethrow;
         }
       }
 
