@@ -55,6 +55,53 @@ class StatusBadge extends StatelessWidget {
     }
   }
 
+  factory StatusBadge.fromTemporary(DateTime? expiresAt, {bool isTemporary = true}) {
+    if (!isTemporary || expiresAt == null) {
+      return const StatusBadge(
+        label: 'Permanent',
+        status: ExpiryStatus.none,
+        icon: Icons.shield_outlined,
+      );
+    }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final expiry = DateTime(expiresAt.year, expiresAt.month, expiresAt.day);
+    final days = expiry.difference(today).inDays;
+
+    if (days < 0) {
+      return const StatusBadge(
+        label: 'Expired',
+        status: ExpiryStatus.expired,
+        icon: Icons.hourglass_disabled_rounded,
+      );
+    } else if (days == 0) {
+      return const StatusBadge(
+        label: 'Expires Today',
+        status: ExpiryStatus.expired,
+        icon: Icons.warning_rounded,
+      );
+    } else if (days == 1) {
+      return const StatusBadge(
+        label: 'Expires Tomorrow',
+        status: ExpiryStatus.expiringSoon,
+        icon: Icons.access_time_filled_rounded,
+      );
+    } else if (days <= 7) {
+      return StatusBadge(
+        label: 'Expires in $days days',
+        status: ExpiryStatus.expiringSoon,
+        icon: Icons.hourglass_bottom_rounded,
+      );
+    } else {
+      return StatusBadge(
+        label: 'Temporary • $days d left',
+        status: ExpiryStatus.valid,
+        icon: Icons.hourglass_top_rounded,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.themeColors;

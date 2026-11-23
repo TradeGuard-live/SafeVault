@@ -27,7 +27,7 @@ class VaultDatabase {
 
       return await openDatabase(
         dbPath,
-        version: 8, // v8 adds AES-256-GCM encrypted card number and start date fields
+        version: 9, // v9 adds temporary documents and custom document groups
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON;');
         },
@@ -40,6 +40,7 @@ class VaultDatabase {
           await _createExtractionTables(db);
           await _createDraftTables(db);
           await _createCardTables(db);
+          await _createGroupTables(db);
         },
         onUpgrade: (db, oldVersion, newVersion) async {
           if (oldVersion < 2) {
@@ -63,6 +64,9 @@ class VaultDatabase {
           }
           if (oldVersion < 8) {
             await _migrateToV8(db);
+          }
+          if (oldVersion < 9) {
+            await _migrateToV9(db);
           }
         },
       );
@@ -106,6 +110,9 @@ class VaultDatabase {
         deleted_at TEXT,
         thumbnail_enc_path TEXT,
         document_type TEXT,
+        is_temporary INTEGER NOT NULL DEFAULT 0,
+        expires_at TEXT,
+        expiry_status TEXT NOT NULL DEFAULT 'ACTIVE',
         FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE RESTRICT
       );
     ''');
@@ -118,6 +125,9 @@ class VaultDatabase {
       'CREATE INDEX idx_docs_favorite ON documents(is_favorite);',
     );
     await db.execute('CREATE INDEX idx_docs_expiry ON documents(expiry_date);');
+    await db.execute(
+      'CREATE INDEX idx_docs_temporary ON documents(is_temporary, expires_at);',
+    );
 
     // 3. Document Files Table
     await db.execute('''
@@ -505,6 +515,67 @@ class VaultDatabase {
         'ALTER TABLE payment_cards ADD COLUMN start_year INTEGER;',
       );
     } catch (_) {}
+  }
+
+  Future<void> _migrateToV9(Database db) async {
+    try {
+      await db.execute(
+        'ALTER TABLE documents ADD COLUMN is_temporary INTEGER NOT NULL DEFAULT 0;',
+      );
+    } catch (_) {}
+    try {
+      await db.execute('ALTER TABLE documents ADD COLUMN expires_at TEXT;');
+    } catch (_) {}
+    try {
+      await db.execute(
+        "ALTER TABLE documents ADD COLUMN expiry_status TEXT NOT NULL DEFAULT 'ACTIVE';",
+      );
+    } catch (_) {}
+    try {
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_docs_temporary ON documents(is_temporary, expires_at);',
+      );
+    } catch (_) {}
+
+    await _createGroupTables(db);
+  }
+
+  Future<void> _createGroupTables(Database db) async {
+    // 11. Custom Document Groups Table
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS document_groups (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        icon TEXT NOT NULL,
+        color_value INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_groups_name ON document_groups(name);',
+    );
+
+    // 12. Document-to-Group Many-to-Many Join Table
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS document_group_memberships (
+        document_id TEXT NOT NULL,
+        group_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (document_id, group_id),
+        FOREIGN KEY (document_id) REFERENCES documents (id) ON DELETE CASCADE,
+        FOREIGN KEY (group_id) REFERENCES document_groups (id) ON DELETE CASCADE
+      );
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_grp_mem_doc ON document_group_memberships(document_id);',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_grp_mem_grp ON document_group_memberships(group_id);',
+    );
   }
 
   Future<void> _createCardTables(Database db) async {

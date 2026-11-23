@@ -18,6 +18,8 @@ import '../../bank_vault/data/bank_vault_repository.dart';
 import '../../bank_vault/domain/bank_account_model.dart';
 import '../../cards/data/card_repository.dart';
 import '../../cards/domain/payment_card_model.dart';
+import '../../groups/data/document_group_repository.dart';
+import '../../groups/domain/document_group_model.dart';
 import '../../settings/data/settings_repository.dart';
 import '../../settings/domain/vault_settings_model.dart';
 import '../../timeline/data/activity_repository.dart';
@@ -169,6 +171,57 @@ final expiringDocumentsProvider = FutureProvider<List<DocumentModel>>((
     masterKey: session.masterKey!,
   );
 });
+
+// Temporary Documents Provider
+final temporaryDocumentsProvider = FutureProvider<List<DocumentModel>>((
+  ref,
+) async {
+  final session = ref.watch(vaultSessionProvider);
+  if (!session.isUnlocked || session.masterKey == null) {
+    return [];
+  }
+  final repo = ref.watch(documentRepositoryProvider);
+  return await repo.getTemporaryDocuments(session.masterKey!);
+});
+
+// Expiring Soon Temporary Documents Provider (<= 7 days)
+final expiringSoonTemporaryDocumentsProvider =
+    FutureProvider<List<DocumentModel>>((ref) async {
+      final session = ref.watch(vaultSessionProvider);
+      if (!session.isUnlocked || session.masterKey == null) {
+        return [];
+      }
+      final repo = ref.watch(documentRepositoryProvider);
+      return await repo.getExpiringSoonTemporaryDocuments(
+        days: 7,
+        masterKey: session.masterKey!,
+      );
+    });
+
+// Document Group Providers
+final documentGroupRepositoryProvider = Provider<DocumentGroupRepository>((
+  ref,
+) {
+  final docRepo = ref.watch(documentRepositoryProvider);
+  return DocumentGroupRepository(documentRepository: docRepo);
+});
+
+final documentGroupsProvider = FutureProvider<List<DocumentGroupModel>>((
+  ref,
+) async {
+  final repo = ref.watch(documentGroupRepositoryProvider);
+  return await repo.getGroups();
+});
+
+final groupDocumentsProvider =
+    FutureProvider.family<List<DocumentModel>, String>((ref, groupId) async {
+      final session = ref.watch(vaultSessionProvider);
+      if (!session.isUnlocked || session.masterKey == null) {
+        return [];
+      }
+      final repo = ref.watch(documentGroupRepositoryProvider);
+      return await repo.getDocumentsByGroup(groupId, session.masterKey!);
+    });
 
 // Activities Provider
 final activitiesProvider = FutureProvider<List<ActivityModel>>((ref) async {

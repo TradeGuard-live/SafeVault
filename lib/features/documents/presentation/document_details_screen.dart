@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,11 +19,14 @@ import '../../../core/utils/masked_text_formatter.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../authentication/presentation/auth_providers.dart';
+import '../../groups/domain/document_group_model.dart';
+import '../../groups/presentation/group_picker_sheet.dart';
 import '../../ocr/data/document_text_extractor.dart';
 import '../../ocr/domain/document_extraction_model.dart';
 import '../domain/document_file_model.dart';
 import '../domain/document_model.dart';
 import 'document_share_sheet.dart';
+import 'edit_duration_dialog.dart';
 
 class DocumentDetailsScreen extends ConsumerStatefulWidget {
   final String documentId;
@@ -61,7 +65,24 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
       vsync: this,
       initialIndex: widget.initialTabIndex.clamp(0, 1),
     );
-    _loadDocument();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadDocument();
+      }
+    });
+  }
+
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.midFrameMicrotasks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(fn);
+      });
+    } else {
+      setState(fn);
+    }
   }
 
   @override
@@ -85,7 +106,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
   Future<void> _loadDocument() async {
     final session = ref.read(vaultSessionProvider);
     if (!session.isUnlocked || session.masterKey == null) {
-      context.go('/pin-unlock');
+      if (mounted) _safeSetState(() => _isLoading = false);
       return;
     }
 
@@ -101,7 +122,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
       );
 
       if (mounted) {
-        setState(() {
+        _safeSetState(() {
           _document = doc;
           _extraction = extraction;
           _isLoading = false;
@@ -111,42 +132,48 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
         final gate = ref.read(authenticationGateProvider);
         final pending = gate.consumePendingAction(widget.documentId);
         if (pending != null && mounted) {
-          if (pending.type == VaultActionType.revealDocumentField) {
-            setState(() => _revealDocumentNumber = true);
-            _visibilityTimer?.cancel();
-            _visibilityTimer = Timer(const Duration(seconds: 60), () {
-              if (mounted) setState(() => _revealDocumentNumber = false);
-            });
-          } else if (pending.type == VaultActionType.viewDocumentPreview) {
-            _unlockPreview(alreadyAuthenticated: true);
-          } else if (pending.type == VaultActionType.viewAttachedFile) {
-            final encPath = pending.params['encryptedFilePath'] as String?;
-            final mime = pending.params['mimeType'] as String?;
-            final fName = pending.params['fileName'] as String?;
-            if (encPath != null && mime != null && fName != null) {
-              context.push(
-                '/document-viewer',
-                extra: {
-                  'documentName': _document?.name ?? 'Document',
-                  'encryptedFilePath': encPath,
-                  'mimeType': mime,
-                  'fileName': fName,
-                },
-              );
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            if (pending.type == VaultActionType.revealDocumentField) {
+              _safeSetState(() => _revealDocumentNumber = true);
+              _visibilityTimer?.cancel();
+              _visibilityTimer = Timer(const Duration(seconds: 60), () {
+                _safeSetState(() => _revealDocumentNumber = false);
+              });
+            } else if (pending.type == VaultActionType.viewDocumentPreview) {
+              _unlockPreview(alreadyAuthenticated: true);
+            } else if (pending.type == VaultActionType.viewAttachedFile) {
+              final encPath = pending.params['encryptedFilePath'] as String?;
+              final mime = pending.params['mimeType'] as String?;
+              final fName = pending.params['fileName'] as String?;
+              if (encPath != null && mime != null && fName != null) {
+                context.push(
+                  '/document-viewer',
+                  extra: {
+                    'documentName': _document?.name ?? 'Document',
+                    'encryptedFilePath': encPath,
+                    'mimeType': mime,
+                    'fileName': fName,
+                  },
+                );
+              }
+            } else if (pending.type == VaultActionType.copyAllFields) {
+              _copyAllFields();
             }
-          } else if (pending.type == VaultActionType.copyAllFields) {
-            _copyAllFields();
-          }
+          });
         }
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
-        ErrorDialog.show(
-          context,
-          title: 'Error',
-          message: 'Failed to decrypt document details.',
-        );
+        _safeSetState(() => _isLoading = false);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          ErrorDialog.show(
+            context,
+            title: 'Error',
+            message: 'Failed to decrypt document details.',
+          );
+        });
       }
     }
   }
@@ -201,7 +228,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
       if (!verified || !mounted) return;
     }
 
-    setState(() => _isLoadingPreview = true);
+    _safeSetState(() => _isLoadingPreview = true);
     try {
       final session = ref.read(vaultSessionProvider);
       final storage = ref.read(storageServiceProvider);
@@ -210,7 +237,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
         masterKey: session.masterKey!,
       );
       if (mounted) {
-        setState(() {
+        _safeSetState(() {
           _firstPagePreviewBytes = bytes;
           _isPreviewRevealed = true;
           _isLoadingPreview = false;
@@ -222,12 +249,15 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoadingPreview = false);
-        ErrorDialog.show(
-          context,
-          title: 'Decryption Error',
-          message: 'Failed to decrypt document preview: $e',
-        );
+        _safeSetState(() => _isLoadingPreview = false);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          ErrorDialog.show(
+            context,
+            title: 'Decryption Error',
+            message: 'Failed to decrypt document preview: $e',
+          );
+        });
       }
     }
   }
@@ -238,11 +268,7 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
       _firstPagePreviewBytes!.fillRange(0, _firstPagePreviewBytes!.length, 0);
       _firstPagePreviewBytes = null;
     }
-    if (mounted) {
-      setState(() => _isPreviewRevealed = false);
-    } else {
-      _isPreviewRevealed = false;
-    }
+    _safeSetState(() => _isPreviewRevealed = false);
   }
 
   Future<void> _editDocument(DocumentModel doc) async {
@@ -309,6 +335,113 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Page added successfully.')));
+    }
+  }
+
+  Future<void> _handleEditDuration(DocumentModel doc) async {
+    final session = ref.read(vaultSessionProvider);
+    if (!session.isUnlocked || session.masterKey == null) return;
+
+    await EditDurationDialog.show(
+      context,
+      document: doc,
+      onSave: (isTemporary, expiresAt) async {
+        final repo = ref.read(documentRepositoryProvider);
+        if (isTemporary && expiresAt != null) {
+          await repo.setTemporary(
+            documentId: doc.id,
+            expiresAt: expiresAt,
+            masterKey: session.masterKey!,
+          );
+        } else {
+          await repo.setPermanent(
+            documentId: doc.id,
+            masterKey: session.masterKey!,
+          );
+        }
+        ref.invalidate(activeDocumentsProvider);
+        ref.invalidate(temporaryDocumentsProvider);
+        ref.invalidate(expiringSoonTemporaryDocumentsProvider);
+        await _loadDocument();
+      },
+    );
+  }
+
+  Future<void> _makePermanent(DocumentModel doc) async {
+    final session = ref.read(vaultSessionProvider);
+    if (!session.isUnlocked || session.masterKey == null) return;
+
+    final repo = ref.read(documentRepositoryProvider);
+    await repo.setPermanent(
+      documentId: doc.id,
+      masterKey: session.masterKey!,
+    );
+    ref.invalidate(activeDocumentsProvider);
+    ref.invalidate(temporaryDocumentsProvider);
+    ref.invalidate(expiringSoonTemporaryDocumentsProvider);
+    await _loadDocument();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Document converted to Permanent.')),
+      );
+    }
+  }
+
+  Future<void> _manageGroups(DocumentModel doc) async {
+    final newGroupIds = await GroupPickerSheet.show(
+      context,
+      initialSelectedGroupIds: doc.groupIds,
+    );
+    if (newGroupIds != null && mounted) {
+      final groupRepo = ref.read(documentGroupRepositoryProvider);
+      await groupRepo.setDocumentGroups(
+        documentId: doc.id,
+        groupIds: newGroupIds,
+      );
+      ref.invalidate(documentGroupsProvider);
+      ref.invalidate(activeDocumentsProvider);
+      await _loadDocument();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Document groups updated.')),
+        );
+      }
+    }
+  }
+
+  IconData _getGroupIcon(String name) {
+    switch (name) {
+      case 'person_rounded':
+        return Icons.person_rounded;
+      case 'directions_car_rounded':
+        return Icons.directions_car_rounded;
+      case 'school_rounded':
+        return Icons.school_rounded;
+      case 'local_hospital_rounded':
+        return Icons.local_hospital_rounded;
+      case 'account_balance_rounded':
+        return Icons.account_balance_rounded;
+      case 'home_rounded':
+        return Icons.home_rounded;
+      case 'shield_rounded':
+        return Icons.shield_rounded;
+      case 'family_restroom_rounded':
+        return Icons.family_restroom_rounded;
+      case 'work_rounded':
+        return Icons.work_rounded;
+      case 'flight_rounded':
+        return Icons.flight_rounded;
+      case 'receipt_long_rounded':
+        return Icons.receipt_long_rounded;
+      case 'business_center_rounded':
+        return Icons.business_center_rounded;
+      case 'card_membership_rounded':
+        return Icons.card_membership_rounded;
+      case 'badge_rounded':
+        return Icons.badge_rounded;
+      default:
+        return Icons.folder_rounded;
     }
   }
 
@@ -976,6 +1109,10 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
         _buildPreviewCard(doc, colors),
         const SizedBox(height: 18),
         _buildMetadataCard(doc, colors),
+        const SizedBox(height: 18),
+        _buildDurationCard(doc, colors),
+        const SizedBox(height: 18),
+        _buildGroupsCard(doc, colors),
         if (_extraction != null && _extraction!.fields.isNotEmpty) ...[
           const SizedBox(height: 18),
           _buildExtractedDetailsPreviewCard(doc, colors),
@@ -1264,7 +1401,231 @@ class _DocumentDetailsScreenState extends ConsumerState<DocumentDetailsScreen>
               DateFormatter.formatDisplay(doc.expiryDate!),
               colors,
             ),
+          _buildMetaRow(
+            'Created Date',
+            DateFormatter.formatDisplay(doc.createdAt),
+            colors,
+          ),
           if (doc.notes != null) _buildMetaRow('Notes', doc.notes!, colors),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDurationCard(DocumentModel doc, AppThemeColors colors) {
+    final isTemp = doc.isTemporary;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: colors.cardBackground,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isTemp ? colors.warning.withValues(alpha: 0.4) : colors.cardBorder,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isTemp ? Icons.hourglass_top_rounded : Icons.shield_outlined,
+                color: isTemp ? colors.warning : colors.primaryAccent,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Document Retention',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: colors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              StatusBadge.fromTemporary(
+                doc.expiresAt,
+                isTemporary: doc.isTemporary,
+              ),
+            ],
+          ),
+          const Divider(height: 24),
+          if (isTemp && doc.expiresAt != null) ...[
+            _buildMetaRow('Scheduled Expiry', DateFormatter.formatDisplay(doc.expiresAt!), colors),
+            _buildMetaRow('Remaining Time', doc.temporaryStatusLabel, colors),
+            if (doc.remainingDays != null && doc.remainingDays! <= 3) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: colors.warningContainer.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: colors.warning.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: colors.warning, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'This document will automatically be moved to Trash upon expiry.',
+                        style: TextStyle(fontSize: 11, color: colors.textPrimary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _handleEditDuration(doc),
+                    icon: const Icon(Icons.timer_outlined, size: 16),
+                    label: const Text('Edit Duration', style: TextStyle(fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.warning,
+                      side: BorderSide(color: colors.warning.withValues(alpha: 0.5)),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _makePermanent(doc),
+                    icon: const Icon(Icons.shield_outlined, size: 16),
+                    label: const Text('Make Permanent', style: TextStyle(fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.primaryAccent,
+                      side: BorderSide(color: colors.primaryAccent.withValues(alpha: 0.5)),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            Text(
+              'This document is stored permanently in your vault without any auto-deletion schedule.',
+              style: TextStyle(fontSize: 12, color: colors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => _handleEditDuration(doc),
+              icon: const Icon(Icons.hourglass_top_rounded, size: 16),
+              label: const Text('Set as Temporary Document', style: TextStyle(fontSize: 12)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: colors.warning,
+                side: BorderSide(color: colors.warning.withValues(alpha: 0.5)),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGroupsCard(DocumentModel doc, AppThemeColors colors) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: colors.cardBackground,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.folder_special_rounded, color: colors.primaryAccent, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Document Groups',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: colors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                tooltip: 'Manage Groups',
+                onPressed: () => _manageGroups(doc),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+          const Divider(height: 24),
+          Consumer(
+            builder: (context, ref, _) {
+              final groupsAsync = ref.watch(documentGroupsProvider);
+              return groupsAsync.when(
+                data: (allGroups) {
+                  final assignedGroups = allGroups.where((g) => doc.groupIds.contains(g.id)).toList();
+                  if (assignedGroups.isEmpty) {
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Not assigned to any custom group.',
+                            style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () => _manageGroups(doc),
+                          icon: const Icon(Icons.add_rounded, size: 16),
+                          label: const Text('Add to Group', style: TextStyle(fontSize: 11)),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: assignedGroups.map((group) {
+                      final groupColor = Color(group.colorValue);
+                      return ActionChip(
+                        avatar: Icon(
+                          _getGroupIcon(group.icon),
+                          size: 16,
+                          color: groupColor,
+                        ),
+                        label: Text(
+                          group.name,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        backgroundColor: groupColor.withValues(alpha: 0.12),
+                        side: BorderSide(color: groupColor.withValues(alpha: 0.3)),
+                        onPressed: () {
+                          context.push('/group-documents/${group.id}');
+                        },
+                      );
+                    }).toList(),
+                  );
+                },
+                loading: () => const SizedBox(
+                  height: 24,
+                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+                error: (_, __) => Text(
+                  'Failed to load groups',
+                  style: TextStyle(fontSize: 12, color: colors.error),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );

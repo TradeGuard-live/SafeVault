@@ -18,6 +18,8 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/error_dialog.dart';
 import '../../authentication/presentation/auth_providers.dart';
 import '../../categories/domain/category_model.dart';
+import '../../groups/domain/document_group_model.dart';
+import '../../groups/presentation/group_picker_sheet.dart';
 import '../../ocr/data/document_text_extractor.dart';
 import '../data/document_draft_repository.dart';
 import '../domain/document_draft_model.dart';
@@ -61,6 +63,13 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
   DateTime? _issueDate;
   DateTime? _expiryDate;
 
+  bool _isTemporary = false;
+  int _durationDays = 7;
+  bool _isCustomDuration = false;
+  late TextEditingController _customDaysController;
+  DateTime? _customExpiryDate;
+  List<String> _selectedGroupIds = [];
+
   final List<Map<String, dynamic>> _attachedFiles = [];
   bool _isSaving = false;
   bool _hasRestoredDraft = false;
@@ -98,6 +107,20 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
     _issueDate = edit?.issueDate ?? ocr?['issueDate'];
     _expiryDate = edit?.expiryDate ?? ocr?['expiryDate'];
 
+    _isTemporary = edit?.isTemporary ?? false;
+    _customDaysController = TextEditingController(text: '7');
+    if (edit != null && edit.isTemporary && edit.expiresAt != null) {
+      _customExpiryDate = edit.expiresAt;
+      final diff = edit.expiresAt!.difference(DateTime.now()).inDays;
+      _durationDays = diff > 0 ? diff : 1;
+      _customDaysController.text = _durationDays.toString();
+      const standardPresets = [1, 3, 7, 15, 30, 60, 90];
+      if (!standardPresets.contains(_durationDays)) {
+        _isCustomDuration = true;
+      }
+    }
+    _selectedGroupIds = List.from(edit?.groupIds ?? []);
+
     if (widget.initialFilePath != null) {
       _attachedFiles.add({
         'path': widget.initialFilePath,
@@ -120,6 +143,7 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
 
   @override
   void dispose() {
+    _customDaysController.dispose();
     _draftAutoSaveTimer?.cancel();
     _nameController.removeListener(_scheduleDraftAutoSave);
     _docNumberController.removeListener(_scheduleDraftAutoSave);
@@ -409,6 +433,30 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
     }
   }
 
+  DateTime get _calculatedTemporaryExpiry {
+    if (_customExpiryDate != null) return _customExpiryDate!;
+    return DateTime.now().add(Duration(days: _durationDays));
+  }
+
+  Future<void> _pickCustomExpiryDate() async {
+    final now = DateTime.now();
+    final initialDate = _customExpiryDate ?? now.add(Duration(days: _durationDays));
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate.isAfter(now) ? initialDate : now.add(const Duration(days: 1)),
+      firstDate: now.add(const Duration(days: 1)),
+      lastDate: now.add(const Duration(days: 3650)),
+    );
+    if (picked != null) {
+      setState(() {
+        _customExpiryDate = DateTime(picked.year, picked.month, picked.day, 23, 59, 59);
+        _durationDays = picked.difference(now).inDays.clamp(1, 3650);
+        _customDaysController.text = _durationDays.toString();
+        _isCustomDuration = true;
+      });
+    }
+  }
+
   Future<void> _pickDate({required bool isIssueDate}) async {
     final now = DateTime.now();
     final initial = isIssueDate
@@ -519,6 +567,9 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
           tags: tags,
           documentType: _selectedDocumentType,
           masterKey: session.masterKey!,
+          isTemporary: _isTemporary,
+          expiresAt: _isTemporary ? _calculatedTemporaryExpiry : null,
+          groupIds: _selectedGroupIds,
         );
       } else {
         // Create new document & encrypt files
@@ -580,6 +631,9 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
             documentType: _selectedDocumentType,
             files: encryptedFiles,
             masterKey: masterKey,
+            isTemporary: _isTemporary,
+            expiresAt: _isTemporary ? _calculatedTemporaryExpiry : null,
+            groupIds: _selectedGroupIds,
           );
 
           // Automatic Text Extraction Pipeline (Offline)
@@ -659,6 +713,9 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
       ref.invalidate(activeDocumentsProvider);
       ref.invalidate(expiringDocumentsProvider);
       ref.invalidate(favoriteDocumentsProvider);
+      ref.invalidate(temporaryDocumentsProvider);
+      ref.invalidate(expiringSoonTemporaryDocumentsProvider);
+      ref.invalidate(documentGroupsProvider);
 
       if (mounted) {
         context.pop(true);
@@ -898,6 +955,14 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
               ),
               const SizedBox(height: 20),
 
+              // Document Duration (Permanent vs Temporary)
+              _buildDurationSection(colors),
+              const SizedBox(height: 20),
+
+              // Document Groups
+              _buildGroupsSection(colors),
+              const SizedBox(height: 20),
+
               // Attached Files Section (only for new docs)
               if (widget.editDocument == null) ...[
                 Row(
@@ -1005,6 +1070,334 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDurationSection(AppThemeColors colors) {
+    const presets = [1, 3, 7, 15, 30, 60, 90];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _isTemporary ? colors.warning.withOpacity(0.5) : colors.cardBorder,
+          width: _isTemporary ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                _isTemporary ? Icons.hourglass_top_rounded : Icons.shield_outlined,
+                color: _isTemporary ? colors.warning : colors.primaryAccent,
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Document Duration',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
+                  ),
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: colors.cardBorder),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Permanent'),
+                      selected: !_isTemporary,
+                      onSelected: (val) {
+                        if (val) setState(() => _isTemporary = false);
+                      },
+                      selectedColor: colors.primaryAccent.withOpacity(0.18),
+                      labelStyle: TextStyle(
+                        fontSize: 12,
+                        fontWeight: !_isTemporary ? FontWeight.bold : FontWeight.normal,
+                        color: !_isTemporary ? colors.primaryAccent : colors.textSecondary,
+                      ),
+                    ),
+                    ChoiceChip(
+                      label: const Text('Temporary'),
+                      selected: _isTemporary,
+                      onSelected: (val) {
+                        if (val) setState(() => _isTemporary = true);
+                      },
+                      selectedColor: colors.warning.withOpacity(0.2),
+                      labelStyle: TextStyle(
+                        fontSize: 12,
+                        fontWeight: _isTemporary ? FontWeight.bold : FontWeight.normal,
+                        color: _isTemporary ? colors.warning : colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (_isTemporary) ...[
+            const SizedBox(height: 14),
+            Text(
+              'Select Duration:',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textSecondary),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ...presets.map((d) {
+                  final isSelected = !_isCustomDuration && _durationDays == d && _customExpiryDate == null;
+                  return ChoiceChip(
+                    label: Text(d == 1 ? '1 Day' : '$d Days'),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() {
+                          _isCustomDuration = false;
+                          _durationDays = d;
+                          _customExpiryDate = null;
+                          _customDaysController.text = d.toString();
+                        });
+                      }
+                    },
+                    selectedColor: colors.warning.withOpacity(0.22),
+                    labelStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected ? colors.warning : colors.textPrimary,
+                    ),
+                  );
+                }),
+                ChoiceChip(
+                  label: const Text('Custom'),
+                  selected: _isCustomDuration || _customExpiryDate != null,
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() {
+                        _isCustomDuration = true;
+                      });
+                    }
+                  },
+                  selectedColor: colors.warning.withOpacity(0.22),
+                  labelStyle: TextStyle(
+                    fontSize: 12,
+                    fontWeight: (_isCustomDuration || _customExpiryDate != null) ? FontWeight.bold : FontWeight.w500,
+                    color: (_isCustomDuration || _customExpiryDate != null) ? colors.warning : colors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            if (_isCustomDuration) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _customDaysController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Duration in Days',
+                        hintText: 'e.g. 45',
+                        prefixIcon: Icon(Icons.timer_outlined),
+                        isDense: true,
+                      ),
+                      onChanged: (val) {
+                        final parsed = int.tryParse(val.trim());
+                        if (parsed != null && parsed > 0) {
+                          setState(() {
+                            _durationDays = parsed;
+                            _customExpiryDate = null;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  OutlinedButton.icon(
+                    onPressed: _pickCustomExpiryDate,
+                    icon: const Icon(Icons.calendar_month_rounded, size: 18),
+                    label: const Text('Pick Date'),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colors.warningContainer.withOpacity(0.35),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.warning.withOpacity(0.3)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline_rounded, color: colors.warning, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Expires on: ${DateFormatter.formatDisplay(_calculatedTemporaryExpiry)} (in $_durationDays days)',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.bold,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Automatic deletion: This document will be automatically moved to Trash when expired and safely purged according to retention policy.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGroupsSection(AppThemeColors colors) {
+    final groupsAsync = ref.watch(documentGroupsProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.collections_bookmark_outlined, color: colors.primaryAccent, size: 20),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Document Groups',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              TextButton.icon(
+                onPressed: () async {
+                  final picked = await GroupPickerSheet.show(
+                    context,
+                    initialSelectedGroupIds: _selectedGroupIds,
+                  );
+                  if (picked != null) {
+                    setState(() => _selectedGroupIds = picked);
+                  }
+                },
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: Text(_selectedGroupIds.isEmpty ? '+ Add to Group' : 'Edit Groups'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          groupsAsync.when(
+            data: (allGroups) {
+              final selectedGroups = allGroups.where((g) => _selectedGroupIds.contains(g.id)).toList();
+
+              if (selectedGroups.isEmpty) {
+                return InkWell(
+                  onTap: () async {
+                    final picked = await GroupPickerSheet.show(
+                      context,
+                      initialSelectedGroupIds: _selectedGroupIds,
+                    );
+                    if (picked != null) {
+                      setState(() => _selectedGroupIds = picked);
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: colors.surface.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.cardBorder.withOpacity(0.6)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.folder_open_rounded, size: 20, color: colors.textTertiary),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Organize this document into custom groups (e.g. Vehicle, Medical, Travel)',
+                            style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: selectedGroups.map((g) {
+                  return Chip(
+                    backgroundColor: Color(g.colorValue).withOpacity(0.12),
+                    side: BorderSide(color: Color(g.colorValue).withOpacity(0.4)),
+                    avatar: CircleAvatar(
+                      backgroundColor: Color(g.colorValue),
+                      radius: 10,
+                      child: const Icon(Icons.check, size: 12, color: Colors.white),
+                    ),
+                    label: Text(
+                      g.name,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(g.colorValue),
+                      ),
+                    ),
+                    deleteIcon: const Icon(Icons.close_rounded, size: 16),
+                    onDeleted: () {
+                      setState(() => _selectedGroupIds.remove(g.id));
+                    },
+                  );
+                }).toList(),
+              );
+            },
+            loading: () => const LinearProgressIndicator(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
+        ],
       ),
     );
   }

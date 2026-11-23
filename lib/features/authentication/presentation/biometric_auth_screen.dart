@@ -106,13 +106,22 @@ class _BiometricAuthScreenState extends ConsumerState<BiometricAuthScreen> {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: colors.primaryAccent.withOpacity(0.12),
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.primaryAccent.withValues(alpha: 0.2),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                child: Icon(
-                  Icons.shield_rounded,
-                  size: 38,
-                  color: colors.primaryAccent,
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/icon/app_icon.png',
+                    width: 72,
+                    height: 72,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
               const SizedBox(height: 20),

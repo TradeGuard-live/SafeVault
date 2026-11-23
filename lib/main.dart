@@ -11,6 +11,7 @@ import 'core/security/privacy_service.dart';
 import 'core/services/native_saf_and_share_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/authentication/presentation/auth_providers.dart';
+import 'features/documents/data/document_expiry_service.dart';
 
 class StartupDiagnostics {
   final String serviceName;
@@ -48,11 +49,15 @@ class _VaultAppState extends ConsumerState<VaultApp> {
     final session = ref.read(vaultSessionProvider);
     NativeSafAndShareService.instance.attachSession(session);
     ref.read(biometricServiceProvider).attachVaultSession(session);
+    ref.read(documentExpiryServiceProvider).startMonitoring();
     unawaited(_initializeNonCriticalServices());
 
     _lifecycleListener = AppLifecycleListener(
       onStateChange: (state) {
         ref.read(vaultSessionProvider).handleLifecycleChange(state);
+        if (state == AppLifecycleState.resumed) {
+          ref.read(documentExpiryServiceProvider).runExpiryCheck();
+        }
       },
     );
 
@@ -88,6 +93,7 @@ class _VaultAppState extends ConsumerState<VaultApp> {
 
   @override
   void dispose() {
+    ref.read(documentExpiryServiceProvider).stopMonitoring();
     _shareSubscription?.cancel();
     _lifecycleListener.dispose();
     super.dispose();
@@ -109,6 +115,10 @@ class _VaultAppState extends ConsumerState<VaultApp> {
     await _runStartupTask(
       serviceName: 'Local notifications',
       task: () => LocalNotificationService.instance.initialize(),
+    );
+    await _runStartupTask(
+      serviceName: 'Document expiry check',
+      task: () => ref.read(documentExpiryServiceProvider).runExpiryCheck(),
     );
   }
 

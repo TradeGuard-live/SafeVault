@@ -251,6 +251,102 @@ class LocalNotificationService {
     }
   }
 
+  /// Schedules an offline temporary document expiry reminder without exposing sensitive details.
+  /// Example: "Your temporary document Passport Copy expires tomorrow."
+  Future<void> scheduleTemporaryDocExpiryReminder({
+    required int notificationId,
+    required String documentName,
+    required DateTime scheduledDate,
+    required int daysBefore,
+  }) async {
+    await initialize();
+
+    final now = DateTime.now();
+    if (scheduledDate.isBefore(now)) {
+      return;
+    }
+
+    String title;
+    String body;
+    if (daysBefore == 0) {
+      title = 'Temporary Document Expiring';
+      body = 'Your temporary document "$documentName" expires today.';
+    } else if (daysBefore == 1) {
+      title = 'Temporary Document Expiring Tomorrow';
+      body = 'Your temporary document "$documentName" expires tomorrow.';
+    } else {
+      title = 'Temporary Document Expiry Reminder';
+      body = 'Your temporary document "$documentName" expires in $daysBefore days.';
+    }
+
+    final scheduledTime = DateTime(
+      scheduledDate.year,
+      scheduledDate.month,
+      scheduledDate.day,
+      9,
+      0,
+    );
+
+    final tzDateTime = tz.TZDateTime.from(
+      scheduledTime.isBefore(now)
+          ? scheduledTime.add(const Duration(minutes: 5))
+          : scheduledTime,
+      tz.local,
+    );
+
+    const androidDetails = AndroidNotificationDetails(
+      AppConstants.notificationChannelId,
+      AppConstants.notificationChannelName,
+      channelDescription: AppConstants.notificationChannelDesc,
+      importance: Importance.high,
+      priority: Priority.high,
+      showWhen: true,
+    );
+
+    const notificationDetails = NotificationDetails(android: androidDetails);
+
+    final androidImplementation = _notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+
+    bool canUseExact = false;
+    try {
+      canUseExact =
+          await androidImplementation?.canScheduleExactNotifications() ?? false;
+    } catch (_) {}
+
+    final scheduleMode = canUseExact
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
+
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id: notificationId,
+        title: title,
+        body: body,
+        scheduledDate: tzDateTime,
+        notificationDetails: notificationDetails,
+        androidScheduleMode: scheduleMode,
+      );
+    } catch (e) {
+      try {
+        await _notificationsPlugin.zonedSchedule(
+          id: notificationId,
+          title: title,
+          body: body,
+          scheduledDate: tzDateTime,
+          notificationDetails: notificationDetails,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        );
+      } catch (fallbackError) {
+        debugPrint(
+          'LocalNotificationService: Could not schedule temporary reminder: $fallbackError',
+        );
+      }
+    }
+  }
+
   /// Cancels a specific notification by its integer ID.
   Future<void> cancelNotification(int notificationId) async {
     await initialize();

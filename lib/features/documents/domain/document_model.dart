@@ -22,6 +22,10 @@ class DocumentModel {
   final String? documentType;
   final String? extractionStatus; // 'waiting', 'importing', 'encrypting', 'extractingText', 'recognizingFields', 'needsReview', 'completed', 'failed'
   final String? extractedTxtEncPath;
+  final bool isTemporary;
+  final DateTime? expiresAt;
+  final String expiryStatus; // 'ACTIVE', 'EXPIRED'
+  final List<String> groupIds;
   final List<DocumentFileModel> files;
   final DocumentExtractionModel? extraction;
 
@@ -44,11 +48,37 @@ class DocumentModel {
     this.documentType,
     this.extractionStatus = 'completed',
     this.extractedTxtEncPath,
+    this.isTemporary = false,
+    this.expiresAt,
+    this.expiryStatus = 'ACTIVE',
+    this.groupIds = const [],
     this.files = const [],
     this.extraction,
   });
 
   bool get isDeleted => deletedAt != null;
+
+  bool get isExpired =>
+      isTemporary && expiresAt != null && expiresAt!.isBefore(DateTime.now());
+
+  int? get remainingDays {
+    if (!isTemporary || expiresAt == null) return null;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final exp = DateTime(expiresAt!.year, expiresAt!.month, expiresAt!.day);
+    return exp.difference(today).inDays;
+  }
+
+  String get temporaryStatusLabel {
+    if (!isTemporary) return 'Permanent';
+    if (isExpired) return 'Expired';
+    final days = remainingDays;
+    if (days == null) return 'Temporary';
+    if (days < 0) return 'Expired';
+    if (days == 0) return 'Expires Today';
+    if (days == 1) return 'Expires Tomorrow';
+    return 'Expires in $days days';
+  }
 
   DocumentModel copyWith({
     String? id,
@@ -69,6 +99,11 @@ class DocumentModel {
     String? documentType,
     String? extractionStatus,
     String? extractedTxtEncPath,
+    bool? isTemporary,
+    DateTime? expiresAt,
+    bool clearExpiresAt = false,
+    String? expiryStatus,
+    List<String>? groupIds,
     List<DocumentFileModel>? files,
     DocumentExtractionModel? extraction,
   }) {
@@ -91,6 +126,10 @@ class DocumentModel {
       documentType: documentType ?? this.documentType,
       extractionStatus: extractionStatus ?? this.extractionStatus,
       extractedTxtEncPath: extractedTxtEncPath ?? this.extractedTxtEncPath,
+      isTemporary: isTemporary ?? this.isTemporary,
+      expiresAt: clearExpiresAt ? null : (expiresAt ?? this.expiresAt),
+      expiryStatus: expiryStatus ?? this.expiryStatus,
+      groupIds: groupIds ?? this.groupIds,
       files: files ?? this.files,
       extraction: extraction ?? this.extraction,
     );

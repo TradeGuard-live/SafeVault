@@ -16,6 +16,9 @@ import '../../features/documents/presentation/category_documents_screen.dart';
 import '../../features/documents/presentation/document_details_screen.dart';
 import '../../features/documents/presentation/document_viewer_screen.dart';
 import '../../features/documents/presentation/incoming_share_preview_screen.dart';
+import '../../features/documents/presentation/temporary_documents_screen.dart';
+import '../../features/groups/presentation/document_groups_screen.dart';
+import '../../features/groups/presentation/group_documents_screen.dart';
 import '../../features/expiry/presentation/expiry_dashboard_screen.dart';
 import '../../features/favorites/presentation/favorites_screen.dart';
 import '../../features/ocr/presentation/extraction_review_screen.dart';
@@ -96,9 +99,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         }
       }
 
+      // If cold-start animation has already played in this process, skip /splash entirely
+      if (loc == '/splash' && SplashScreen.hasCompletedInitialColdSplash) {
+        if (!session.isUnlocked) {
+          return '/biometric-unlock';
+        } else {
+          return '/dashboard';
+        }
+      }
+
       // If unlocked and still sitting on auth/welcome pages, route to returnRoute, pending incoming share, or dashboard
       if (session.isUnlocked &&
-          (loc == '/pin-unlock' ||
+          (loc == '/splash' ||
+              loc == '/pin-unlock' ||
               loc == '/biometric-unlock' ||
               loc == '/welcome')) {
         final gate = ref.read(authenticationGateProvider);
@@ -317,6 +330,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
           return ExtractionReviewScreen(documentId: id);
+        },
+      ),
+
+      // Temporary Documents
+      GoRoute(
+        path: '/temporary-documents',
+        builder: (context, state) => const TemporaryDocumentsScreen(),
+      ),
+
+      // Document Groups
+      GoRoute(
+        path: '/document-groups',
+        builder: (context, state) => const DocumentGroupsScreen(),
+      ),
+      GoRoute(
+        path: '/group-documents/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return GroupDocumentsScreen(groupId: id);
         },
       ),
 

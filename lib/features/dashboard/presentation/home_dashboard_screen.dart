@@ -124,6 +124,8 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     final passwordsAsync = ref.watch(allPasswordsProvider);
     final bankAccountsAsync = ref.watch(allBankAccountsProvider);
     final cardsAsync = ref.watch(allPaymentCardsProvider);
+    final groupsAsync = ref.watch(documentGroupsProvider);
+    final tempDocsAsync = ref.watch(temporaryDocumentsProvider);
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -132,16 +134,13 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
         elevation: 0,
         title: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: colors.primaryAccent.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                Icons.shield_rounded,
-                color: colors.primaryAccent,
-                size: 22,
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/icon/app_icon.png',
+                width: 32,
+                height: 32,
+                fit: BoxFit.cover,
               ),
             ),
             const SizedBox(width: 10),
@@ -206,6 +205,8 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
           ref.invalidate(allPaymentCardsProvider);
           ref.invalidate(allBankAccountsProvider);
           ref.invalidate(allPasswordsProvider);
+          ref.invalidate(documentGroupsProvider);
+          ref.invalidate(temporaryDocumentsProvider);
         },
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
@@ -222,6 +223,10 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
 
             // 2. Quick Actions
             _buildQuickActions(colors),
+            const SizedBox(height: 18),
+
+            // 2b. Custom Groups & Temporary Documents Hub
+            _buildGroupsAndTemporarySection(colors, groupsAsync, tempDocsAsync),
             const SizedBox(height: 24),
 
             // 3. Categories Section
@@ -439,6 +444,139 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
             color: colors.success,
             colors: colors,
             onTap: () => context.push('/add-bank-account'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGroupsAndTemporarySection(
+    AppThemeColors colors,
+    AsyncValue<dynamic> groupsAsync,
+    AsyncValue<dynamic> tempDocsAsync,
+  ) {
+    final groupsCount = groupsAsync.valueOrNull?.length ?? 0;
+    final tempDocsCount = tempDocsAsync.valueOrNull?.length ?? 0;
+
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            onTap: () => context.push('/document-groups'),
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: colors.cardBackground,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: colors.cardBorder),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: colors.primaryAccent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.folder_special_rounded,
+                      color: colors.primaryAccent,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Groups',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          '$groupsCount custom',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: colors.textSecondary,
+                    size: 18,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: InkWell(
+            onTap: () => context.push('/temporary-documents'),
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: colors.cardBackground,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: colors.cardBorder),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: colors.warning.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.hourglass_top_rounded,
+                      color: colors.warning,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Temporary',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          '$tempDocsCount docs',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: colors.textSecondary,
+                    size: 18,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ],

@@ -52,6 +52,10 @@ class DocumentRepository {
     required List<DocumentFileModel> files,
     required SecretKey masterKey,
     bool isScanned = false,
+    bool isTemporary = false,
+    DateTime? expiresAt,
+    String expiryStatus = 'ACTIVE',
+    List<String> groupIds = const [],
   }) async {
     final db = await _dbHelper.database;
     final now = DateTime.now();
@@ -104,6 +108,9 @@ class DocumentRepository {
       'deleted_at': null,
       'thumbnail_enc_path': thumbnailEncPath,
       'document_type': documentType,
+      'is_temporary': isTemporary ? 1 : 0,
+      'expires_at': expiresAt?.toIso8601String(),
+      'expiry_status': expiryStatus,
     };
 
     await db.transaction((txn) async {
@@ -124,6 +131,18 @@ class DocumentRepository {
         };
         await txn.insert('document_files', fileMap);
       }
+
+      for (final gId in groupIds) {
+        await txn.insert(
+          'document_group_memberships',
+          {
+            'document_id': docId,
+            'group_id': gId,
+            'created_at': now.toIso8601String(),
+          },
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+      }
     });
 
     // Schedule expiry reminders if expiry date is provided
@@ -132,6 +151,17 @@ class DocumentRepository {
         documentId: docId,
         documentName: name,
         expiryDate: expiryDate,
+        isTemporary: false,
+      );
+    }
+
+    // Schedule temporary document expiry reminders if temporary
+    if (isTemporary && expiresAt != null) {
+      await _scheduleRemindersForDocument(
+        documentId: docId,
+        documentName: name,
+        expiryDate: expiresAt,
+        isTemporary: true,
       );
     }
 
@@ -177,6 +207,10 @@ class DocumentRepository {
     List<String> tags = const [],
     String? documentType,
     required SecretKey masterKey,
+    bool? isTemporary,
+    DateTime? expiresAt,
+    String? expiryStatus,
+    List<String>? groupIds,
   }) async {
     final db = await _dbHelper.database;
     final now = DateTime.now();
@@ -211,24 +245,62 @@ class DocumentRepository {
       );
     }
 
+    final updateMap = <String, dynamic>{
+      'name': name.trim(),
+      'category_id': categoryId,
+      'document_number_enc': docNumEnc,
+      'owner_name_enc': ownerNameEnc,
+      'issuing_authority_enc': authorityEnc,
+      'issue_date': issueDate?.toIso8601String(),
+      'expiry_date': expiryDate?.toIso8601String(),
+      'notes_enc': notesEnc,
+      'tags_json': jsonEncode(tags),
+      'document_type': documentType,
+      'updated_at': now.toIso8601String(),
+    };
+
+    if (isTemporary != null) {
+      updateMap['is_temporary'] = isTemporary ? 1 : 0;
+      if (!isTemporary) {
+        updateMap['expires_at'] = null;
+        updateMap['expiry_status'] = 'ACTIVE';
+      }
+    }
+    if (expiresAt != null) {
+      updateMap['expires_at'] = expiresAt.toIso8601String();
+    }
+    if (expiryStatus != null) {
+      updateMap['expiry_status'] = expiryStatus;
+    }
+
     await db.update(
       'documents',
-      {
-        'name': name.trim(),
-        'category_id': categoryId,
-        'document_number_enc': docNumEnc,
-        'owner_name_enc': ownerNameEnc,
-        'issuing_authority_enc': authorityEnc,
-        'issue_date': issueDate?.toIso8601String(),
-        'expiry_date': expiryDate?.toIso8601String(),
-        'notes_enc': notesEnc,
-        'tags_json': jsonEncode(tags),
-        'document_type': documentType,
-        'updated_at': now.toIso8601String(),
-      },
+      updateMap,
       where: 'id = ?',
       whereArgs: [documentId],
     );
+
+    // Update group memberships if provided
+    if (groupIds != null) {
+      await db.transaction((txn) async {
+        await txn.delete(
+          'document_group_memberships',
+          where: 'document_id = ?',
+          whereArgs: [documentId],
+        );
+        for (final gId in groupIds) {
+          await txn.insert(
+            'document_group_memberships',
+            {
+              'document_id': documentId,
+              'group_id': gId,
+              'created_at': now.toIso8601String(),
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore,
+          );
+        }
+      });
+    }
 
     // Refresh reminders
     await _cancelRemindersForDocument(documentId);
@@ -237,6 +309,19 @@ class DocumentRepository {
         documentId: documentId,
         documentName: name,
         expiryDate: expiryDate,
+        isTemporary: false,
+      );
+    }
+
+    // Check if temporary reminders should be scheduled
+    final bool effectiveTemporary = isTemporary ?? false;
+    final DateTime? effectiveExpiresAt = expiresAt;
+    if (effectiveTemporary && effectiveExpiresAt != null) {
+      await _scheduleRemindersForDocument(
+        documentId: documentId,
+        documentName: name,
+        expiryDate: effectiveExpiresAt,
+        isTemporary: true,
       );
     }
 
@@ -421,6 +506,22 @@ class DocumentRepository {
 
     // 3. Delete from database
     await db.transaction((txn) async {
+      await txn.delete(
+        'document_group_memberships',
+        where: 'document_id = ?',
+        whereArgs: [documentId],
+      );
+      await txn.delete(
+        'extracted_fields',
+        where:
+            'extraction_id IN (SELECT id FROM document_extractions WHERE document_id = ?)',
+        whereArgs: [documentId],
+      );
+      await txn.delete(
+        'document_extractions',
+        where: 'document_id = ?',
+        whereArgs: [documentId],
+      );
       await txn.delete(
         'reminders',
         where: 'document_id = ?',
@@ -677,6 +778,15 @@ class DocumentRepository {
       } catch (_) {}
     }
 
+    final db = await _dbHelper.database;
+    final groupRows = await db.query(
+      'document_group_memberships',
+      columns: ['group_id'],
+      where: 'document_id = ?',
+      whereArgs: [row['id'] as String],
+    );
+    final groupIds = groupRows.map((r) => r['group_id'] as String).toList();
+
     return DocumentModel(
       id: row['id'] as String,
       name: row['name'] as String,
@@ -702,6 +812,12 @@ class DocumentRepository {
       documentType: row['document_type'] as String?,
       extractionStatus: row['extraction_status'] as String? ?? 'completed',
       extractedTxtEncPath: row['extracted_txt_enc_path'] as String?,
+      isTemporary: (row['is_temporary'] as int? ?? 0) == 1,
+      expiresAt: row['expires_at'] != null
+          ? DateTime.parse(row['expires_at'] as String)
+          : null,
+      expiryStatus: row['expiry_status'] as String? ?? 'ACTIVE',
+      groupIds: groupIds,
       files: files,
     );
   }
@@ -1008,32 +1124,255 @@ class DocumentRepository {
     );
   }
 
+  /// Sets a document as temporary with a specific expiry date.
+  Future<DocumentModel?> setTemporary({
+    required String documentId,
+    required DateTime expiresAt,
+    required SecretKey masterKey,
+  }) async {
+    final db = await _dbHelper.database;
+    final now = DateTime.now();
+
+    await db.update(
+      'documents',
+      {
+        'is_temporary': 1,
+        'expires_at': expiresAt.toIso8601String(),
+        'expiry_status': 'ACTIVE',
+        'updated_at': now.toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [documentId],
+    );
+
+    await _cancelRemindersForDocument(documentId);
+    final docRows = await db.query(
+      'documents',
+      where: 'id = ?',
+      whereArgs: [documentId],
+    );
+    if (docRows.isNotEmpty) {
+      final name = docRows.first['name'] as String;
+      await _scheduleRemindersForDocument(
+        documentId: documentId,
+        documentName: name,
+        expiryDate: expiresAt,
+        isTemporary: true,
+      );
+      await _activities.logActivity(
+        documentId: documentId,
+        documentName: name,
+        activityType: 'DOCUMENT_UPDATED',
+        details: 'Converted $name to Temporary (expires on ${expiresAt.toLocal().toString().split('.').first})',
+      );
+    }
+
+    return await getDocumentById(documentId, masterKey);
+  }
+
+  /// Converts a temporary document back to permanent.
+  Future<DocumentModel?> setPermanent({
+    required String documentId,
+    required SecretKey masterKey,
+  }) async {
+    final db = await _dbHelper.database;
+    final now = DateTime.now();
+
+    await db.update(
+      'documents',
+      {
+        'is_temporary': 0,
+        'expires_at': null,
+        'expiry_status': 'ACTIVE',
+        'updated_at': now.toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [documentId],
+    );
+
+    await _cancelRemindersForDocument(documentId);
+    final docRows = await db.query(
+      'documents',
+      where: 'id = ?',
+      whereArgs: [documentId],
+    );
+    if (docRows.isNotEmpty) {
+      final name = docRows.first['name'] as String;
+      final expiryStr = docRows.first['expiry_date'] as String?;
+      if (expiryStr != null) {
+        final expiry = DateTime.tryParse(expiryStr);
+        if (expiry != null && expiry.isAfter(DateTime.now())) {
+          await _scheduleRemindersForDocument(
+            documentId: documentId,
+            documentName: name,
+            expiryDate: expiry,
+            isTemporary: false,
+          );
+        }
+      }
+      await _activities.logActivity(
+        documentId: documentId,
+        documentName: name,
+        activityType: 'DOCUMENT_UPDATED',
+        details: 'Converted $name to Permanent',
+      );
+    }
+
+    return await getDocumentById(documentId, masterKey);
+  }
+
+  /// Updates expiry date for a temporary document and reschedules reminders.
+  Future<DocumentModel?> updateExpiry({
+    required String documentId,
+    required DateTime expiresAt,
+    required SecretKey masterKey,
+  }) async {
+    return await setTemporary(
+      documentId: documentId,
+      expiresAt: expiresAt,
+      masterKey: masterKey,
+    );
+  }
+
+  /// Queries all non-deleted temporary documents.
+  Future<List<DocumentModel>> getTemporaryDocuments(SecretKey masterKey) async {
+    final db = await _dbHelper.database;
+    final docRows = await db.query(
+      'documents',
+      where: 'deleted_at IS NULL AND is_temporary = 1',
+      orderBy: 'expires_at ASC, updated_at DESC',
+    );
+    return await _mapRowsToDocuments(docRows, masterKey);
+  }
+
+  /// Queries upcoming expiring temporary documents.
+  Future<List<DocumentModel>> getExpiringSoonTemporaryDocuments({
+    int days = 7,
+    required SecretKey masterKey,
+  }) async {
+    final db = await _dbHelper.database;
+    final now = DateTime.now();
+    final targetDate = now.add(Duration(days: days));
+
+    final docRows = await db.query(
+      'documents',
+      where:
+          'deleted_at IS NULL AND is_temporary = 1 AND expires_at IS NOT NULL AND expires_at <= ?',
+      whereArgs: [targetDate.toIso8601String()],
+      orderBy: 'expires_at ASC',
+    );
+    return await _mapRowsToDocuments(docRows, masterKey);
+  }
+
+  /// Queries expired temporary documents.
+  Future<List<DocumentModel>> getExpiredTemporaryDocuments(SecretKey masterKey) async {
+    final db = await _dbHelper.database;
+    final now = DateTime.now().toIso8601String();
+
+    final docRows = await db.query(
+      'documents',
+      where:
+          'deleted_at IS NULL AND is_temporary = 1 AND expires_at IS NOT NULL AND expires_at <= ?',
+      whereArgs: [now],
+      orderBy: 'expires_at ASC',
+    );
+    return await _mapRowsToDocuments(docRows, masterKey);
+  }
+
+  /// Processes all expired temporary documents by moving them to Trash safely and idempotently.
+  Future<int> processExpiredDocuments() async {
+    final db = await _dbHelper.database;
+    final now = DateTime.now().toIso8601String();
+
+    final expiredDocs = await db.query(
+      'documents',
+      columns: ['id', 'name'],
+      where:
+          'deleted_at IS NULL AND is_temporary = 1 AND expires_at IS NOT NULL AND expires_at <= ?',
+      whereArgs: [now],
+    );
+
+    if (expiredDocs.isEmpty) return 0;
+
+    int count = 0;
+    for (final row in expiredDocs) {
+      final docId = row['id'] as String;
+      final name = row['name'] as String;
+
+      await db.update(
+        'documents',
+        {'expiry_status': 'EXPIRED'},
+        where: 'id = ?',
+        whereArgs: [docId],
+      );
+
+      await moveToTrash(docId);
+
+      await _activities.logActivity(
+        documentId: docId,
+        documentName: name,
+        activityType: 'TEMPORARY_DOCUMENT_EXPIRED',
+        details: 'Temporary document "$name" reached expiry and was moved to Trash.',
+      );
+      count++;
+    }
+
+    return count;
+  }
+
+  /// Queries all active documents belonging to a group.
+  Future<List<DocumentModel>> getDocumentsByGroup(
+    String groupId,
+    SecretKey masterKey,
+  ) async {
+    final db = await _dbHelper.database;
+    final docRows = await db.rawQuery('''
+      SELECT d.*
+      FROM documents d
+      INNER JOIN document_group_memberships m ON m.document_id = d.id
+      WHERE m.group_id = ? AND d.deleted_at IS NULL
+      ORDER BY d.updated_at DESC;
+    ''', [groupId]);
+
+    return await _mapRowsToDocuments(docRows, masterKey);
+  }
+
   Future<void> _scheduleRemindersForDocument({
     required String documentId,
     required String documentName,
     required DateTime expiryDate,
+    bool isTemporary = false,
   }) async {
     try {
       final db = await _dbHelper.database;
-      final reminderIntervals = [30, 15, 7, 1, 0];
+      final reminderIntervals = isTemporary ? [3, 1, 0] : [30, 15, 7, 1, 0];
       final now = DateTime.now();
 
       for (final days in reminderIntervals) {
         final scheduledDate = expiryDate.subtract(Duration(days: days));
         if (scheduledDate.isAfter(now)) {
-          final notifId = (documentId.hashCode ^ days).abs() % 2147483647;
+          final notifId = (documentId.hashCode ^ days ^ (isTemporary ? 9999 : 0)).abs() % 2147483647;
           try {
-            await _notifications.scheduleExpiryReminder(
-              notificationId: notifId,
-              documentName: documentName,
-              scheduledDate: scheduledDate,
-              daysBefore: days,
-            );
+            if (isTemporary) {
+              await _notifications.scheduleTemporaryDocExpiryReminder(
+                notificationId: notifId,
+                documentName: documentName,
+                scheduledDate: scheduledDate,
+                daysBefore: days,
+              );
+            } else {
+              await _notifications.scheduleExpiryReminder(
+                notificationId: notifId,
+                documentName: documentName,
+                scheduledDate: scheduledDate,
+                daysBefore: days,
+              );
+            }
 
             await db.insert('reminders', {
               'id': _uuid.v4(),
               'document_id': documentId,
-              'reminder_type': 'EXPIRY_$days',
+              'reminder_type': isTemporary ? 'TEMP_EXPIRY_$days' : 'EXPIRY_$days',
               'days_before': days,
               'scheduled_date': scheduledDate.toIso8601String(),
               'is_enabled': 1,
